@@ -1,52 +1,44 @@
-import { IncomingForm, File as FormidableFile } from "formidable";
-import fs from "fs";
-import path from "path";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { connectMongoDB } from "@/lib/mongodb";
+import { Product } from "@/models/product";
+import { v2 as cloudinary } from "cloudinary";
+import { NextResponse } from "next/server";
+import type { UploadApiResponse } from "cloudinary";
 
-// ✅ Tắt bodyParser mặc định của Next.js
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export async function POST(req: Request) {
+  try {
+    const formData = await req.formData();
+    const file = formData.get("image") as File;
+    const name = formData.get("name") as string;
+    const description = formData.get("description") as string;
+    const price = parseFloat(formData.get("price") as string);
+    const category = formData.get("category") as string;
+    const productCode = formData.get("productCode") as string;
 
-// ✅ API handler
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const uploadRes = await new Promise<UploadApiResponse>((resolve, reject) => {
+      cloudinary.uploader.upload_stream({ folder: "products" }, (err, result) => {
+        if (err || !result) return reject(err);
+        resolve(result);
+      }).end(buffer);
+    });
+
+    const imageUrl = uploadRes.secure_url;
+
+    await connectMongoDB();
+    const newProduct = await Product.create({
+      name,
+      description,
+      price,
+      category,
+      productCode,
+      imageUrl,
+    });
+
+    return NextResponse.json({ success: true, product: newProduct });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ success: false, error: "Upload failed" }, { status: 500 });
   }
-
-  const form = new IncomingForm({ keepExtensions: true });
-
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error("❌ Lỗi parse form:", err);
-      return res.status(500).json({ message: "Lỗi khi xử lý form" });
-    }
-
-    const file = files.file as FormidableFile | FormidableFile[] | undefined;
-    const productID = fields.productID?.toString().trim();
-
-    if (!productID) {
-      return res.status(400).json({ message: "Thiếu mã sản phẩm" });
-    }
-
-    const uploadedFile = Array.isArray(file) ? file[0] : file;
-    if (!uploadedFile || !uploadedFile.filepath || !uploadedFile.originalFilename) {
-      return res.status(400).json({ message: "Không có file hợp lệ" });
-    }
-
-    // ✅ Tạo thư mục đích
-    const uploadDir = path.join(process.cwd(), "public", "upload", productID);
-    fs.mkdirSync(uploadDir, { recursive: true });
-
-    const fileName = `${Date.now()}_${uploadedFile.originalFilename}`;
-    const newFilePath = path.join(uploadDir, fileName);
-
-    // ✅ Di chuyển file
-    fs.renameSync(uploadedFile.filepath, newFilePath);
-
-    const fileUrl = `/upload/${productID}/${fileName}`;
-    return res.status(200).json({ url: fileUrl });
-  });
 }

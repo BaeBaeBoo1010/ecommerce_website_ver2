@@ -1,3 +1,4 @@
+"use client";
 import {
   Sheet,
   SheetTrigger,
@@ -8,8 +9,20 @@ import {
 } from "@/components/ui/sheet";
 import { Menu, Home, Box, Info, Phone } from "lucide-react";
 import Link from "next/link";
+import { useEffect } from "react";
+import { useState } from "react";
 
 export default function MobileSidebar() {
+  const [categories, setCategories] = useState<
+    { name: string; slug: string }[]
+  >([]);
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((res) => res.json())
+      .then((data) => setCategories(data.categories))
+      .catch((err) => console.error("Lỗi load danh mục:", err));
+  }, []);
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -61,87 +74,20 @@ export default function MobileSidebar() {
             <p className="text-muted-foreground mb-2 text-xs">
               DANH MỤC SẢN PHẨM
             </p>
-
-            <SheetClose asChild>
-              <Link
-                href="/products/switch-remote"
-                className="flex items-center gap-2 hover:underline"
-              >
-                Công tắc điều khiển từ xa
-              </Link>
-            </SheetClose>
-
-            <SheetClose asChild>
-              <Link
-                href="/products/infrared"
-                className="flex items-center gap-2 hover:underline"
-              >
-                Cảm ứng hồng ngoại
-              </Link>
-            </SheetClose>
-
-            <SheetClose asChild>
-              <Link
-                href="/products/light-sensor"
-                className="flex items-center gap-2 hover:underline"
-              >
-                Đèn cảm ứng
-              </Link>
-            </SheetClose>
-
-            <SheetClose asChild>
-              <Link
-                href="/products/doorbell"
-                className="flex items-center gap-2 hover:underline"
-              >
-                Chuông cửa
-              </Link>
-            </SheetClose>
-
-            <SheetClose asChild>
-              <Link
-                href="/products/timer-switch"
-                className="flex items-center gap-2 hover:underline"
-              >
-                Công tắc hẹn giờ
-              </Link>
-            </SheetClose>
-
-            <SheetClose asChild>
-              <Link
-                href="/products/alarm"
-                className="flex items-center gap-2 hover:underline"
-              >
-                Thiết bị báo trộm
-              </Link>
-            </SheetClose>
-
-            <SheetClose asChild>
-              <Link
-                href="/products/presence-sensor"
-                className="flex items-center gap-2 hover:underline"
-              >
-                Cảm biến hiện diện
-              </Link>
-            </SheetClose>
-
-            <SheetClose asChild>
-              <Link
-                href="/products/guest-bell"
-                className="flex items-center gap-2 hover:underline"
-              >
-                Thiết bị báo khách
-              </Link>
-            </SheetClose>
-
-            <SheetClose asChild>
-              <Link
-                href="/products/smart-home"
-                className="flex items-center gap-2 hover:underline"
-              >
-                Thiết bị nhà thông minh
-              </Link>
-            </SheetClose>
+            {categories.length === 0 ? (
+              <SheetClose asChild>Không có danh mục</SheetClose>
+            ) : (
+              categories.map((cat) => (
+                <SheetClose key={cat.slug} asChild>
+                  <Link
+                    href={`/products?category=${cat.slug}`}
+                    className="flex items-center gap-2 hover:underline"
+                  >
+                    {cat.name}
+                  </Link>
+                </SheetClose>
+              ))
+            )}
           </div>
         </nav>
       </SheetContent>

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Footer() {
   return (
-    <footer className="border-t-4 border-gray-200 bg-white">
+    <footer className="mt-30 border-t-4 border-gray-200 bg-white">
       <Card className="rounded-none border-none shadow-none">
         {/* Logo + Slogan */}
         <div className="flex flex-col items-center">

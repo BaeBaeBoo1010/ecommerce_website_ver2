@@ -1,28 +1,17 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose from "mongoose";
 
-export interface IProduct extends Document {
-  name: string;
-  price: number;
-  image: string;
-  category: mongoose.Types.ObjectId;
-  productID: string;
-}
-
-const productSchema = new Schema<IProduct>(
-  {
-    name: { type: String, required: true },
-    price: { type: Number, required: true },
-    image: { type: String, required: true },
-    category: {
-      type: Schema.Types.ObjectId,
-      ref: "Category",
-      required: true,
-    },
-    productID: { type: String, required: true, unique: true }
+const ProductSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  productCode: { type: String, required: true, unique: true },
+  description: String,
+  price: { type: Number, required: true },
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Category",
   },
-  { timestamps: true }
-);
+  imageUrl: String,
+}, {
+  timestamps: true,
+});
 
-// Dùng mongoose.models để tránh model trùng khi hot reload
-export const Product: Model<IProduct> =
-  mongoose.models.Product || mongoose.model<IProduct>("Product", productSchema);
+export const Product = mongoose.models.Product || mongoose.model("Product", ProductSchema);

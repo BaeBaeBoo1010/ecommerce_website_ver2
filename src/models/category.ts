@@ -1,17 +1,9 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose from "mongoose";
 
-export interface ICategory extends Document {
-  name: string;
-  slug: string;
-}
+const CategorySchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  slug: { type: String, required: false, unique: true }, // ❗ Cho phép null/undefined lúc đầu
+});
 
-const categorySchema = new Schema<ICategory>(
-  {
-    name: { type: String, required: true, unique: true },
-    slug: { type: String, required: true, unique: true },
-  },
-  { timestamps: true }
-);
-
-export const Category: Model<ICategory> =
-  mongoose.models.Category || mongoose.model<ICategory>("Category", categorySchema);
+export const Category =
+  mongoose.models.Category || mongoose.model("Category", CategorySchema);

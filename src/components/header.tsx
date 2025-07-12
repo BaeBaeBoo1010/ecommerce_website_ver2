@@ -30,6 +30,17 @@ export default function Header() {
     router.prefetch("/contact");
   });
 
+  const [categories, setCategories] = useState<
+    { name: string; slug: string }[]
+  >([]);
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((res) => res.json())
+      .then((data) => setCategories(data.categories))
+      .catch((err) => console.error("Lỗi load danh mục:", err));
+  }, []);
+
   return (
     <header id="header" className="flex h-15 justify-between bg-white sm:h-25">
       <div id="header-left" className="flex items-center">
@@ -71,7 +82,10 @@ export default function Header() {
               className="ml-5 hidden cursor-pointer items-center justify-center rounded-xl border border-gray-800 bg-gray-100 px-4 py-2 font-bold transition-all hover:bg-gray-200 active:bg-gray-300 lg:flex"
             >
               <Menu />
-              <span id="button-text" className="ml-2 whitespace-nowrap hidden xl:flex">
+              <span
+                id="button-text"
+                className="ml-2 hidden whitespace-nowrap xl:flex"
+              >
                 Danh mục
               </span>
             </button>
@@ -81,15 +95,17 @@ export default function Header() {
             align="start"
             className="z-[60] mt-2 w-64"
           >
-            <DropdownMenuItem>Công tắc điều khiển từ xa</DropdownMenuItem>
-            <DropdownMenuItem>Công tắc cảm ứng hồng ngoại</DropdownMenuItem>
-            <DropdownMenuItem>Đèn cảm ứng</DropdownMenuItem>
-            <DropdownMenuItem>Chuông cửa</DropdownMenuItem>
-            <DropdownMenuItem>Công tắc hẹn giờ</DropdownMenuItem>
-            <DropdownMenuItem>Thiết bị báo trộm</DropdownMenuItem>
-            <DropdownMenuItem>Cảm biến hiện diện</DropdownMenuItem>
-            <DropdownMenuItem>Thiết bị báo khách</DropdownMenuItem>
-            <DropdownMenuItem>Thiết bị nhà thông minh</DropdownMenuItem>
+            {categories.length === 0 ? (
+              <DropdownMenuItem disabled>Không có danh mục</DropdownMenuItem>
+            ) : (
+              categories.map((cat) => (
+                <DropdownMenuItem key={cat.slug} asChild>
+                  <Link href={`/products?category=${cat.slug}`}>
+                    {cat.name}
+                  </Link>
+                </DropdownMenuItem>
+              ))
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
