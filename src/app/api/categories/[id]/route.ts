@@ -1,72 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Category } from "@/models/category";
 import { Product } from "@/models/product";
 import { slugify } from "@/lib/slugify";
-import mongoose from "mongoose";
 
-interface Params {
-  params: { id: string };
-}
+const ERROR = {
+  INVALID_ID: "INVALID_ID",
+  NOT_FOUND: "NOT_FOUND",
+  DUP_NAME: "DUP_NAME",
+  IN_USE: "CATEGORY_IN_USE",
+  UPDATE_FAILED: "UPDATE_FAILED",
+  DELETE_FAILED: "DELETE_FAILED",
+} as const;
 
-/* ---------------------------------------------------
-   GET /api/categories/:id
---------------------------------------------------- */
-export async function GET(_req: NextRequest, { params }: Params) {
+/* ───────── GET /api/categories/[id] ───────── */
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+
   await connectMongoDB();
 
-  if (!mongoose.Types.ObjectId.isValid(params.id)) {
-    return NextResponse.json(
-      { success: false, error: "ID danh mục không hợp lệ." },
-      { status: 400 },
-    );
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ success: false, code: ERROR.INVALID_ID }, { status: 400 });
   }
 
-  const category = await Category.findById(params.id);
+  const category = await Category.findById(id);
   if (!category) {
-    return NextResponse.json(
-      { success: false, error: "Không tìm thấy danh mục." },
-      { status: 404 },
-    );
+    return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 });
   }
 
   return NextResponse.json({ success: true, category });
 }
 
-/* ---------------------------------------------------
-   PATCH /api/categories/:id
-   Body JSON: { name?: string }
---------------------------------------------------- */
-export async function PATCH(req: NextRequest, { params }: Params) {
+/* ───────── PATCH /api/categories/[id] ─────────
+   Body: { name?: string }
+───────────────────────────────────────────────── */
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await context.params;
+
     await connectMongoDB();
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
-      return NextResponse.json(
-        { success: false, error: "ID danh mục không hợp lệ." },
-        { status: 400 },
-      );
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ success: false, code: ERROR.INVALID_ID }, { status: 400 });
     }
 
-    const category = await Category.findById(params.id);
+    const category = await Category.findById(id);
     if (!category) {
-      return NextResponse.json(
-        { success: false, error: "Không tìm thấy danh mục." },
-        { status: 404 },
-      );
+      return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 });
     }
 
     const { name } = await req.json();
 
     if (name && name.trim() && name !== category.name) {
-      // kiểm tra trùng tên
-      const duplicate = await Category.findOne({
-        name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
-        _id: { $ne: params.id },
-      });
-      if (duplicate) {
+      const dup = await Category.findOne(
+        {
+          name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
+          _id: { $ne: id },
+        },
+        { _id: 1 },
+      ).lean();
+
+      if (dup) {
         return NextResponse.json(
-          { success: false, error: "Tên danh mục đã tồn tại." },
+          { success: false, code: ERROR.DUP_NAME, field: "name" },
           { status: 409 },
         );
       }
@@ -78,54 +81,39 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({ success: true, category });
   } catch (err) {
-    console.error("Lỗi cập nhật category:", err);
-    return NextResponse.json(
-      { success: false, error: "Không thể cập nhật danh mục." },
-      { status: 500 },
-    );
+    console.error("PATCH category error:", err);
+    return NextResponse.json({ success: false, code: ERROR.UPDATE_FAILED }, { status: 500 });
   }
 }
 
-/* ---------------------------------------------------
-   DELETE /api/categories/:id
---------------------------------------------------- */
-export async function DELETE(_req: NextRequest, { params }: Params) {
+/* ───────── DELETE /api/categories/[id] ───────── */
+export async function DELETE(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await context.params;
+
     await connectMongoDB();
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
-      return NextResponse.json(
-        { success: false, error: "ID danh mục không hợp lệ." },
-        { status: 400 },
-      );
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ success: false, code: ERROR.INVALID_ID }, { status: 400 });
     }
 
-    // Kiểm tra xem có sản phẩm nào đang dùng category này không
-    const inUse = await Product.exists({ category: params.id });
+    // còn sản phẩm đang dùng?
+    const inUse = await Product.exists({ category: id });
     if (inUse) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Không thể xoá. Có sản phẩm đang sử dụng danh mục này.",
-        },
-        { status: 409 },
-      );
+      return NextResponse.json({ success: false, code: ERROR.IN_USE }, { status: 409 });
     }
 
-    const deleted = await Category.findByIdAndDelete(params.id);
+    const deleted = await Category.findByIdAndDelete(id);
     if (!deleted) {
-      return NextResponse.json(
-        { success: false, error: "Danh mục không tồn tại." },
-        { status: 404 },
-      );
+      return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Lỗi xoá category:", err);
-    return NextResponse.json(
-      { success: false, error: "Xoá thất bại." },
-      { status: 500 },
-    );
+    console.error("DELETE category error:", err);
+    return NextResponse.json({ success: false, code: ERROR.DELETE_FAILED }, { status: 500 });
   }
 }

@@ -36,7 +36,7 @@ export default function ProductSwiper({ title, products }: Props) {
           1024: { slidesPerView: 3, spaceBetween: 12 },
           1280: { slidesPerView: 4, spaceBetween: 12 },
         }}
-        className="!overflow-hidden pb-6 sm:!overflow-visible"
+        className="!overflow-hidden pb-6"
       >
         {products.map((p) => (
           <SwiperSlide key={p._id} className="px-1 sm:px-2 lg:px-3">
@@ -53,7 +53,7 @@ export default function ProductSwiper({ title, products }: Props) {
                   fill
                   loading="lazy"
                   sizes="(max-width:1024px) 50vw, 260px"
-                  className="object-contain duration-300 group-hover:scale-[1.02]"
+                  className="object-contain duration-300"
                 />
               </div>
 

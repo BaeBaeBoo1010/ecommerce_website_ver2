@@ -1,133 +1,172 @@
-import { NextResponse } from "next/server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextRequest, NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/product";
 import { v2 as cloudinary } from "cloudinary";
 
 cloudinary.config({ secure: true });
 
+const ERROR = {
+  DUP_NAME: "DUP_NAME",
+  DUP_CODE: "DUP_CODE",
+  NOT_FOUND: "NOT_FOUND",
+  MISSING_FIELD: "MISSING_FIELD",
+};
+
+/* Helper: tách public_id từ URL Cloudinary */
 function extractPublicId(imageUrl: string): string {
   const parts = imageUrl.split("/");
-  const uploadIndex = parts.findIndex((p) => p === "upload");
-  const publicIdWithExt = parts.slice(uploadIndex + 1).join("/"); // e.g. products/abc.jpg
-  return publicIdWithExt.replace(/\.[^/.]+$/, ""); // remove extension
+  const uploadIdx = parts.findIndex((p) => p === "upload");
+  return parts.slice(uploadIdx + 1).join("/").replace(/\.[^/.]+$/, "");
 }
 
+/* ───────── GET /api/products/[id] ───────── */
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+
+  await connectMongoDB();
+  const product = await Product.findById(id).populate(
+    "category",
+    "_id name slug",
+  );
+
+  if (!product) {
+    return NextResponse.json(
+      { success: false, code: ERROR.NOT_FOUND },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json(product);
+}
+
+/* ───────── DELETE /api/products/[id] ───────── */
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
+  _req: Request,
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
-    await connectMongoDB();
+    const { id } = await context.params;
 
-    // Tìm sản phẩm theo ID
-    const product = await Product.findById(params.id);
+    await connectMongoDB();
+    const product = await Product.findById(id);
+
     if (!product) {
       return NextResponse.json(
-        { success: false, error: "Không tìm thấy sản phẩm." },
-        { status: 404 }
+        { success: false, code: ERROR.NOT_FOUND },
+        { status: 404 },
       );
     }
 
-    // Xoá ảnh trên Cloudinary theo productCode
-    const publicId = `products/${product.productCode}`;
-    await cloudinary.uploader.destroy(publicId);
-
-    // Xoá sản phẩm khỏi MongoDB
-    await Product.findByIdAndDelete(params.id);
+    await cloudinary.uploader.destroy(extractPublicId(product.imageUrl));
+    await Product.findByIdAndDelete(id);
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Lỗi xoá sản phẩm:", err);
+    console.error("DELETE product error:", err);
     return NextResponse.json(
-      { success: false, error: "Lỗi server khi xoá sản phẩm." },
-      { status: 500 }
+      { success: false, code: "DELETE_FAILED" },
+      { status: 500 },
     );
   }
 }
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await connectMongoDB();
-    const product = await Product.findById(params.id).populate("category", "_id name slug");
-    if (!product) {
-      return NextResponse.json(
-        { success: false, error: "Không tìm thấy sản phẩm." },
-        { status: 404 }
-      );
-    }
-    return NextResponse.json(product);
-  } catch (err) {
-    console.error("Lỗi GET sản phẩm:", err);
-    return NextResponse.json({ success: false, error: "Lỗi server" }, { status: 500 });
-  }
-}
-
+/* ───────── PUT /api/products/[id] ───────── */
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await context.params;
+
     await connectMongoDB();
-    const product = await Product.findById(params.id);
+
+    const product = await Product.findById(id);
     if (!product) {
-      return NextResponse.json({ success: false, error: "Không tìm thấy sản phẩm." }, { status: 404 });
+      return NextResponse.json(
+        { success: false, code: ERROR.NOT_FOUND },
+        { status: 404 },
+      );
     }
 
     const formData = await req.formData();
-
-    const name = formData.get("name") as string;
-    const productCode = formData.get("productCode") as string;
+    const file = formData.get("image") as File | null;
+    const name = (formData.get("name") as string)?.trim();
+    const productCode = (formData.get("productCode") as string)?.trim();
     const description = formData.get("description") as string;
     const price = parseFloat(formData.get("price") as string);
     const category = formData.get("category") as string;
-    const file = formData.get("image") as File | null;
 
+    if (!name || !productCode) {
+      return NextResponse.json(
+        { success: false, code: ERROR.MISSING_FIELD },
+        { status: 400 },
+      );
+    }
+
+    /* ── Check trùng (loại trừ chính _id đang sửa) ── */
+    const dup = (await Product.findOne(
+      {
+        _id: { $ne: id },
+        $or: [{ name }, { productCode }],
+      },
+      { name: 1, productCode: 1 },
+    ).lean()) as { name?: string; productCode?: string } | null;
+
+    if (dup) {
+      const field: "name" | "productCode" =
+        dup.name === name ? "name" : "productCode";
+      const code = field === "name" ? ERROR.DUP_NAME : ERROR.DUP_CODE;
+
+      return NextResponse.json({ success: false, code, field }, { status: 409 });
+    }
+
+    /* ── Upload ảnh mới (nếu có) ── */
     let imageUrl = product.imageUrl;
-
-    if (file && typeof file === "object") {
-      // Xoá ảnh cũ trên Cloudinary
-      const publicId = extractPublicId(product.imageUrl);
-      await cloudinary.uploader.destroy(publicId);
+    if (file) {
+      await cloudinary.uploader.destroy(extractPublicId(product.imageUrl));
 
       const buffer = Buffer.from(await file.arrayBuffer());
-
       const uploadRes = await new Promise((resolve, reject) => {
         cloudinary.uploader.upload_stream(
-          {
-            folder: "products",
-            public_id: productCode,
-            overwrite: true,
-          },
-          (err, result) => {
-            if (err) reject(err);
-            else resolve(result);
-          }
+          { folder: "products", public_id: productCode, overwrite: true },
+          (err, result) => (err ? reject(err) : resolve(result)),
         ).end(buffer);
       });
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       imageUrl = (uploadRes as any).secure_url;
     }
 
-    // Cập nhật lại sản phẩm
-    product.name = name;
-    product.productCode = productCode;
-    product.description = description;
-    product.price = price;
-    product.category = category;
-    product.imageUrl = imageUrl;
-
+    /* ── Cập nhật sản phẩm ── */
+    Object.assign(product, {
+      name,
+      productCode,
+      description,
+      price,
+      category,
+      imageUrl,
+    });
     await product.save();
 
     return NextResponse.json({ success: true, product });
-  } catch (err) {
-    console.error("Lỗi PUT sản phẩm:", err);
+  } catch (err: any) {
+    if (err?.code === 11000) {
+      const dupField = Object.keys(err.keyPattern ?? {})[0] as
+        | "name"
+        | "productCode";
+      const code = dupField === "name" ? ERROR.DUP_NAME : ERROR.DUP_CODE;
+      return NextResponse.json(
+        { success: false, code, field: dupField },
+        { status: 409 },
+      );
+    }
+
+    console.error("PUT product error:", err);
     return NextResponse.json(
-      { success: false, error: "Cập nhật thất bại." },
-      { status: 500 }
+      { success: false, code: "UPDATE_FAILED" },
+      { status: 500 },
     );
   }
 }

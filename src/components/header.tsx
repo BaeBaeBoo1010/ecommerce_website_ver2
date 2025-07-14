@@ -112,16 +112,32 @@ export default function Header() {
 
       <div id="header-middle" className="flex min-w-0 flex-1 items-center">
         <nav className="hidden items-center lg:flex">
-          <Button variant="ghost" className="text-[16px]" asChild>
+          <Button
+            variant="ghost"
+            className="text-[16px] active:bg-gray-200"
+            asChild
+          >
             <Link href="/">Trang chủ</Link>
           </Button>
-          <Button variant="ghost" className="text-[16px]" asChild>
+          <Button
+            variant="ghost"
+            className="text-[16px] active:bg-gray-200"
+            asChild
+          >
             <Link href="/products">Sản phẩm</Link>
           </Button>
-          <Button variant="ghost" className="text-[16px]" asChild>
+          <Button
+            variant="ghost"
+            className="text-[16px] active:bg-gray-200"
+            asChild
+          >
             <Link href="/introduction">Giới thiệu</Link>
           </Button>
-          <Button variant="ghost" className="text-[16px]" asChild>
+          <Button
+            variant="ghost"
+            className="text-[16px] active:bg-gray-200"
+            asChild
+          >
             <Link href="/contact">Liên hệ</Link>
           </Button>
         </nav>
@@ -164,6 +180,9 @@ export default function Header() {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/auth/register">Tạo tài khoản</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/product-management">Quản lý sản phẩm</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -6,11 +6,11 @@
 
 .swiper-button-next,
 .swiper-button-prev {
-  @apply h-15 w-15 text-black transition rounded-lg hover:shadow-lg;
+  @apply h-14 w-14 text-black transition rounded-full bg-white opacity-60 hover:opacity-100 hover:shadow-lg;
 }
 .swiper-button-next::after,
 .swiper-button-prev::after {
-  font-size: 26px;          /* thu nhỏ icon mặc định */
+  font-size: 30px;
 }
 
 .swiper-button-disabled {

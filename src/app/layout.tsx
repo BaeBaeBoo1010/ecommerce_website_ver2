@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -27,6 +28,7 @@ export default function RootLayout({
     <html lang="en" className={roboto.className}>
       <body>
         <Header />
+        <Toaster richColors closeButton theme="light" />
         <main className="">{children}</main>
         <Footer />
       </body>

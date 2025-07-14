@@ -35,7 +35,7 @@ const ProductCard = React.memo(
       <Link
         href={href}
         className={clsx(
-          "group rounded-xl border p-2 transition hover:shadow-md hover:scale-105",
+          "group rounded-xl border p-2 transition hover:scale-105 hover:shadow-md",
           className,
         )}
       >
@@ -52,14 +52,14 @@ const ProductCard = React.memo(
             src={product.imageUrl}
             alt={product.name}
             fill
-            loading="lazy"
             sizes={imageProps.sizes ?? "(max-width:1024px) 50vw, 25vw"}
             className={clsx(
               "object-contain transition-opacity duration-500",
               loaded ? "opacity-100" : "opacity-0",
               imageProps.className,
             )}
-            onLoadingComplete={() => setLoaded(true)}
+            onLoad={() => setLoaded(true)}
+            priority={true}
             {...imageProps}
           />
         </div>
