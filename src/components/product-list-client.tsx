@@ -5,6 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import ProductCard, { Product } from "@/components/product-card";
 
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+
 interface Category {
   _id: string;
   name: string;
@@ -13,15 +23,13 @@ interface Category {
 
 interface ProductWithExtra extends Product {
   description?: string;
-  category?: {
-    name: string;
-    slug: string;
-  };
+  category?: { name: string; slug: string };
 }
 
 type SortOption = "none" | "priceAsc" | "priceDesc";
 const PRODUCTS_PER_PAGE = 10;
 
+/* ---------------- FETCHER (có cache offline) ---------------- */
 const fetcher = async (url: string) => {
   const cacheKey = `products-cache:${url}`;
   if (!navigator.onLine) {
@@ -29,46 +37,51 @@ const fetcher = async (url: string) => {
     if (cached) return JSON.parse(cached);
     return [];
   }
-
   const res = await fetch(url);
   const data = await res.json();
   localStorage.setItem(cacheKey, JSON.stringify(data));
   return data;
 };
 
+/* ---------------- HELPERS ---------------- */
 const sortProducts = (products: ProductWithExtra[], sort: SortOption) => {
   const sorted = [...products];
   if (sort === "priceAsc") return sorted.sort((a, b) => a.price - b.price);
   if (sort === "priceDesc") return sorted.sort((a, b) => b.price - a.price);
   return sorted;
 };
-
 const paginate = (products: ProductWithExtra[], page: number) => {
   const start = (page - 1) * PRODUCTS_PER_PAGE;
   return products.slice(start, start + PRODUCTS_PER_PAGE);
 };
 
+/* =========================================================== */
 export default function ProductListClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  /* ----- Search params ----- */
   const categorySlug = searchParams.get("category") ?? "all";
   const searchQuery = searchParams.get("search")?.toLowerCase().trim() || "";
   const currentPage = parseInt(searchParams.get("page") ?? "1");
 
+  /* ----- Local states ----- */
   const [categories, setCategories] = useState<Category[]>([]);
   const [sortOption, setSortOption] = useState<SortOption>("none");
 
+  /* ----- SWR ----- */
   const apiUrl =
     categorySlug === "all"
       ? "/api/products"
       : `/api/products?category=${categorySlug}`;
+
   const { data: productsData, isLoading } = useSWR<ProductWithExtra[]>(
     apiUrl,
     fetcher,
   );
   const products = productsData || [];
 
+  /* ----- Load categories once ----- */
   useEffect(() => {
     fetch("/api/categories")
       .then((res) => res.json())
@@ -76,6 +89,7 @@ export default function ProductListClient() {
       .catch((err) => console.error("Lỗi load category:", err));
   }, []);
 
+  /* ----- Filter / sort / paginate ----- */
   const filteredProducts = searchQuery
     ? products.filter((p) => {
         const nameMatch = p.name.toLowerCase().includes(searchQuery);
@@ -95,6 +109,7 @@ export default function ProductListClient() {
 
   const currentCategory = categories.find((cat) => cat.slug === categorySlug);
 
+  /* ----- Helpers thay đổi URL ----- */
   const updateParam = (key: string, value?: string) => {
     const params = new URLSearchParams(searchParams.toString());
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
@@ -102,10 +117,8 @@ export default function ProductListClient() {
     params.set("page", "1");
     router.push(`/products?${params.toString()}`);
   };
-
-  const handleCategoryChange = (slug: string) => {
+  const handleCategoryChange = (slug: string) =>
     updateParam("category", slug === "all" ? undefined : slug);
-  };
 
   const handlePageChange = (page: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -113,9 +126,10 @@ export default function ProductListClient() {
     router.push(`/products?${params.toString()}`);
   };
 
+  /* ========================================================= */
   return (
     <div className="mx-auto mt-10 max-w-7xl px-4">
-      {/* Header + Filter */}
+      {/* ---------- HEADER & FILTER ---------- */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">
           {searchQuery
@@ -125,40 +139,49 @@ export default function ProductListClient() {
               : currentCategory?.name || "Sản phẩm"}
         </h1>
 
-        <div className="flex gap-2">
-          <select
-            value={categorySlug}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className="cursor-pointer rounded border px-3 py-1 text-sm"
-          >
-            <option value="all">-- Tất cả danh mục --</option>
-            {categories.map((cat) => (
-              <option key={cat._id} value={cat.slug}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap gap-3">
+          {/* Danh mục */}
+          <Select value={categorySlug} onValueChange={handleCategoryChange}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Chọn danh mục" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">-- Tất cả danh mục --</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat._id} value={cat.slug}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <select
+          {/* Sắp xếp */}
+          <Select
             value={sortOption}
-            onChange={(e) => setSortOption(e.target.value as SortOption)}
-            className="cursor-pointer rounded border px-3 py-1 text-sm"
+            onValueChange={(val) => setSortOption(val as SortOption)}
           >
-            <option value="none">-- Sắp xếp giá --</option>
-            <option value="priceAsc">Giá thấp → cao</option>
-            <option value="priceDesc">Giá cao → thấp</option>
-          </select>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Sắp xếp giá" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">-- Sắp xếp giá --</SelectItem>
+              <SelectItem value="priceAsc">Giá thấp → cao</SelectItem>
+              <SelectItem value="priceDesc">Giá cao → thấp</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Danh sách sản phẩm */}
+      {/* ---------- GRID SẢN PHẨM ---------- */}
       <div className="grid min-h-[200px] grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, idx) => (
-            <div
-              key={idx}
-              className="h-[300px] animate-pulse rounded bg-gray-100"
-            />
+          /* SKELETON LAYOUT */
+          Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-3">
+              <Skeleton className="h-48 w-full rounded-lg" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
           ))
         ) : filteredProducts.length === 0 ? (
           <p className="col-span-full text-center">Không có sản phẩm nào.</p>
@@ -167,16 +190,17 @@ export default function ProductListClient() {
         )}
       </div>
 
-      {/* Pagination */}
+      {/* ---------- PAGINATION ---------- */}
       {!isLoading && totalPages > 1 && (
-        <div className="mt-8 flex justify-center gap-2">
-          <button
+        <div className="mt-10 flex justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="rounded border px-3 py-1 text-sm disabled:opacity-50"
           >
             « Trước
-          </button>
+          </Button>
 
           {Array.from({ length: totalPages }, (_, i) => i + 1)
             .filter(
@@ -190,26 +214,26 @@ export default function ProductListClient() {
               const showDots = prev && page - prev > 1;
               return (
                 <span key={page} className="flex items-center gap-1">
-                  {showDots && <span className="px-1">...</span>}
-                  <button
+                  {showDots && <span className="px-1">…</span>}
+                  <Button
+                    variant={page === currentPage ? "secondary" : "outline"}
+                    size="sm"
                     onClick={() => handlePageChange(page)}
-                    className={`rounded border px-3 py-1 text-sm ${
-                      page === currentPage ? "bg-gray-200 font-bold" : ""
-                    }`}
                   >
                     {page}
-                  </button>
+                  </Button>
                 </span>
               );
             })}
 
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="rounded border px-3 py-1 text-sm disabled:opacity-50"
           >
             Sau »
-          </button>
+          </Button>
         </div>
       )}
     </div>

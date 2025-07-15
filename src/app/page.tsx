@@ -4,19 +4,21 @@ import { useEffect, useState } from "react";
 import ProductSwiper from "@/components/product-swiper";
 import { Product } from "@/components/product-card";
 import Carousel from "@/components/carousel";
+import { PLACEHOLDER_CATEGORIES } from "@/lib/utils";
 
 interface Category {
   _id: string;
   name: string;
   slug: string;
 }
-
 interface CategoryWithProducts extends Category {
   products: Product[];
 }
 
 export default function Home() {
-  const [data, setData] = useState<CategoryWithProducts[]>([]);
+  const [data, setData] = useState<CategoryWithProducts[]>(
+    PLACEHOLDER_CATEGORIES,
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,21 +48,18 @@ export default function Home() {
     })();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="animate-pulse p-8 text-center text-lg">
-        Đang tải dữ liệu...
-      </div>
-    );
-  }
-
   return (
-    <main className="mx-auto max-w-7xl space-y-12 px-4 py-10">
-      <Carousel />
+    <main className="mx-auto max-w-7xl space-y-10 px-4 sm:space-y-4">
+      <Carousel isLoading={loading} />
+
       {data.map(({ _id, name, products }) => (
-        <ProductSwiper key={_id} title={name} products={products} />
+        <ProductSwiper
+          key={_id}
+          title={name}
+          products={products}
+          isLoading={loading} // ⚡ truyền flag
+        />
       ))}
     </main>
   );
 }
-

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Footer() {
   return (
-    <footer className="mt-30 border-t-4 border-gray-200 bg-white">
+    <footer className="mt-20 border-t-4 border-gray-200 bg-white">
       <Card className="rounded-none border-none shadow-none">
         {/* Logo + Slogan */}
         <div className="flex flex-col items-center">
@@ -55,7 +55,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
                 <MapPin className="mt-1 ml-[-4px] h-6 w-6" />
-                <span>Chung cư Tô Ký Tower, phường Trung Mỹ Tây, TP.HCM</span>
+                <span>1B/1, Đường Quán Tre, Phường Trung Mỹ Tây, TP.HCM</span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
@@ -74,7 +74,7 @@ export default function Footer() {
             <div className="overflow-hidden rounded-md">
               <iframe
                 title="Google Map Quang Minh"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.3670777888697!2d106.61466627515804!3d10.85965998929418!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752b8e76602ebd%3A0xef2a2f71349746a9!2sToky%20Tower!5e0!3m2!1sen!2s!4v1751472647833!5m2!1sen!2s"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1005.1507265371326!2d106.61393326955582!3d10.845162999331762!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752a31a9a7fc33%3A0x431a94d43afc4e72!2zMUIgxJDGsMahzIBuZyBRdWHMgW4gVHJlLCBUcnVuZyBN4bu5IFTDonksIFF14bqtbiAxMiwgSOG7kyBDaMOtIE1pbmgsIFZpZXRuYW0!5e1!3m2!1sen!2s!4v1752585967090!5m2!1sen!2s"
                 width="100%"
                 height="200"
                 className="h-[200px] w-full rounded-md border-0 sm:h-[250px]"
@@ -86,7 +86,7 @@ export default function Footer() {
             {/* Nút chỉ đường */}
             <div className="mt-4">
               <a
-                href="https://www.google.com/maps/dir/?api=1&destination=Toky+Tower"
+                href="https://www.google.com/maps/dir/?api=1&destination=1B+Đường+Quán+Tre,+Trung+Mỹ+Tây,+Quận+12,+Hồ+Chí+Minh,+Vietnam"
                 target="_blank"
                 rel="noopener noreferrer"
               >
