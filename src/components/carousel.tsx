@@ -142,6 +142,7 @@ export default function Carousel({ isLoading }: Props) {
                         fill
                         sizes="(min-width: 768px) 50vw, 100vw"
                         className="object-contain"
+                        priority
                       />
                     </div>
                   </SwiperSlide>
