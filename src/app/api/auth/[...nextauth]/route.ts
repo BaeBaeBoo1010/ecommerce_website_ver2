@@ -14,6 +14,7 @@ type LeanUser = {
 };
 
 const nextAuth = NextAuth({
+  trustHost: true,
   adapter: MongoDBAdapter(clientPromise),
   session: { strategy: "jwt" },
   secret: process.env.AUTH_SECRET,
