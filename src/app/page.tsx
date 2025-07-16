@@ -18,7 +18,7 @@ export interface CategoryWithProducts extends Category {
 
 /* ------------ Fetch & cache (ISR 60 s) ------------ */
 const fetchHome = async (): Promise<CategoryWithProducts[]> => {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/home`, {
+  const res = await fetch("/api/home", { 
     next: { revalidate: 60 },
   });
   if (!res.ok) return []; // status ≠ 200
