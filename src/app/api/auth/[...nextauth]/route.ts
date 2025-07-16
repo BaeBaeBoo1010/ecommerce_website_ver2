@@ -10,7 +10,7 @@ type LeanUser = {
   name: string;
   email: string;
   password: string;
-  role: "admin" | "user";   // 👈 thêm
+  role: "admin" | "user";
 };
 
 const nextAuth = NextAuth({
@@ -39,31 +39,31 @@ const nextAuth = NextAuth({
         const ok = await compare(password, user.password);
         if (!ok) return null;
 
-        // 👉 Trả về user có role
         return {
-          id:    user._id.toString(),
-          name:  user.name,
+          id: user._id.toString(),
+          name: user.name,
           email: user.email,
-          role:  user.role,         // 👈
+          role: user.role,
         };
       },
     }),
   ],
 
-  /* ---------- Callbacks thêm role vào token & session ---------- */
- callbacks: {
-  async jwt({ token, user }) {
-    if (user?.role) token.role = user.role;
-    return token;
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user?.role) token.role = user.role;
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && token.role) {
+        session.user.role = token.role;
+      }
+      return session;
+    },
   },
-  async session({ session, token }) {
-    if (session.user && token.role) {
-      session.user.role = token.role;
-    }
-    return session;
-  },
-},
-
 });
 
-export const { handlers: { GET, POST }, auth } = nextAuth;
+const { handlers } = nextAuth;
+
+export const GET = handlers.GET;
+export const POST = handlers.POST;
