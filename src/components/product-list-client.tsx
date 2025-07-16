@@ -223,7 +223,7 @@ export default function ProductListClient() {
 
   /* ------------------ Render ------------------ */
   return (
-    <div className="mx-auto mt-10 max-w-7xl px-4">
+    <div className="mx-auto mt-10 max-w-7xl px-4 mb-20">
       {/* Header & Filter */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">

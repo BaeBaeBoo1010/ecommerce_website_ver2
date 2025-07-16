@@ -69,7 +69,7 @@ export default function ProductSwiper({ title, products, isLoading }: Props) {
                   className="group flex h-64 flex-col rounded-2xl border border-gray-100 bg-white p-3 shadow-sm transition duration-200 hover:shadow-md sm:h-96"
                 >
                   {/* Ảnh */}
-                  <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-50">
+                  <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
                     <Image
                       src={p.imageUrl}
                       alt={p.name}

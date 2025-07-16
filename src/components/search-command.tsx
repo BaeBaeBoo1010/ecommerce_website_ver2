@@ -112,7 +112,7 @@ export default function SearchCommand() {
             }}
           />
           {loading && (
-            <div className="absolute top-1/2 right-3 -translate-y-1/2">
+            <div className="absolute top-1/2 right-2 -translate-y-1/2">
               <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
             </div>
           )}

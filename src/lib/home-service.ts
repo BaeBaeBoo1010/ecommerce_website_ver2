@@ -7,15 +7,23 @@ export async function getHomeData(): Promise<CategoryWithProducts[]> {
   await connectMongoDB();
 
   return Category.aggregate<CategoryWithProducts>([
+    { $addFields: { _id: { $toString: "$_id" } } },        // ⬅️  _id → string
     {
       $lookup: {
         from: "products",
         let: { catId: "$_id" },
         pipeline: [
-          { $match: { $expr: { $eq: ["$category", "$$catId"] } } },
+          { $match: { $expr: { $eq: ["$category", { $toObjectId: "$$catId" }] } } },
           { $sort: { createdAt: -1 } },
           { $limit: 10 },
-          { $project: { _id: 1, name: 1, price: 1, imageUrl: 1 } },
+          {
+            $project: {
+              _id: { $toString: "$_id" },                  // ⬅️  _id → string
+              name: 1,
+              price: 1,
+              imageUrl: 1,
+            },
+          },
         ],
         as: "products",
       },
@@ -23,3 +31,4 @@ export async function getHomeData(): Promise<CategoryWithProducts[]> {
     { $project: { _id: 1, name: 1, slug: 1, products: 1 } },
   ]).exec();
 }
+

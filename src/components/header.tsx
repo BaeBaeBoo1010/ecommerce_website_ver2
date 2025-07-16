@@ -1,4 +1,3 @@
-// app/components/Header.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, ShoppingCart, User, Loader2 } from "lucide-react";
+import { useSession, signOut } from "next-auth/react"; 
 
 import {
   DropdownMenu,
@@ -29,6 +29,8 @@ import MobileSidebar from "./sidebar";
  * – Renders category list fetched from `/api/categories`
  */
 export default function Header() {
+  const { data: session, status } = useSession();
+  const isAdmin = session?.user?.role === "admin";
   const [cartCount] = useState(3);
   const [categories, setCategories] = useState<
     { name: string; slug: string }[]
@@ -171,29 +173,68 @@ export default function Header() {
             )}
           </Link>
 
-          {/* User Menu */}
+          {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex cursor-pointer flex-col items-center rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-300 dark:hover:bg-neutral-800"
+                className="w flex cursor-pointer flex-col items-center rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-300 dark:hover:bg-neutral-800"
                 aria-label="Tài khoản"
               >
                 <User size={20} />
-                <span className="hidden text-xs sm:block">Tài khoản</span>
+                <span className="hidden text-xs sm:block">
+                  {status === "authenticated"
+                    ? session.user?.name?.split(" ").slice(-1).join(" ") // tên cuối
+                    : "Tài khoản"}
+                </span>
               </button>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Tài khoản</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/auth/login">Đăng nhập</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/auth/register">Tạo tài khoản</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/admin/product-management">Quản lý sản phẩm</Link>
-              </DropdownMenuItem>
+              {/* Chưa đăng nhập */}
+              {status === "unauthenticated" && (
+                <>
+                  <DropdownMenuLabel>Tài khoản</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/auth/login">Đăng nhập</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/auth/register">Tạo tài khoản</Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {/* Đã đăng nhập & KHÔNG phải admin */}
+              {status === "authenticated" && !isAdmin && (
+                <>
+                  <DropdownMenuLabel>{session.user?.name}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile">Hồ sơ của tôi</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                  >
+                    Đăng xuất
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {/* Đã đăng nhập & LÀ admin */}
+              {status === "authenticated" && isAdmin && (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/product-management">
+                      Quản lý sản phẩm
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                  >
+                    Đăng xuất
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
