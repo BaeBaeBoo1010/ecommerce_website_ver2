@@ -38,7 +38,7 @@ export default function MobileSidebar() {
       <SheetTrigger asChild>
         <button
           aria-label="Mở menu"
-          className="mx-2 flex items-center rounded-lg p-2 transition hover:bg-gray-100 active:bg-gray-200 lg:hidden dark:hover:bg-neutral-800 cursor-pointer"
+          className="mx-2 flex cursor-pointer items-center rounded-lg p-2 transition hover:bg-gray-100 active:bg-gray-200 lg:hidden dark:hover:bg-neutral-800"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -47,6 +47,7 @@ export default function MobileSidebar() {
       {/* ───────────────── Content ───────────────── */}
       <SheetContent
         side="left"
+        aria-describedby=""
         className="flex w-72 flex-col bg-white px-0 pt-4 pb-6 dark:bg-neutral-900"
       >
         {/* Header */}
