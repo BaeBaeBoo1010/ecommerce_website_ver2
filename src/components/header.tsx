@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, ShoppingCart, User, Loader2 } from "lucide-react";
-import { useSession, signOut } from "next-auth/react"; 
+import { useSession, signOut } from "next-auth/react";
 
 import {
   DropdownMenu,
@@ -160,12 +160,14 @@ export default function Header() {
         <div className="flex items-center gap-2 sm:gap-4">
           {/* Cart */}
           <Link
-            href="/"
-            className="relative flex flex-col items-center rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-300 dark:hover:bg-neutral-800"
+            href="/cart"
+            className="relative flex w-[40px] flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-[80px] dark:text-gray-300 dark:hover:bg-neutral-800"
             aria-label="Giỏ hàng"
           >
             <ShoppingCart size={20} />
-            <span className="hidden text-xs sm:block">Giỏ hàng</span>
+            <span className="hidden w-full truncate text-center text-sm sm:block">
+              Giỏ hàng
+            </span>
             {cartCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-[10px] font-semibold">
                 {cartCount}
@@ -177,20 +179,19 @@ export default function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="w flex cursor-pointer flex-col items-center rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-300 dark:hover:bg-neutral-800"
+                className="flex w-[40px] flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-[80px] dark:text-gray-300 dark:hover:bg-neutral-800 cursor-pointer"
                 aria-label="Tài khoản"
               >
                 <User size={20} />
-                <span className="hidden text-xs sm:block">
+                <span className="hidden w-full truncate text-center text-sm sm:block">
                   {status === "authenticated"
-                    ? session.user?.name?.split(" ").slice(-1).join(" ") // tên cuối
+                    ? session.user?.name?.split(" ").slice(-1).join(" ")
                     : "Tài khoản"}
                 </span>
               </button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
-              {/* Chưa đăng nhập */}
               {status === "unauthenticated" && (
                 <>
                   <DropdownMenuLabel>Tài khoản</DropdownMenuLabel>
@@ -204,30 +205,23 @@ export default function Header() {
                 </>
               )}
 
-              {/* Đã đăng nhập & KHÔNG phải admin */}
-              {status === "authenticated" && !isAdmin && (
+              {status === "authenticated" && (
                 <>
                   <DropdownMenuLabel>{session.user?.name}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile">Hồ sơ của tôi</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => signOut({ callbackUrl: "/" })}
-                  >
-                    Đăng xuất
-                  </DropdownMenuItem>
-                </>
-              )}
 
-              {/* Đã đăng nhập & LÀ admin */}
-              {status === "authenticated" && isAdmin && (
-                <>
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin/product-management">
-                      Quản lý sản phẩm
-                    </Link>
-                  </DropdownMenuItem>
+                  {isAdmin ? (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/product-management">
+                        Quản lý sản phẩm
+                      </Link>
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">Hồ sơ của tôi</Link>
+                    </DropdownMenuItem>
+                  )}
+
                   <DropdownMenuItem
                     onClick={() => signOut({ callbackUrl: "/" })}
                   >

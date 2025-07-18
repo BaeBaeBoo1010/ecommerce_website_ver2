@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 /* --------------------------- Submit button --------------------------- */
 function SubmitBtn({ pending }: { pending: boolean }) {
@@ -34,23 +35,33 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (pending) return;
     setPending(true);
 
-    const res = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
+    try {
+      const res = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+      });
 
-    if (res?.ok) {
-      toast.success("Đăng nhập thành công!");
-      router.push("/"); // 👉 về trang Home
-    } else {
-      toast.error("Sai email hoặc mật khẩu");
+      if (res?.error) {
+        toast.error("Sai email hoặc mật khẩu");
+      } else if (res?.ok) {
+        toast.success("Đăng nhập thành công!");
+        router.push("/");
+        router.refresh();
+      } else {
+        toast.error("Đăng nhập thất bại, vui lòng thử lại.");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      toast.error("Lỗi máy chủ, vui lòng thử lại sau.");
+    } finally {
+      setPending(false);
     }
-
-    setPending(false);
   }
+
 
   return (
     <div className="flex min-h-screen flex-col items-center bg-gradient-to-br from-sky-50 to-indigo-100 p-4 dark:from-neutral-900 dark:to-neutral-800">
@@ -105,7 +116,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   aria-label="Toggle password visibility"
-                  className="absolute top-1/2 right-3 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
+                  className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                   onClick={() => setShowPw((s) => !s)}
                 >
                   {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -117,12 +128,20 @@ export default function LoginPage() {
 
             <p className="pt-4 text-center text-sm">
               Chưa có tài khoản?{" "}
-              <a
+              <Link
                 href="/auth/register"
                 className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
               >
                 Tạo tài khoản
-              </a>
+              </Link>
+            </p>
+            <p className="pt-2 text-center text-sm">
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Quên mật khẩu?
+              </Link>
             </p>
           </CardContent>
         </Card>

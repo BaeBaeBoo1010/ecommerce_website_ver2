@@ -52,13 +52,16 @@ const nextAuth = NextAuth({
 
   callbacks: {
     async jwt({ token, user }) {
-      if (user?.role) token.role = user.role;
+      if (user?.role) {
+        token.role = user.role;
+      }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.role) {
-        session.user.role = token.role;
+        session.user.role = token.role as "admin" | "user";
       }
+      console.log(">>> SESSION CALLBACK:", session); // ✅ log kiểm tra
       return session;
     },
   },
