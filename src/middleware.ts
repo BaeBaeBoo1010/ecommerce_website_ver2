@@ -10,9 +10,10 @@ export default async function middleware(req: NextRequest) {
   // Lấy token từ cookie (Edge‑safe, không cần crypto Node)
   const token = await getToken({
     req,
-    secret: process.env.AUTH_SECRET,
+    secret: process.env.NEXTAUTH_SECRET,
   });
-
+  
+  console.log("TOKEN:", token);
   // 1️⃣  Chưa đăng nhập  →  /login
   if (!token) {
     return NextResponse.redirect(new URL("/auth/login", req.url));

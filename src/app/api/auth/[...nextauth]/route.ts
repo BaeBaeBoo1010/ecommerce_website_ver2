@@ -17,7 +17,7 @@ const nextAuth = NextAuth({
   trustHost: true,
   adapter: MongoDBAdapter(clientPromise),
   session: { strategy: "jwt" },
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET,
   pages: { signIn: "/login" },
 
   providers: [
