@@ -21,7 +21,7 @@ export async function register(_: any, form: FormData) {
     return { error: "Email đã tồn tại", email };;
   }
 
-  await User.create({ name, email, password: await hash(password, 10) });
+  await User.create({ name, email, password: await hash(password, 10), role: "user" });
 
   return { success: true, credentials: { email, password } };
   

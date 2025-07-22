@@ -13,7 +13,8 @@ export default async function middleware(req: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   });
   
-  console.log("TOKEN:", token);
+  console.log("TOKEN ROLE:", token?.role);
+
   // 1️⃣  Chưa đăng nhập  →  /login
   if (!token) {
     return NextResponse.redirect(new URL("/auth/login", req.url));
