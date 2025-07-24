@@ -1,6 +1,6 @@
 import { connectMongoDB } from "@/lib/mongodb";
 import { Category } from "@/models/category";
-import type { CategoryWithProducts } from "@/app/types";
+import type { CategoryWithProducts } from "@/types/products";
 
 /** Lấy danh mục + top‑10 sản phẩm, đã sort mới nhất */
 export async function getHomeData(): Promise<CategoryWithProducts[]> {

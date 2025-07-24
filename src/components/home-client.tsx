@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Carousel from "@/components/carousel";
 import ProductSwiperSkeleton from "@/components/product-swiper-skeleton";
-import type { CategoryWithProducts } from "@/app/types";
+import type { CategoryWithProducts } from "@/types/products";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 
