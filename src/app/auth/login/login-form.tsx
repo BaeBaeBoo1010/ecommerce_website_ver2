@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -19,10 +19,12 @@ function SubmitBtn({ pending }: { pending: boolean }) {
       type="submit"
       disabled={pending}
     >
+      {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
       {pending ? "Đang kiểm tra..." : "Đăng nhập"}
     </Button>
   );
 }
+
 
 /* ---------------------------- Login Page ---------------------------- */
 export default function LoginPage() {
