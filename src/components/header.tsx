@@ -121,7 +121,7 @@ export default function Header() {
               ) : (
                 categories.map((cat) => (
                   <DropdownMenuItem key={cat.slug} asChild>
-                    <Link href={`/products?category=${cat.slug}`}>
+                    <Link href={`/products?category=${cat.slug}&page=1`}>
                       {cat.name}
                     </Link>
                   </DropdownMenuItem>

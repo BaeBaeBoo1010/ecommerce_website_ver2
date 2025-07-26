@@ -53,7 +53,7 @@ export default function ProductSwiper({
           {title}
         </h2>
         <Link
-          href={`/products?category=${slug}`}
+          href={`/products?category=${slug}&page=1`}
           className="inline-flex items-center gap-1 rounded-lg border border-blue-600 px-3 py-1.5 text-sm font-medium text-blue-600 transition-all hover:bg-blue-600 hover:text-white"
         >
           Xem tất cả

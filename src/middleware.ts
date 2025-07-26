@@ -8,10 +8,16 @@ export const config = {
 
 export default async function middleware(req: NextRequest) {
   // Lấy token từ cookie (Edge‑safe, không cần crypto Node)
-  const token = await getToken({
+  const token =
+  (await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
-  });
+    cookieName: "__Secure-authjs.session-token", // Cookie trên Vercel
+  })) ||
+  (await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+  })); // Cookie local
   
   console.log("TOKEN ROLE:", token?.role);
 
