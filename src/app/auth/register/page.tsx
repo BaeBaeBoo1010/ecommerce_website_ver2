@@ -3,7 +3,7 @@ import RegisterForm from "./register-form"; // component con dùng useSearchPara
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense>
       <RegisterForm />
     </Suspense>
   );

@@ -1,29 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "swiper/css";
-@import "swiper/css/navigation";
-@import "swiper/css/pagination";
-
-.swiper-button-next,
-.swiper-button-prev {
-  @apply h-14 w-14 text-black transition rounded-full bg-white opacity-60 hover:opacity-100 hover:shadow-lg;
-}
-.swiper-button-next::after,
-.swiper-button-prev::after {
-  font-size: 30px;
-}
-
-.swiper-button-disabled {
-  @apply opacity-40 cursor-not-allowed;
-}
-
-@media (max-width: 640px) {
-  .swiper-button-next,
-  .swiper-button-prev {
-    display: none !important;   /* ẩn hẳn */
-  }
-}
-
 
 @custom-variant dark (&:is(.dark *));
 

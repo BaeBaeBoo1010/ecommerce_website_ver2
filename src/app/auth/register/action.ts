@@ -19,7 +19,10 @@ export async function register(_: any, form: FormData) {
     return { error: "INVALID_EMAIL", name, email };
   }
 
-  // ✅ Kiểm tra tên không chứa số
+  if (password.length < 6) {
+    return { error: "WEAK_PASSWORD", name, email };
+  }
+
   const nameRegex = /^[^\d]+$/;
   if (!nameRegex.test(name)) {
     return { error: "INVALID_NAME", name, email };
@@ -29,7 +32,7 @@ export async function register(_: any, form: FormData) {
 
   const existing = await User.findOne({ email });
   if (existing) {
-    return { error: "EMAIL_EXISTS", email, name };
+    return { error: "EMAIL_EXISTS", name, email };
   }
 
   await User.create({
@@ -39,5 +42,6 @@ export async function register(_: any, form: FormData) {
     role: "user",
   });
 
-  return { success: true, credentials: { email, password } };
+  // ✅ Không trả password
+  return { success: true, email };
 }

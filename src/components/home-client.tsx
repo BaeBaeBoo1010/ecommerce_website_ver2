@@ -27,6 +27,7 @@ export default function HomeClient({ initialData }: Props) {
     }
     if (status === "unauthenticated") console.log("ROLE: guest");
   }, [status, session]);
+
   if (!initialData.length) {
     return (
       <main className="mx-auto max-w-7xl px-4">
@@ -39,10 +40,15 @@ export default function HomeClient({ initialData }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-7xl space-y-10 px-4 sm:space-y-4 mb-5 sm:mb-20">
+    <main className="mx-auto mb-5 max-w-7xl space-y-10 px-4 sm:mb-20 sm:space-y-4">
       <Carousel /> {/* Hero carousel SSR để đạt LCP tốt */}
-      {initialData.map(({ _id, name, products }) => (
-        <ProductSwiper key={_id} title={name} products={products} />
+      {initialData.map(({ _id, name, slug, products }) => (
+        <ProductSwiper
+          key={_id}
+          title={name}
+          slug={slug}
+          products={products}
+        />
       ))}
     </main>
   );

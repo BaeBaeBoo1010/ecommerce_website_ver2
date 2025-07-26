@@ -40,7 +40,7 @@ interface ProductWithExtra extends Product {
 }
 
 type SortOption = "none" | "priceAsc" | "priceDesc";
-const PRODUCTS_PER_PAGE = 10;
+const PRODUCTS_PER_PAGE = 16;
 
 /* ------------------------------------------------------------------
  * Helpers

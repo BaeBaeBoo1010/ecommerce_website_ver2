@@ -13,7 +13,9 @@ import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
-function SubmitBtn({ pending }: { pending: boolean }) {
+function FormSubmitBtn() {
+  const { pending } = useFormStatus();
+
   return (
     <Button
       type="submit"
@@ -30,24 +32,25 @@ export default function RegisterPage() {
   const params = useSearchParams();
   const router = useRouter();
   const [state, formAction] = useFormState(register, null);
-  const { pending } = useFormStatus();
   const [showPassword, setShowPassword] = useState(false);
+  const [formValues, setFormValues] = useState({ email: "", password: "" });
 
   useEffect(() => {
-    if (state?.success && state.credentials) {
-      const { email, password } = state.credentials;
-      signIn("credentials", { redirect: false, email, password }).then(
-        (res) => {
-          if (res?.ok) {
-            toast.success(
-              "Đăng ký thành công! Chào mừng bạn đến với cửa hàng.",
-            );
-            router.push("/");
-          }
-        },
-      );
+    if (state?.success && formValues.email && formValues.password) {
+      toast.success("Đăng ký thành công! Đang đăng nhập...");
+      signIn("credentials", {
+        redirect: false,
+        email: formValues.email,
+        password: formValues.password,
+      }).then((res) => {
+        if (res?.ok) {
+          router.push("/");
+        } else {
+          toast.error("Đăng nhập thất bại");
+        }
+      });
     }
-  }, [state, router]);
+  }, [state, formValues, router]);
 
   useEffect(() => {
     if (state?.error === "EMAIL_EXISTS" && state.email) {
@@ -66,6 +69,14 @@ export default function RegisterPage() {
       );
     }
   }, [state, router]);
+
+  const errorMessage = {
+    MISSING_FIELDS: "Thiếu thông tin bắt buộc",
+    INVALID_EMAIL: "Email không hợp lệ",
+    INVALID_NAME: "Họ tên không hợp lệ",
+    EMAIL_EXISTS: "Email đã tồn tại",
+    WEAK_PASSWORD: "Mật khẩu phải tối thiểu 6 ký tự",
+  };
 
   const emailError = state?.error === "EMAIL_EXISTS";
 
@@ -87,15 +98,21 @@ export default function RegisterPage() {
           <CardContent>
             {state?.error && state.error !== "EMAIL_EXISTS" && (
               <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/30 dark:text-red-300">
-                {state.error === "MISSING_FIELDS"
-                  ? "Thiếu thông tin bắt buộc"
-                  : state.error === "INVALID_EMAIL"
-                    ? "Email không hợp lệ"
-                    : "Đã xảy ra lỗi"}
+                {errorMessage[state.error as keyof typeof errorMessage] ??
+                  "Đã xảy ra lỗi"}
               </p>
             )}
 
-            <form action={formAction} className="space-y-5">
+            <form
+              action={formAction}
+              className="space-y-5"
+              onSubmit={(e) => {
+                const form = e.currentTarget;
+                const email = form.email.value;
+                const password = form.password.value;
+                setFormValues({ email, password });
+              }}
+            >
               {/* Họ tên */}
               <div className="relative">
                 <Input
@@ -104,6 +121,7 @@ export default function RegisterPage() {
                   required
                   defaultValue={state?.name ?? params.get("name") ?? ""}
                   className="pl-10"
+                  autoComplete="name"
                 />
                 <User
                   size={18}
@@ -124,6 +142,7 @@ export default function RegisterPage() {
                       ? "border-red-500 focus-visible:ring-red-500"
                       : ""
                   }`}
+                  autoComplete="email"
                 />
                 <Mail
                   size={18}
@@ -140,6 +159,7 @@ export default function RegisterPage() {
                   minLength={6}
                   type={showPassword ? "text" : "password"}
                   className="pr-10 pl-10"
+                  autoComplete="new-password"
                 />
                 <Lock
                   size={18}
@@ -155,7 +175,7 @@ export default function RegisterPage() {
                 </button>
               </div>
 
-              <SubmitBtn pending={pending} />
+              <FormSubmitBtn />
             </form>
 
             <p className="pt-4 text-center text-sm">

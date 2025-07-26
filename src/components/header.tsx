@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 import SearchCommand from "./search-command";
 import MobileSidebar from "./sidebar";
@@ -179,7 +180,7 @@ export default function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex w-[40px] flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-[80px] dark:text-gray-300 dark:hover:bg-neutral-800 cursor-pointer"
+                className="flex w-[40px] cursor-pointer flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-[80px] dark:text-gray-300 dark:hover:bg-neutral-800"
                 aria-label="Tài khoản"
               >
                 <User size={20} />
@@ -223,7 +224,11 @@ export default function Header() {
                   )}
 
                   <DropdownMenuItem
-                    onClick={() => signOut({ callbackUrl: "/" })}
+                    onClick={() => {
+                      signOut({ callbackUrl: "/" });
+                      toast.success("Đăng xuất thành công");
+                    }}
+                    className="text-red-600"
                   >
                     Đăng xuất
                   </DropdownMenuItem>
