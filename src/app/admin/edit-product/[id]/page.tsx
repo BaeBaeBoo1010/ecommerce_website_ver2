@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -22,10 +22,10 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, PlusCircle } from "lucide-react";
+import { Loader2, PlusCircle, ImageIcon, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 
-/* ---------- Types ---------- */
+/* ---------- Kiểu dữ liệu ---------- */
 interface Category {
   _id: string;
   name: string;
@@ -39,7 +39,7 @@ interface Product {
   category: string | { _id: string };
 }
 
-/* ---------- Message maps ---------- */
+/* ---------- Bản đồ thông báo ---------- */
 const MSG_PRODUCT: Record<string, string> = {
   DUP_NAME: "Tên sản phẩm đã tồn tại",
   DUP_CODE: "Mã sản phẩm đã tồn tại",
@@ -51,7 +51,7 @@ const MSG_CATEGORY: Record<string, string> = {
   DUP_NAME: "Tên danh mục đã tồn tại",
 };
 
-/* ---------- Component ---------- */
+/* ---------- Component chính ---------- */
 export default function EditProductPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
@@ -64,8 +64,14 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [dupErr, setDupErr] = useState<{ name?: boolean; code?: boolean }>({});
+  const [categoryError, setCategoryError] = useState(false); // chỉ cho ô thêm danh mục
+  const [descLength, setDescLength] = useState(0);
 
-  /* === Load product + categories === */
+  const formRef = useRef<HTMLFormElement>(null);
+  const DESC_LIMIT = 500;
+
+
+  /* === Lấy dữ liệu sản phẩm và danh mục === */
   useEffect(() => {
     (async () => {
       try {
@@ -82,7 +88,7 @@ export default function EditProductPage() {
           return;
         }
 
-        setProduct(pData);
+        setDescLength(pData.description?.length ?? 0);
         setCategories(cData.categories);
         setSelectedCategory(
           typeof pData.category === "object"
@@ -90,13 +96,14 @@ export default function EditProductPage() {
             : pData.category,
         );
         setPreviewUrl(pData.imageUrl);
+        setProduct(pData);
       } catch {
         toast.error("Lỗi tải dữ liệu, thử lại sau.");
       }
     })();
   }, [id, router]);
 
-  /* === Submit update === */
+  /* === Gửi form cập nhật sản phẩm === */
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!product) return;
@@ -125,7 +132,7 @@ export default function EditProductPage() {
         return;
       }
 
-      toast.success("✅ Sản phẩm đã được cập nhật");
+      toast.success("Sản phẩm đã được cập nhật");
       router.push("/admin/product-management");
     } catch {
       toast.error("Lỗi hệ thống, vui lòng thử lại sau.");
@@ -134,33 +141,38 @@ export default function EditProductPage() {
     }
   }
 
-  /* === Add category inline === */
+  /* === Thêm danh mục mới (inline) === */
   async function handleAddCategory() {
-    if (!newCategoryName.trim()) return toast("Nhập tên danh mục");
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) return toast("Hãy nhập tên danh mục");
 
     try {
       const res = await fetch("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCategoryName }),
+        body: JSON.stringify({ name: trimmed }),
       });
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.code === "DUP_NAME") {
+          setCategoryError(true);
+        }
         toast.error(MSG_CATEGORY[data.code] ?? "Không thể tạo danh mục");
         return;
       }
 
-      setCategories((prev) => [...prev, data.category]);
-      setSelectedCategory(data.category._id);
+      const newCat = data.category;
+      setCategories((prev) => [...prev, newCat]);
+      setSelectedCategory(newCat._id);
       setNewCategoryName("");
+      setCategoryError(false);
       toast.success("Đã thêm danh mục mới");
     } catch {
       toast.error("Lỗi hệ thống khi thêm danh mục");
     }
   }
 
-  /* === Skeleton khi chưa load === */
   if (!product) {
     return (
       <div className="flex w-full justify-center py-20">
@@ -169,22 +181,51 @@ export default function EditProductPage() {
     );
   }
 
-  /* === UI === */
+  function handleReset() {
+    if (!product) return;
+
+    // Reset form DOM
+    formRef.current?.reset();
+
+    // Reset các state liên quan
+    setSelectedCategory(
+      typeof product.category === "object"
+        ? product.category._id
+        : product.category,
+    );
+    setPreviewUrl(product.imageUrl);
+    setImage(null);
+    setDescLength(product.description.length);
+    setNewCategoryName("");
+    setDupErr({});
+    setCategoryError(false);
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="container mx-auto max-w-2xl py-10"
+      className="container mx-auto max-w-2xl py-2"
     >
       <Card className="rounded-2xl shadow-lg">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-2xl">Chỉnh sửa sản phẩm</CardTitle>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleReset}
+            disabled={loading}
+            className="text-sm"
+          >
+            <RotateCw className="h-4 w-4" />
+            Đặt lại
+          </Button>
         </CardHeader>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} ref={formRef}>
           <CardContent className="space-y-6">
-            {/* name */}
+            {/* Tên sản phẩm */}
             <div className="grid gap-2">
               <Label htmlFor="name">Tên sản phẩm</Label>
               <Input
@@ -196,7 +237,7 @@ export default function EditProductPage() {
               />
             </div>
 
-            {/* code */}
+            {/* Mã sản phẩm */}
             <div className="grid gap-2">
               <Label htmlFor="code">Mã sản phẩm</Label>
               <Input
@@ -208,7 +249,7 @@ export default function EditProductPage() {
               />
             </div>
 
-            {/* desc */}
+            {/* Mô tả */}
             <div className="grid gap-2">
               <Label htmlFor="desc">Mô tả</Label>
               <Textarea
@@ -217,10 +258,15 @@ export default function EditProductPage() {
                 rows={4}
                 defaultValue={product.description}
                 required
+                maxLength={DESC_LIMIT}
+                onChange={(e) => setDescLength(e.target.value.length)}
               />
+              <div className="text-muted-foreground text-right text-sm">
+                {descLength}/{DESC_LIMIT} ký tự
+              </div>
             </div>
 
-            {/* price */}
+            {/* Giá */}
             <div className="grid gap-2">
               <Label htmlFor="price">Giá (VNĐ)</Label>
               <Input
@@ -233,13 +279,15 @@ export default function EditProductPage() {
               />
             </div>
 
-            {/* category */}
+            {/* Loại sản phẩm */}
             <div className="grid gap-2">
               <Label>Loại sản phẩm</Label>
               <Select
+                key={selectedCategory}
                 value={selectedCategory}
-                onValueChange={setSelectedCategory}
-                required
+                onValueChange={(val) => {
+                  setSelectedCategory(val);
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn loại sản phẩm" />
@@ -254,41 +302,127 @@ export default function EditProductPage() {
               </Select>
             </div>
 
-            {/* add category */}
+            {/* Thêm danh mục mới */}
             <div className="flex items-end gap-2">
               <Input
                 placeholder="Tên loại mới"
                 value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
+                onChange={(e) => {
+                  setNewCategoryName(e.target.value);
+                  setCategoryError(false);
+                }}
+                className={categoryError ? "border-red-500" : ""}
               />
               <Button
                 type="button"
                 variant="secondary"
                 onClick={handleAddCategory}
               >
-                <PlusCircle className="mr-1 h-4 w-4" /> Thêm loại
+                <PlusCircle className="mr-1 h-4 w-4" /> Thêm danh mục
               </Button>
             </div>
 
-            {/* image */}
+            {/* Ảnh sản phẩm */}
             <div className="grid gap-2">
               <Label htmlFor="image">Ảnh sản phẩm</Label>
-              <Input
+
+              {/* Input ẩn */}
+              <input
                 id="image"
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
+                  if (!file) return;
+
+                  if (!file.type.startsWith("image/")) {
+                    toast.error("Chỉ chấp nhận tệp ảnh");
+                    return;
+                  }
+
+                  // Nếu ảnh nhỏ hơn 2MB thì dùng luôn
+                  if (file.size <= 2 * 1024 * 1024) {
                     setImage(file);
                     setPreviewUrl(URL.createObjectURL(file));
+                    return;
                   }
+
+                  // Resize ảnh nếu lớn hơn 2MB
+                  const reader = new FileReader();
+                  reader.readAsDataURL(file);
+                  reader.onload = () => {
+                    const img = document.createElement("img");
+                    img.src = reader.result as string;
+
+                    img.onload = () => {
+                      const MAX_WIDTH = 1024;
+                      const scale = MAX_WIDTH / img.width;
+                      const width = Math.min(img.width, MAX_WIDTH);
+                      const height = img.height * scale;
+
+                      const canvas = document.createElement("canvas");
+                      canvas.width = width;
+                      canvas.height = height;
+
+                      const ctx = canvas.getContext("2d");
+                      if (!ctx) {
+                        toast.error("Lỗi khi xử lý ảnh");
+                        return;
+                      }
+
+                      ctx.drawImage(img, 0, 0, width, height);
+
+                      canvas.toBlob(
+                        (blob) => {
+                          if (!blob) {
+                            toast.error("Không thể nén ảnh");
+                            return;
+                          }
+                          const resizedFile = new File([blob], file.name, {
+                            type: file.type,
+                          });
+                          setImage(resizedFile);
+                          setPreviewUrl(URL.createObjectURL(blob));
+                          toast.success("Ảnh đã được tự động giảm kích thước");
+                        },
+                        file.type,
+                        0.8, // chất lượng nén: 80%
+                      );
+                    };
+
+                    img.onerror = () => {
+                      toast.error("Không thể đọc ảnh");
+                    };
+                  };
+
+                  reader.onerror = () => {
+                    toast.error("Lỗi khi đọc tệp ảnh");
+                  };
                 }}
+                className="hidden"
               />
+
+              {/* Nút chọn ảnh bo tròn + icon */}
+              <div className="flex items-center gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById("image")?.click()}
+                  className="flex items-center gap-2 rounded-full px-4 py-2"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                  {image ? "Thay ảnh" : "Chọn ảnh"}
+                </Button>
+
+                <span className="text-muted-foreground max-w-[200px] truncate text-sm">
+                  {image?.name || "Chưa chọn ảnh mới"}
+                </span>
+              </div>
             </div>
 
+            {/* Xem trước ảnh */}
             {previewUrl && (
-              <div className="relative h-64 w-full overflow-hidden rounded-lg border">
+              <div className="relative mb-4 h-64 w-full overflow-hidden rounded-lg border">
                 <Image
                   src={previewUrl}
                   alt="Ảnh xem trước"
@@ -301,7 +435,7 @@ export default function EditProductPage() {
           </CardContent>
 
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="flex-1" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang lưu...

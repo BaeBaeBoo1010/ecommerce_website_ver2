@@ -147,6 +147,14 @@ export default function ProductSwiper({
           display: none;
           pointer-events: none;
         }
+
+        /* Ẩn nút trên màn hình nhỏ hơn 768px */
+        @media (max-width: 768px) {
+          .swiper-button-next,
+          .swiper-button-prev {
+            display: none !important;
+          }
+        }
       `}</style>
     </section>
   );

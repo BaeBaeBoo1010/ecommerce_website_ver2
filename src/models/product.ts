@@ -9,7 +9,7 @@ const ProductSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
   },
-  imageUrl: String,
+  images: [String], // <-- Thay vì imageUrl: String
 }, {
   timestamps: true,
 });
