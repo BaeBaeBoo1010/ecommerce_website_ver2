@@ -1,19 +1,13 @@
 "use client";
 
 import { Swiper, SwiperSlide } from "swiper/react";
+import type { Product } from "@/types/product";
 import { Navigation } from "swiper/modules";
 import Image from "next/image";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import "swiper/css";
 import "swiper/css/navigation";
-
-export interface Product {
-  _id: string;
-  name: string;
-  price: number;
-  imageUrl: string;
-}
 
 interface Props {
   title: string;
@@ -95,14 +89,14 @@ export default function ProductSwiper({
               </SwiperSlide>
             ))
           : limitedProducts.map((p) => (
-              <SwiperSlide key={p._id} className="px-1 sm:px-2 lg:px-3">
+              <SwiperSlide key={p._id}>
                 <Link
                   href={`/products/${p._id}`}
-                  className="group flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md sm:h-96"
+                  className="group flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:shadow-lg sm:h-96"
                 >
                   <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
                     <Image
-                      src={p.imageUrl}
+                      src={p.imageUrls?.[0] || "/images/placeholder.png"}
                       alt={p.name}
                       fill
                       loading="lazy"
@@ -112,7 +106,7 @@ export default function ProductSwiper({
                   </div>
 
                   <div className="mt-3 flex flex-grow flex-col">
-                    <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:text-base">
+                    <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:text-lg">
                       {p.name}
                     </h3>
                     <p className="mt-auto text-base font-bold text-[#ee4d2d] sm:text-lg">

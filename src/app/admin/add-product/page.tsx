@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -23,8 +22,24 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Loader2, PlusCircle, ImageIcon } from "lucide-react";
+import { Loader2, PlusCircle, ImageIcon, X } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  TouchSensor,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 /* ---------- Types ---------- */
 interface Category {
@@ -43,19 +58,103 @@ const MSG_CATEGORY: Record<string, string> = {
   DUP_NAME: "Tên danh mục đã tồn tại",
 };
 
+function SortableImage({
+  id,
+  url,
+  index,
+  onRemove,
+  activeImageId,
+}: {
+  id: string;
+  url: string;
+  index: number;
+  onRemove: () => void;
+  activeImageId: string | null;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || "transform 200ms ease",
+    opacity: id === activeImageId ? 0 : 1,
+    cursor: "grab",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-gray-300 md:h-28 md:w-28"
+      {...attributes}
+      {...listeners}
+    >
+      <Image
+        src={url}
+        alt={`Ảnh ${index + 1}`}
+        fill
+        unoptimized
+        draggable={false}
+        onDragStart={(e) => e.preventDefault()}
+        className="object-contain"
+      />
+
+      {index === 0 && (
+        <span className="absolute top-1 left-1 rounded bg-blue-600 px-1 py-[1px] text-xs text-white shadow">
+          Ảnh bìa
+        </span>
+      )}
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation(); // ✅ ngăn drag
+          onRemove();
+        }}
+        onPointerDown={(e) => e.stopPropagation()} // ✅ optional: đảm bảo dừng từ sớm
+        className="bg-opacity-60 absolute top-2 right-2 z-10 cursor-pointer rounded-full bg-black p-1 text-white opacity-0 transition group-hover:opacity-100"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+
 export default function AddProductPage() {
   const formRef = useRef<HTMLFormElement | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [image, setImage] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  type ImageItem = { id: string; file: File; url: string };
+  const [images, setImages] = useState<ImageItem[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [dupErr, setDupErr] = useState<{ name?: boolean; code?: boolean }>({});
   const [categoryError, setCategoryError] = useState(false);
   const [descLength, setDescLength] = useState(0);
   const DESC_LIMIT = 500;
+
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
+  const [activeImageId, setActiveImageId] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeImageId) {
+      document.body.style.cursor = "grabbing";
+    } else {
+      document.body.style.cursor = "";
+    }
+
+    return () => {
+      document.body.style.cursor = "";
+    };
+  }, [activeImageId]);
+
+  const activeImage = images.find((img) => img.id === activeImageId);
 
 
   useEffect(() => {
@@ -67,8 +166,7 @@ export default function AddProductPage() {
 
   function resetForm() {
     formRef.current?.reset();
-    setImage(null);
-    setPreviewUrl(null);
+    setImages([]);
     setSelectedCategory("");
     setNewCategoryName("");
     setDupErr({});
@@ -89,7 +187,10 @@ export default function AddProductPage() {
 
     const formData = new FormData(e.currentTarget);
     formData.set("category", selectedCategory);
-    if (image) formData.append("image", image);
+    images.forEach((img) => {
+      formData.append("images", img.file);
+    });
+
 
     try {
       const res = await fetch("/api/products", {
@@ -97,13 +198,7 @@ export default function AddProductPage() {
         body: formData,
       });
 
-      let data: any = {};
-      try {
-        data = await res.json();
-      } catch {
-        toast.error("Phản hồi không hợp lệ từ server");
-        return;
-      }
+      const data = await res.json();
 
       if (!res.ok) {
         toast.error(MSG_PRODUCT[data.code] ?? "Không thể thêm sản phẩm");
@@ -168,7 +263,6 @@ export default function AddProductPage() {
 
         <form ref={formRef} onSubmit={handleSubmit}>
           <CardContent className="space-y-6">
-            {/* Tên sản phẩm */}
             <div className="grid gap-2">
               <Label htmlFor="name">Tên sản phẩm</Label>
               <Input
@@ -179,7 +273,6 @@ export default function AddProductPage() {
               />
             </div>
 
-            {/* Mã sản phẩm */}
             <div className="grid gap-2">
               <Label htmlFor="code">Mã sản phẩm</Label>
               <Input
@@ -190,7 +283,6 @@ export default function AddProductPage() {
               />
             </div>
 
-            {/* Mô tả */}
             <div className="grid gap-2">
               <Label htmlFor="desc">Mô tả</Label>
               <Textarea
@@ -206,7 +298,6 @@ export default function AddProductPage() {
               </div>
             </div>
 
-            {/* Giá */}
             <div className="grid gap-2">
               <Label htmlFor="price">Giá (VNĐ)</Label>
               <Input
@@ -219,7 +310,6 @@ export default function AddProductPage() {
               />
             </div>
 
-            {/* Loại sản phẩm */}
             <div className="grid gap-2">
               <Label>Loại sản phẩm</Label>
               <Select
@@ -245,7 +335,6 @@ export default function AddProductPage() {
               </Select>
             </div>
 
-            {/* Thêm danh mục mới */}
             <div className="flex items-end gap-2">
               <Input
                 placeholder="Tên loại mới"
@@ -261,112 +350,151 @@ export default function AddProductPage() {
               </Button>
             </div>
 
-            {/* Ảnh sản phẩm */}
             <div className="grid gap-2">
-              <Label htmlFor="image">Ảnh sản phẩm</Label>
+              <Label htmlFor="images">Ảnh sản phẩm</Label>
 
-              {/* Input ẩn */}
               <input
-                id="image"
+                id="images"
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
+                  const files = Array.from(e.target.files || []);
+                  if (files.length === 0) return;
 
-                  if (!file.type.startsWith("image/")) {
-                    toast.error("Chỉ chấp nhận tệp ảnh");
-                    return;
+                  const newImages: ImageItem[] = [];
+
+                  for (const file of files) {
+                    let finalFile = file;
+
+                    if (file.size > 2 * 1024 * 1024) {
+                      const img = document.createElement("img");
+                      img.src = URL.createObjectURL(file);
+
+                      await new Promise((resolve) => {
+                        img.onload = async () => {
+                          const canvas = document.createElement("canvas");
+                          const MAX_WIDTH = 1024;
+                          const scale = MAX_WIDTH / img.width;
+                          canvas.width = MAX_WIDTH;
+                          canvas.height = img.height * scale;
+
+                          const ctx = canvas.getContext("2d");
+                          ctx?.drawImage(
+                            img,
+                            0,
+                            0,
+                            canvas.width,
+                            canvas.height,
+                          );
+
+                          canvas.toBlob(
+                            (blob) => {
+                              if (blob) {
+                                finalFile = new File([blob], file.name, {
+                                  type: "image/jpeg",
+                                });
+                              }
+                              resolve(true);
+                            },
+                            "image/jpeg",
+                            0.8,
+                          );
+                        };
+                      });
+                    }
+
+                    newImages.push({
+                      id: crypto.randomUUID(),
+                      file: finalFile,
+                      url: URL.createObjectURL(finalFile),
+                    });
                   }
 
-                  if (file.size <= 2 * 1024 * 1024) {
-                    setImage(file);
-                    setPreviewUrl(URL.createObjectURL(file));
-                    return;
-                  }
-
-                  const reader = new FileReader();
-                  reader.readAsDataURL(file);
-                  reader.onload = () => {
-                    const img = document.createElement("img");
-                    img.src = reader.result as string;
-
-                    img.onload = () => {
-                      const MAX_WIDTH = 1024;
-                      const scale = MAX_WIDTH / img.width;
-                      const width = Math.min(img.width, MAX_WIDTH);
-                      const height = img.height * scale;
-
-                      const canvas = document.createElement("canvas");
-                      canvas.width = width;
-                      canvas.height = height;
-
-                      const ctx = canvas.getContext("2d");
-                      if (!ctx) {
-                        toast.error("Lỗi khi xử lý ảnh");
-                        return;
-                      }
-
-                      ctx.drawImage(img, 0, 0, width, height);
-
-                      canvas.toBlob(
-                        (blob) => {
-                          if (!blob) {
-                            toast.error("Không thể nén ảnh");
-                            return;
-                          }
-                          const resizedFile = new File([blob], file.name, {
-                            type: file.type,
-                          });
-                          setImage(resizedFile);
-                          setPreviewUrl(URL.createObjectURL(blob));
-                          toast.success("Ảnh đã được tự động giảm kích thước");
-                        },
-                        file.type,
-                        0.8,
-                      );
-                    };
-
-                    img.onerror = () => {
-                      toast.error("Không thể đọc ảnh");
-                    };
-                  };
-
-                  reader.onerror = () => {
-                    toast.error("Lỗi khi đọc tệp ảnh");
-                  };
+                  setImages((prev) => [...prev, ...newImages]);
+                  e.target.value = "";
                 }}
                 className="hidden"
               />
 
-              {/* Nút chọn ảnh bo tròn + icon */}
               <div className="mb-4 flex items-center gap-4">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => document.getElementById("image")?.click()}
+                  onClick={() => document.getElementById("images")?.click()}
                   className="flex items-center gap-2 rounded-full px-4 py-2"
                 >
                   <ImageIcon className="h-4 w-4" />
-                  {image ? "Thay ảnh" : "Chọn ảnh"}
+                  Thêm ảnh
                 </Button>
 
                 <span className="text-muted-foreground max-w-[200px] truncate text-sm">
-                  {image?.name || "Chưa chọn ảnh"}
+                  {images.length > 0
+                    ? `${images.length} ảnh đã chọn`
+                    : "Chưa chọn ảnh"}
                 </span>
               </div>
 
-              {/* Xem trước ảnh */}
-              {previewUrl && (
-                <div className="relative mb-4 h-64 w-full overflow-hidden rounded-lg border">
-                  <Image
-                    src={previewUrl}
-                    alt="Ảnh xem trước"
-                    fill
-                    unoptimized
-                    className="object-contain"
-                  />
-                </div>
+              {images.length > 0 && (
+                <DndContext
+                  collisionDetection={closestCenter}
+                  sensors={sensors}
+                  onDragStart={({ active }) => {
+                    setActiveImageId(active.id as string);
+                  }}
+                  onDragEnd={({ active, over }) => {
+                    setActiveImageId(null);
+
+                    if (!over || active.id === over.id) return;
+
+                    const oldIndex = images.findIndex(
+                      (img) => img.id === active.id,
+                    );
+                    const newIndex = images.findIndex(
+                      (img) => img.id === over.id,
+                    );
+
+                    if (oldIndex !== -1 && newIndex !== -1) {
+                      setImages((prev) => arrayMove(prev, oldIndex, newIndex));
+                    }
+                  }}
+                  onDragCancel={() => setActiveImageId(null)}
+                >
+                  <SortableContext
+                    items={images.map((i) => i.id)}
+                    strategy={rectSortingStrategy}
+                  >
+                    <div className="flex flex-wrap items-start gap-2">
+                      {images.map((img, idx) => (
+                        <SortableImage
+                          key={img.id}
+                          id={img.id}
+                          url={img.url}
+                          index={idx}
+                          activeImageId={activeImageId}
+                          onRemove={() => {
+                            setImages((prev) =>
+                              prev.filter((i) => i.id !== img.id),
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+
+                  <DragOverlay>
+                    {activeImage ? (
+                      <div className="relative h-[120px] w-[120px] overflow-hidden rounded-lg border border-gray-300 bg-white shadow-md">
+                        <Image
+                          src={activeImage.url}
+                          alt="drag"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
               )}
             </div>
           </CardContent>

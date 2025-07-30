@@ -1,7 +1,10 @@
 "use client";
 
+import type React from "react";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import type { Product, Category } from "@/types/product";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import {
@@ -22,22 +25,32 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, PlusCircle, ImageIcon, RotateCw } from "lucide-react";
+import { Loader2, PlusCircle, ImageIcon, RotateCw, X } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  TouchSensor,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
-/* ---------- Kiểu dữ liệu ---------- */
-interface Category {
-  _id: string;
-  name: string;
-}
-interface Product {
-  name: string;
-  productCode: string;
-  description: string;
-  price: number;
-  imageUrl: string;
-  category: string | { _id: string };
-}
+/* ---------- Types ---------- */
+type ImageItem = {
+  id: string;
+  file?: File;
+  url: string;
+  isExisting?: boolean; // để phân biệt ảnh cũ và ảnh mới
+};
 
 /* ---------- Bản đồ thông báo ---------- */
 const MSG_PRODUCT: Record<string, string> = {
@@ -46,30 +59,100 @@ const MSG_PRODUCT: Record<string, string> = {
   NOT_FOUND: "Sản phẩm không tồn tại",
   UPDATE_FAILED: "Cập nhật thất bại",
 };
+
 const MSG_CATEGORY: Record<string, string> = {
   MISSING_NAME: "Tên danh mục là bắt buộc",
   DUP_NAME: "Tên danh mục đã tồn tại",
 };
 
+/* ---------- Sortable Image Component ---------- */
+function SortableImage({
+  id,
+  url,
+  index,
+  onRemove,
+  activeImageId,
+  isExisting = false,
+}: {
+  id: string;
+  url: string;
+  index: number;
+  onRemove: () => void;
+  activeImageId: string | null;
+  isExisting?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || "transform 200ms ease",
+    opacity: id === activeImageId ? 0 : 1,
+    cursor: "grab",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-gray-300 md:h-28 md:w-28"
+      {...attributes}
+      {...listeners}
+    >
+      <Image
+        src={url || "/placeholder.svg"}
+        alt={`Ảnh ${index + 1}`}
+        fill
+        unoptimized
+        draggable={false}
+        onDragStart={(e) => e.preventDefault()}
+        className="object-contain"
+      />
+      {index === 0 && (
+        <span className="absolute top-1 left-1 rounded bg-blue-600 px-1 py-[1px] text-xs text-white shadow">
+          Ảnh bìa
+        </span>
+      )}
+      {isExisting && (
+        <span className="absolute bottom-1 left-1 rounded bg-green-600 px-1 py-[1px] text-xs text-white shadow">
+          Cũ
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="bg-opacity-60 absolute top-2 right-2 z-10 cursor-pointer rounded-full bg-black p-1 text-white opacity-0 transition group-hover:opacity-100"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 /* ---------- Component chính ---------- */
 export default function EditProductPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
-
   const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [dupErr, setDupErr] = useState<{ name?: boolean; code?: boolean }>({});
-  const [categoryError, setCategoryError] = useState(false); // chỉ cho ô thêm danh mục
+  const [categoryError, setCategoryError] = useState(false);
   const [descLength, setDescLength] = useState(0);
-
   const formRef = useRef<HTMLFormElement>(null);
   const DESC_LIMIT = 500;
 
+  // Drag & Drop
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
+  const [activeImageId, setActiveImageId] = useState<string | null>(null);
+  const activeImage = images.find((img) => img.id === activeImageId);
 
   /* === Lấy dữ liệu sản phẩm và danh mục === */
   useEffect(() => {
@@ -79,6 +162,7 @@ export default function EditProductPage() {
           fetch(`/api/products/${id}`),
           fetch("/api/categories"),
         ]);
+
         const pData = await pRes.json();
         const cData = await cRes.json();
 
@@ -95,7 +179,26 @@ export default function EditProductPage() {
             ? pData.category._id
             : pData.category,
         );
-        setPreviewUrl(pData.imageUrl);
+
+        // Xử lý ảnh hiện tại
+        const existingImages: ImageItem[] = [];
+        if (pData.imageUrls && Array.isArray(pData.imageUrls)) {
+          pData.imageUrls.forEach((url: string, index: number) => {
+            existingImages.push({
+              id: `existing-${index}`,
+              url,
+              isExisting: true,
+            });
+          });
+        } else if (pData.imageUrl) {
+          // Fallback cho trường hợp chỉ có 1 ảnh
+          existingImages.push({
+            id: "existing-0",
+            url: pData.imageUrl,
+            isExisting: true,
+          });
+        }
+        setImages(existingImages);
         setProduct(pData);
       } catch {
         toast.error("Lỗi tải dữ liệu, thử lại sau.");
@@ -107,18 +210,41 @@ export default function EditProductPage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!product) return;
+
     setLoading(true);
     setDupErr({});
 
     const formData = new FormData(e.currentTarget);
     formData.set("category", selectedCategory);
-    if (image) formData.append("image", image);
+
+    // Phân loại ảnh cũ và ảnh mới
+    const keptImageUrls: string[] = [];
+    const newImages: File[] = [];
+
+    images.forEach((img) => {
+      if (img.isExisting) {
+        keptImageUrls.push(img.url);
+      } else if (img.file) {
+        newImages.push(img.file);
+      }
+    });
+
+    // Thêm ảnh cũ được giữ lại
+    keptImageUrls.forEach((url) => {
+      formData.append("keptImageUrls", url);
+    });
+
+    // Thêm ảnh mới
+    newImages.forEach((file) => {
+      formData.append("images", file);
+    });
 
     try {
       const res = await fetch(`/api/products/${id}`, {
         method: "PUT",
         body: formData,
       });
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -141,7 +267,7 @@ export default function EditProductPage() {
     }
   }
 
-  /* === Thêm danh mục mới (inline) === */
+  /* === Thêm danh mục mới === */
   async function handleAddCategory() {
     const trimmed = newCategoryName.trim();
     if (!trimmed) return toast("Hãy nhập tên danh mục");
@@ -152,6 +278,7 @@ export default function EditProductPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),
       });
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -173,32 +300,48 @@ export default function EditProductPage() {
     }
   }
 
+  /* === Reset form === */
+  function handleReset() {
+    if (!product) return;
+
+    formRef.current?.reset();
+    setSelectedCategory(
+      typeof product.category === "object"
+        ? product.category._id
+        : product.category,
+    );
+
+    // Reset ảnh về trạng thái ban đầu
+    const existingImages: ImageItem[] = [];
+    if (product.imageUrls && Array.isArray(product.imageUrls)) {
+      product.imageUrls.forEach((url: string, index: number) => {
+        existingImages.push({
+          id: `existing-${index}`,
+          url,
+          isExisting: true,
+        });
+      });
+    } else if (product.imageUrls) {
+      existingImages.push({
+        id: "existing-0",
+        url: product.imageUrls,
+        isExisting: true,
+      });
+    }
+    setImages(existingImages);
+
+    setDescLength(product.description?.length ?? 0);
+    setNewCategoryName("");
+    setDupErr({});
+    setCategoryError(false);
+  }
+
   if (!product) {
     return (
       <div className="flex w-full justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
-  }
-
-  function handleReset() {
-    if (!product) return;
-
-    // Reset form DOM
-    formRef.current?.reset();
-
-    // Reset các state liên quan
-    setSelectedCategory(
-      typeof product.category === "object"
-        ? product.category._id
-        : product.category,
-    );
-    setPreviewUrl(product.imageUrl);
-    setImage(null);
-    setDescLength(product.description.length);
-    setNewCategoryName("");
-    setDupErr({});
-    setCategoryError(false);
   }
 
   return (
@@ -324,114 +467,148 @@ export default function EditProductPage() {
 
             {/* Ảnh sản phẩm */}
             <div className="grid gap-2">
-              <Label htmlFor="image">Ảnh sản phẩm</Label>
-
-              {/* Input ẩn */}
+              <Label htmlFor="images">Ảnh sản phẩm</Label>
               <input
-                id="image"
+                id="images"
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
+                  const files = Array.from(e.target.files || []);
+                  if (files.length === 0) return;
 
-                  if (!file.type.startsWith("image/")) {
-                    toast.error("Chỉ chấp nhận tệp ảnh");
-                    return;
+                  const newImages: ImageItem[] = [];
+                  for (const file of files) {
+                    let finalFile = file;
+
+                    // Resize nếu ảnh lớn hơn 2MB
+                    if (file.size > 2 * 1024 * 1024) {
+                      const img = document.createElement("img");
+                      img.src = URL.createObjectURL(file);
+                      await new Promise((resolve) => {
+                        img.onload = async () => {
+                          const canvas = document.createElement("canvas");
+                          const MAX_WIDTH = 1024;
+                          const scale = MAX_WIDTH / img.width;
+                          canvas.width = MAX_WIDTH;
+                          canvas.height = img.height * scale;
+
+                          const ctx = canvas.getContext("2d");
+                          ctx?.drawImage(
+                            img,
+                            0,
+                            0,
+                            canvas.width,
+                            canvas.height,
+                          );
+
+                          canvas.toBlob(
+                            (blob) => {
+                              if (blob) {
+                                finalFile = new File([blob], file.name, {
+                                  type: "image/jpeg",
+                                });
+                              }
+                              resolve(true);
+                            },
+                            "image/jpeg",
+                            0.8,
+                          );
+                        };
+                      });
+                    }
+
+                    newImages.push({
+                      id: crypto.randomUUID(),
+                      file: finalFile,
+                      url: URL.createObjectURL(finalFile),
+                      isExisting: false,
+                    });
                   }
 
-                  // Nếu ảnh nhỏ hơn 2MB thì dùng luôn
-                  if (file.size <= 2 * 1024 * 1024) {
-                    setImage(file);
-                    setPreviewUrl(URL.createObjectURL(file));
-                    return;
-                  }
-
-                  // Resize ảnh nếu lớn hơn 2MB
-                  const reader = new FileReader();
-                  reader.readAsDataURL(file);
-                  reader.onload = () => {
-                    const img = document.createElement("img");
-                    img.src = reader.result as string;
-
-                    img.onload = () => {
-                      const MAX_WIDTH = 1024;
-                      const scale = MAX_WIDTH / img.width;
-                      const width = Math.min(img.width, MAX_WIDTH);
-                      const height = img.height * scale;
-
-                      const canvas = document.createElement("canvas");
-                      canvas.width = width;
-                      canvas.height = height;
-
-                      const ctx = canvas.getContext("2d");
-                      if (!ctx) {
-                        toast.error("Lỗi khi xử lý ảnh");
-                        return;
-                      }
-
-                      ctx.drawImage(img, 0, 0, width, height);
-
-                      canvas.toBlob(
-                        (blob) => {
-                          if (!blob) {
-                            toast.error("Không thể nén ảnh");
-                            return;
-                          }
-                          const resizedFile = new File([blob], file.name, {
-                            type: file.type,
-                          });
-                          setImage(resizedFile);
-                          setPreviewUrl(URL.createObjectURL(blob));
-                          toast.success("Ảnh đã được tự động giảm kích thước");
-                        },
-                        file.type,
-                        0.8, // chất lượng nén: 80%
-                      );
-                    };
-
-                    img.onerror = () => {
-                      toast.error("Không thể đọc ảnh");
-                    };
-                  };
-
-                  reader.onerror = () => {
-                    toast.error("Lỗi khi đọc tệp ảnh");
-                  };
+                  setImages((prev) => [...prev, ...newImages]);
+                  e.target.value = "";
                 }}
                 className="hidden"
               />
 
-              {/* Nút chọn ảnh bo tròn + icon */}
-              <div className="flex items-center gap-4">
+              <div className="mb-4 flex items-center gap-4">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => document.getElementById("image")?.click()}
+                  onClick={() => document.getElementById("images")?.click()}
                   className="flex items-center gap-2 rounded-full px-4 py-2"
                 >
                   <ImageIcon className="h-4 w-4" />
-                  {image ? "Thay ảnh" : "Chọn ảnh"}
+                  Thêm ảnh
                 </Button>
-
                 <span className="text-muted-foreground max-w-[200px] truncate text-sm">
-                  {image?.name || "Chưa chọn ảnh mới"}
+                  {images.length > 0 ? `${images.length} ảnh` : "Chưa có ảnh"}
                 </span>
               </div>
-            </div>
 
-            {/* Xem trước ảnh */}
-            {previewUrl && (
-              <div className="relative mb-4 h-64 w-full overflow-hidden rounded-lg border">
-                <Image
-                  src={previewUrl}
-                  alt="Ảnh xem trước"
-                  fill
-                  unoptimized
-                  className="object-contain"
-                />
-              </div>
-            )}
+              {images.length > 0 && (
+                <DndContext
+                  collisionDetection={closestCenter}
+                  sensors={sensors}
+                  onDragStart={({ active }) => {
+                    setActiveImageId(active.id as string);
+                  }}
+                  onDragEnd={({ active, over }) => {
+                    setActiveImageId(null);
+                    if (!over || active.id === over.id) return;
+
+                    const oldIndex = images.findIndex(
+                      (img) => img.id === active.id,
+                    );
+                    const newIndex = images.findIndex(
+                      (img) => img.id === over.id,
+                    );
+
+                    if (oldIndex !== -1 && newIndex !== -1) {
+                      setImages((prev) => arrayMove(prev, oldIndex, newIndex));
+                    }
+                  }}
+                  onDragCancel={() => setActiveImageId(null)}
+                >
+                  <SortableContext
+                    items={images.map((i) => i.id)}
+                    strategy={rectSortingStrategy}
+                  >
+                    <div className="flex flex-wrap items-start gap-2">
+                      {images.map((img, idx) => (
+                        <SortableImage
+                          key={img.id}
+                          id={img.id}
+                          url={img.url}
+                          index={idx}
+                          activeImageId={activeImageId}
+                          isExisting={img.isExisting}
+                          onRemove={() => {
+                            setImages((prev) =>
+                              prev.filter((i) => i.id !== img.id),
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+
+                  <DragOverlay>
+                    {activeImage ? (
+                      <div className="relative h-[120px] w-[120px] overflow-hidden rounded-lg border border-gray-300 bg-white shadow-md">
+                        <Image
+                          src={activeImage.url || "/placeholder.svg"}
+                          alt="drag"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              )}
+            </div>
           </CardContent>
 
           <CardFooter>

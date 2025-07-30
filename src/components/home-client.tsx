@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Carousel from "@/components/carousel";
 import ProductSwiperSkeleton from "@/components/product-swiper-skeleton";
-import type { CategoryWithProducts } from "@/types/products";
+import type { CategoryWithProducts } from "@/types/product";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 
@@ -43,12 +43,7 @@ export default function HomeClient({ initialData }: Props) {
     <main className="mx-auto mb-5 max-w-7xl space-y-10 px-4 sm:mb-20 sm:space-y-4">
       <Carousel /> {/* Hero carousel SSR để đạt LCP tốt */}
       {initialData.map(({ _id, name, slug, products }) => (
-        <ProductSwiper
-          key={_id}
-          title={name}
-          slug={slug}
-          products={products}
-        />
+        <ProductSwiper key={_id} title={name} slug={slug} products={products} />
       ))}
     </main>
   );

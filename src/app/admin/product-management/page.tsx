@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Settings, Loader2 } from "lucide-react";
+import { Product, Category } from "@/types/product";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -25,22 +26,6 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-/* ─── Type ─── */
-interface Product {
-  _id: string;
-  name: string;
-  productCode: string;
-  description: string;
-  price: number;
-  imageUrl: string;
-  category: { _id: string; name: string; slug: string };
-}
-interface Category {
-  _id: string;
-  name: string;
-  slug: string;
-}
-
 /* Map code ➜ VN message */
 const MSG: Record<string, string> = {
   NOT_FOUND: "Không tìm thấy mục yêu cầu",
@@ -59,6 +44,7 @@ export default function ProductManagementPage() {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<keyof Product | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   /* fetch data once */
   useEffect(() => {
@@ -139,6 +125,8 @@ export default function ProductManagementPage() {
   const handleDeleteProduct = async (id: string) => {
     if (!window.confirm("Bạn có chắc chắn muốn xoá sản phẩm này?")) return;
 
+    setDeletingId(id); // Đánh dấu đang xoá sản phẩm này
+
     try {
       const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
       const data = await res.json();
@@ -152,6 +140,8 @@ export default function ProductManagementPage() {
       toast.success("Đã xoá sản phẩm");
     } catch {
       toast.error("Lỗi hệ thống khi xoá sản phẩm");
+    } finally {
+      setDeletingId(null); // Xoá xong thì reset
     }
   };
 
@@ -253,7 +243,7 @@ export default function ProductManagementPage() {
                       <TableCell>
                         <div className="relative h-20 w-20">
                           <Image
-                            src={p.imageUrl}
+                            src={p.imageUrls[0]}
                             alt={p.name}
                             fill
                             unoptimized
@@ -275,15 +265,21 @@ export default function ProductManagementPage() {
                           <Button
                             size="sm"
                             variant="destructive"
+                            disabled={deletingId === p._id}
                             onClick={() => handleDeleteProduct(p._id)}
                           >
-                            Xoá
+                            {deletingId === p._id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Xoá"
+                            )}
                           </Button>
+
                           <Link href={`/admin/edit-product/${p._id}`}>
                             <Button
                               size="sm"
                               variant="outline"
-                              className="w-full bg-green-100 border-2 border-green-600 hover:bg-green-200"
+                              className="w-full border-2 border-green-600 bg-green-100 hover:bg-green-200"
                             >
                               <Settings /> Sửa
                             </Button>

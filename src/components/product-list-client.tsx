@@ -24,7 +24,7 @@ export interface Product {
   _id: string;
   name: string;
   price: number;
-  imageUrl: string;
+  imageUrls: string[]; // Changed to array for multiple images
   // ...các field khác nếu cần
 }
 
@@ -109,7 +109,7 @@ const ProductCard = React.memo(
           )}
 
           <Image
-            src={product.imageUrl}
+            src={product.imageUrls[0] || "/images/placeholder.png"}
             alt={product.name}
             fill
             sizes={imageProps.sizes ?? "(max-width:1024px) 50vw, 25vw"}
