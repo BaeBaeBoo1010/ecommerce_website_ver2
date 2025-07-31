@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Thumbs, EffectFade } from "swiper/modules";
-import { useState } from "react";
+import { Thumbs, EffectFade, Autoplay } from "swiper/modules";
+import { useState, useRef } from "react";
 import { ShoppingCart, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Swiper as SwiperType } from "swiper";
@@ -36,6 +36,8 @@ const product = {
 export default function Carousel({ isLoading }: Props) {
   const [thumbsSwiper, setThumbsSwiper] = useState<SwiperType | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const swiperRef = useRef<SwiperType | null>(null);
+
 
   /* ---------- SKELETON PLACEHOLDERS ---------- */
   const SkeletonTextBlock = () => (
@@ -58,7 +60,11 @@ export default function Carousel({ isLoading }: Props) {
 
   return (
     <div className="w-full bg-white text-black">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-8 px-4 py-2 sm:px-6 sm:py-4 md:grid-cols-2">
+      <div
+        onMouseEnter={() => swiperRef.current?.autoplay?.stop()}
+        onMouseLeave={() => swiperRef.current?.autoplay?.start()}
+        className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-8 px-4 py-2 sm:px-6 sm:py-4 md:grid-cols-2"
+      >
         {/* ---------- TEXT CONTENT ---------- */}
         <div className="order-2 flex h-50 justify-center md:order-1 md:items-center">
           {isLoading ? (
@@ -122,16 +128,23 @@ export default function Carousel({ isLoading }: Props) {
           ) : (
             <>
               <Swiper
+                onSwiper={(swiper) => {
+                  swiperRef.current = swiper;
+                  setActiveIndex(swiper.realIndex);
+                }}
+                onSlideChange={(swiper) => setActiveIndex(swiper.realIndex)}
                 spaceBetween={10}
                 slidesPerView={1}
                 effect="fade"
                 fadeEffect={{ crossFade: true }}
                 loop={true}
-                onSlideChange={(swiper) => setActiveIndex(swiper.realIndex)}
                 thumbs={{ swiper: thumbsSwiper }}
-                modules={[Thumbs, EffectFade]}
+                modules={[Thumbs, EffectFade, Autoplay]}
+                autoplay={{ delay: 5000, disableOnInteraction: true }}
                 speed={500}
                 className="mb-3 overflow-hidden rounded-lg"
+                onMouseEnter={() => swiperRef.current?.autoplay?.stop()}
+                onMouseLeave={() => swiperRef.current?.autoplay?.start()}
               >
                 {product.images.map((img, idx) => (
                   <SwiperSlide key={idx}>
