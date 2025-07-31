@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Settings, Loader2 } from "lucide-react";
 import { Product, Category } from "@/types/product";
 import Image from "next/image";
@@ -48,23 +48,18 @@ export default function ProductManagementPage() {
 
   /* fetch data once */
   useEffect(() => {
-    (async () => {
-      try {
-        const [pRes, cRes] = await Promise.all([
-          fetch("/api/products"),
-          fetch("/api/categories"),
-        ]);
-        const pJson = await pRes.json();
-        const cJson = await cRes.json();
-        setProducts(pJson);
-        setCategories(cJson.categories);
-      } catch {
-        toast.error("Lỗi tải dữ liệu, thử lại sau.");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetch("/api/products")
+      .then((res) => res.json())
+      .then(setProducts)
+      .catch(() => toast.error("Lỗi tải sản phẩm"))
+      .finally(() => setLoading(false));
+
+    fetch("/api/categories")
+      .then((res) => res.json())
+      .then((data) => setCategories(data.categories))
+      .catch(() => toast.error("Lỗi tải danh mục"));
   }, []);
+
 
   /* sort helper */
   const handleSort = (field: keyof Product) => {
@@ -76,7 +71,8 @@ export default function ProductManagementPage() {
   };
 
   /* view list */
-  const viewProducts = [...products]
+const viewProducts = useMemo(() => {
+  return [...products]
     .filter(
       (p) => selectedCategory === "all" || p.category._id === selectedCategory,
     )
@@ -93,6 +89,8 @@ export default function ProductManagementPage() {
           ? (A as string).localeCompare(B as string)
           : (B as string).localeCompare(A as string);
     });
+}, [products, selectedCategory, search, sortField, sortOrder]);
+
 
   /* delete category */
   const handleDeleteCategory = async () => {
@@ -247,7 +245,9 @@ export default function ProductManagementPage() {
                             alt={p.name}
                             fill
                             unoptimized
+                            sizes="(max-width: 768px) 100px, 150px"
                             className="rounded-md object-contain"
+                            loading="lazy"
                           />
                         </div>
                       </TableCell>

@@ -1,9 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Image, { ImageProps } from "next/image";
-import Link from "next/link";
-import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 
@@ -16,27 +13,14 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-
-/* ------------------------------------------------------------------
- * Types & Constants
- * ------------------------------------------------------------------*/
-export interface Product {
-  _id: string;
-  name: string;
-  price: number;
-  imageUrls: string[]; // Changed to array for multiple images
-  // ...các field khác nếu cần
-}
+import type { Product } from "@/types/product";
+import ProductCard from "@/components/product-card";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface Category {
   _id: string;
   name: string;
   slug: string;
-}
-
-interface ProductWithExtra extends Product {
-  description?: string;
-  category?: { name: string; slug: string };
 }
 
 type SortOption = "none" | "priceAsc" | "priceDesc";
@@ -58,85 +42,17 @@ const fetcher = async (url: string) => {
   return data;
 };
 
-const sortProducts = (products: ProductWithExtra[], sort: SortOption) => {
+const sortProducts = (products: Product[], sort: SortOption) => {
   const sorted = [...products];
   if (sort === "priceAsc") return sorted.sort((a, b) => a.price - b.price);
   if (sort === "priceDesc") return sorted.sort((a, b) => b.price - a.price);
   return sorted;
 };
 
-const paginate = (products: ProductWithExtra[], page: number) => {
+const paginate = (products: Product[], page: number) => {
   const start = (page - 1) * PRODUCTS_PER_PAGE;
   return products.slice(start, start + PRODUCTS_PER_PAGE);
 };
-
-/* ------------------------------------------------------------------
- * ProductCard (internal component)
- * ------------------------------------------------------------------*/
-interface ProductCardProps {
-  product: Product;
-  href?: string; // custom link
-  className?: string; // override wrapper
-  priceClassName?: string; // override price color
-  imageProps?: Partial<ImageProps>; // tuỳ biến thẻ Image Next
-}
-
-const ProductCard = React.memo(
-  ({
-    product,
-    href = `/products/${product._id}`,
-    className = "",
-    priceClassName = "text-[#EE4D2D]",
-    imageProps = {},
-  }: ProductCardProps) => {
-    const [loaded, setLoaded] = useState(false);
-
-    return (
-      <Link
-        href={href}
-        className={clsx(
-          "group rounded-xl border p-2 transition hover:scale-105 hover:shadow-md",
-          className,
-        )}
-      >
-        {/* Ảnh */}
-        <div
-          className="relative w-full overflow-hidden rounded"
-          style={{ height: imageProps.height ?? 208 }}
-        >
-          {!loaded && (
-            <div className="absolute inset-0 animate-pulse rounded bg-gray-200 dark:bg-neutral-700" />
-          )}
-
-          <Image
-            src={product.imageUrls[0] || "/images/placeholder.png"}
-            alt={product.name}
-            fill
-            sizes={imageProps.sizes ?? "(max-width:1024px) 50vw, 25vw"}
-            className={clsx(
-              "object-contain transition-opacity duration-500",
-              loaded ? "opacity-100" : "opacity-0",
-              imageProps.className,
-            )}
-            onLoad={() => setLoaded(true)}
-            priority={true}
-            {...imageProps}
-          />
-        </div>
-
-        {/* Nội dung */}
-        <div className="mt-2 line-clamp-2 text-lg font-semibold text-gray-800 transition group-hover:text-blue-600">
-          {product.name}
-        </div>
-        <div className={clsx("mt-1 text-lg font-bold", priceClassName)}>
-          {product.price.toLocaleString("vi-VN")} đ
-        </div>
-      </Link>
-    );
-  },
-  (prev, next) => prev.product === next.product && prev.href === next.href,
-);
-ProductCard.displayName = "ProductCard";
 
 /* ------------------------------------------------------------------
  * ProductListClient (default export)
@@ -147,8 +63,10 @@ export default function ProductListClient() {
 
   // Search params
   const categorySlug = searchParams.get("category") ?? "all";
-  const searchQuery = searchParams.get("search")?.toLowerCase().trim() || "";
-  const currentPage = parseInt(searchParams.get("page") ?? "1");
+  const rawSearchQuery = searchParams.get("search")?.toLowerCase().trim() || "";
+  const searchQuery = useDebounce(rawSearchQuery, 300);
+  const pageParam = Number(searchParams.get("page"));
+  const currentPage = Number.isNaN(pageParam) ? 1 : Math.max(1, pageParam);
 
   // Local state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -160,10 +78,34 @@ export default function ProductListClient() {
       ? "/api/products"
       : `/api/products?category=${categorySlug}`;
 
-  const { data: productsData, isLoading } = useSWR<ProductWithExtra[]>(
-    apiUrl,
-    fetcher,
-  );
+  const fallbackData =
+    typeof window === "undefined"
+      ? []
+      : (() => {
+          try {
+            return JSON.parse(
+              localStorage.getItem(`products-cache:${apiUrl}`) || "[]",
+            );
+          } catch {
+            return [];
+          }
+        })();
+
+  const { data: productsData, isLoading } = useSWR<Product[]>(apiUrl, fetcher, {
+    fallbackData,
+    dedupingInterval: 10_000,
+    revalidateOnFocus: false,
+  });
+
+  useEffect(() => {
+    if (productsData) {
+      localStorage.setItem(
+        `products-cache:${apiUrl}`,
+        JSON.stringify(productsData),
+      );
+    }
+  }, [productsData, apiUrl]);
+
   const products = useMemo(() => productsData || [], [productsData]);
 
   // Load categories once
@@ -223,7 +165,7 @@ export default function ProductListClient() {
 
   /* ------------------ Render ------------------ */
   return (
-    <div className="mx-auto mt-10 max-w-7xl px-4 mb-20">
+    <div className="mx-auto mt-10 mb-20 max-w-7xl px-4">
       {/* Header & Filter */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">

@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
   CommandDialog,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -22,6 +21,7 @@ export default function SearchCommand() {
   const [loading, setLoading] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
   const router = useRouter();
+  const [hasSearched, setHasSearched] = useState(false);
 
   type Timer = ReturnType<typeof setTimeout>;
   const debounceRef = useRef<Timer | null>(null);
@@ -46,6 +46,7 @@ export default function SearchCommand() {
 
   /* Debounce query */
   useEffect(() => {
+    setHasSearched(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     if (!query) {
@@ -59,8 +60,10 @@ export default function SearchCommand() {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const { suggestions } = await res.json();
         setResults(suggestions);
+        setHasSearched(true);
       } catch {
         setResults([]);
+        setHasSearched(true);
       } finally {
         setLoading(false);
       }
@@ -98,30 +101,30 @@ export default function SearchCommand() {
       </Button>
 
       {/* Hộp thoại tìm kiếm */}
-      <CommandDialog open={open} onOpenChange={setOpen}>
-        <div className="relative">
-          <CommandInput
-            placeholder="Tìm sản phẩm bạn cần"
-            value={query}
-            onValueChange={setQuery}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && query.trim()) {
-                e.preventDefault();
-                handleSelect(query.trim());
-              }
-            }}
-          />
-          {loading && (
-            <div className="absolute top-1/2 right-2 -translate-y-1/2">
-              <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-            </div>
-          )}
-        </div>
+      <CommandDialog
+        open={open}
+        onOpenChange={setOpen}
+        className="rounded-xl border bg-white shadow-xl"
+      >
+        <CommandInput
+          placeholder="Tìm sản phẩm bạn cần"
+          value={query}
+          onValueChange={setQuery}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && query.trim()) {
+              e.preventDefault();
+              handleSelect(query.trim());
+            }
+          }}
+        />
 
-        <CommandList className="min-h-[250px]">
+        <CommandList className="relative min-h-[250px]">
           {/* Chỉ hiện khi đã nhập mà không có kết quả */}
-          {query && results.length === 0 && (
-            <CommandEmpty>Không tìm thấy.</CommandEmpty>
+          {!query && recent.length === 0 && (
+            <div className="text-muted-foreground flex flex-col items-center justify-center py-10 text-center">
+              <Search className="mb-2 h-8 w-8" />
+              <p className="text-sm">Nhập từ khóa để bắt đầu tìm kiếm</p>
+            </div>
           )}
 
           {/* Gần đây */}
@@ -140,12 +143,31 @@ export default function SearchCommand() {
           {results.length > 0 && (
             <CommandGroup heading="Kết quả">
               {results.map((r) => (
-                <CommandItem key={r} value={r} onSelect={() => handleSelect(r)}>
+                <CommandItem
+                  key={r}
+                  value={r}
+                  onSelect={() => handleSelect(r)}
+                  className="hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                >
                   <Search className="mr-2 h-4 w-4" />
                   {r}
                 </CommandItem>
               ))}
             </CommandGroup>
+          )}
+
+          {loading && (
+            <div className="flex justify-center py-6">
+              <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+            </div>
+          )}
+
+          {/* Không có kết quả */}
+          {!loading && hasSearched && results.length === 0 && (
+            <div className="text-muted-foreground flex flex-col items-center justify-center py-10 text-center">
+              <Search className="mb-2 h-8 w-8" />
+              <p className="text-sm">Không có kết quả phù hợp</p>
+            </div>
           )}
         </CommandList>
       </CommandDialog>
