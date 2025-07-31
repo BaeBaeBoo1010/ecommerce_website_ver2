@@ -166,6 +166,8 @@ export default function ProductDetail({ product }: { product: Product }) {
                         fill
                         className="object-contain"
                         priority={index === 0}
+                        loading={index === 0 ? "eager" : "lazy"}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 600px"
                       />
                     </div>
                   </SwiperSlide>
@@ -202,6 +204,8 @@ export default function ProductDetail({ product }: { product: Product }) {
                             alt={`Thumbnail ${index + 1}`}
                             fill
                             className="object-contain"
+                            loading="lazy"
+                            sizes="(max-width: 768px) 30px, (max-width: 1024px) 50px, 70px"
                           />
                         </div>
                       </SwiperSlide>

@@ -18,8 +18,8 @@ export default async function ProductDetailPage({
   const baseUrl = `${protocol}://${host}`;
 
   const res = await fetch(`${baseUrl}/api/products/${id}`, {
-    cache: "no-store",
-  })
+    next: { revalidate: 300 },
+  });
 
   if (!res.ok) return notFound()
 
