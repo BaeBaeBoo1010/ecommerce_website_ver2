@@ -12,7 +12,7 @@ function extractPublicId(url: string) {
   return parts
     .slice(uploadIndex + 1)
     .join("/")
-    .replace(/\.[^/.]+$/, "")
+    .replace(/\.[^/.]+$/, "");
 }
 
 const ERROR = {
