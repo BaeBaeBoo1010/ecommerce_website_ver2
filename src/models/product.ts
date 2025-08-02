@@ -13,6 +13,10 @@ const ProductSchema = new mongoose.Schema({
   type: [String],
   required: true,
   },
+  articleHtml: {
+      type: String,
+      default: "",
+    },
 }, {
   timestamps: true,
 });

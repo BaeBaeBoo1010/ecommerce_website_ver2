@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     const price = parseFloat(formData.get("price") as string);
     const category = formData.get("category") as string;
     const productCode = (formData.get("productCode") as string)?.trim();
+    const articleHtml = (formData.get("articleHtml") as string)?.trim() || "";
 
     if (!files.length || !name || !productCode || !category || isNaN(price)) {
       return NextResponse.json(
@@ -66,7 +67,6 @@ export async function POST(req: Request) {
       { $or: [{ name }, { productCode }] },
       { name: 1, productCode: 1 }
     ).lean<{ name: string; productCode: string }>();
-
 
     if (existing) {
       const field = existing.name === name ? "name" : "productCode";
@@ -100,6 +100,7 @@ export async function POST(req: Request) {
       category,
       productCode,
       imageUrls,
+      articleHtml,
     });
 
     return NextResponse.json(
@@ -107,7 +108,6 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err: any) {
-    // Xử lý lỗi MongoDB trùng key
     if (err?.code === 11000) {
       const dupField = Object.keys(err.keyPattern ?? {})[0] as "name" | "productCode";
       const code = dupField === "name" ? ERROR.DUP_NAME : ERROR.DUP_CODE;

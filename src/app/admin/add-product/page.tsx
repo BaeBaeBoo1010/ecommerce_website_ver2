@@ -1,8 +1,10 @@
 "use client";
 
+import type React from "react";
+
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Card,
   CardHeader,
@@ -22,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, PlusCircle, ImageIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,6 +43,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import RichTextEditor from "@/components/rich-text-editor";
 
 /* ---------- Types ---------- */
 interface Category {
@@ -53,6 +57,7 @@ const MSG_PRODUCT: Record<string, string> = {
   DUP_CODE: "Mã sản phẩm đã tồn tại",
   MISSING_FIELD: "Thiếu dữ liệu bắt buộc",
 };
+
 const MSG_CATEGORY: Record<string, string> = {
   MISSING_NAME: "Tên danh mục là bắt buộc",
   DUP_NAME: "Tên danh mục đã tồn tại",
@@ -71,13 +76,8 @@ function SortableImage({
   onRemove: () => void;
   activeImageId: string | null;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -95,7 +95,7 @@ function SortableImage({
       {...listeners}
     >
       <Image
-        src={url}
+        src={url || "/placeholder.svg"}
         alt={`Ảnh ${index + 1}`}
         fill
         unoptimized
@@ -103,20 +103,18 @@ function SortableImage({
         onDragStart={(e) => e.preventDefault()}
         className="object-contain"
       />
-
       {index === 0 && (
         <span className="absolute top-1 left-1 rounded bg-blue-600 px-1 py-[1px] text-xs text-white shadow">
           Ảnh bìa
         </span>
       )}
-
       <button
         type="button"
         onClick={(e) => {
-          e.stopPropagation(); // ✅ ngăn drag
+          e.stopPropagation();
           onRemove();
         }}
-        onPointerDown={(e) => e.stopPropagation()} // ✅ optional: đảm bảo dừng từ sớm
+        onPointerDown={(e) => e.stopPropagation()}
         className="bg-opacity-60 absolute top-2 right-2 z-10 cursor-pointer rounded-full bg-black p-1 text-white opacity-0 transition group-hover:opacity-100"
       >
         <X className="h-4 w-4" />
@@ -125,12 +123,11 @@ function SortableImage({
   );
 }
 
-
 export default function AddProductPage() {
   const formRef = useRef<HTMLFormElement | null>(null);
-
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+
   type ImageItem = { id: string; file: File; url: string };
   const [images, setImages] = useState<ImageItem[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -140,22 +137,27 @@ export default function AddProductPage() {
   const [descLength, setDescLength] = useState(0);
   const DESC_LIMIT = 500;
 
+  // Rich text editor states
+  const [hasArticle, setHasArticle] = useState(true);
+  const [articleContent, setArticleContent] = useState(
+    "<h1>Tiêu đề</h1><p>Đây là đoạn văn bản.</p><ul><li>Mục 1</li><li>Mục 2</li></ul>",
+  );
+
   const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
+
   useEffect(() => {
     if (activeImageId) {
       document.body.style.cursor = "grabbing";
     } else {
       document.body.style.cursor = "";
     }
-
     return () => {
       document.body.style.cursor = "";
     };
   }, [activeImageId]);
 
   const activeImage = images.find((img) => img.id === activeImageId);
-
 
   useEffect(() => {
     fetch("/api/categories")
@@ -171,6 +173,8 @@ export default function AddProductPage() {
     setNewCategoryName("");
     setDupErr({});
     setCategoryError(false);
+    setHasArticle(false);
+    setArticleContent("");
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -187,10 +191,15 @@ export default function AddProductPage() {
 
     const formData = new FormData(e.currentTarget);
     formData.set("category", selectedCategory);
+
+    // Add article content if enabled
+    if (hasArticle) {
+      formData.set("articleContent", articleContent);
+    }
+
     images.forEach((img) => {
       formData.append("images", img.file);
     });
-
 
     try {
       const res = await fetch("/api/products", {
@@ -231,6 +240,7 @@ export default function AddProductPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),
       });
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -253,7 +263,7 @@ export default function AddProductPage() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="container mx-auto max-w-2xl py-2"
+      className="container mx-auto max-w-6xl py-2"
     >
       <Card className="rounded-2xl shadow-lg">
         <CardHeader>
@@ -262,29 +272,27 @@ export default function AddProductPage() {
         </CardHeader>
 
         <form ref={formRef} onSubmit={handleSubmit}>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Tên sản phẩm</Label>
               <Input
                 id="name"
                 name="name"
                 required
-                className={dupErr.name ? "border-red-500" : ""}
+                className={`max-w-xl ${dupErr.name ? "border-red-500" : ""}`}
               />
             </div>
-
             <div className="grid gap-2">
               <Label htmlFor="code">Mã sản phẩm</Label>
               <Input
                 id="code"
                 name="productCode"
                 required
-                className={dupErr.code ? "border-red-500" : ""}
+                className={`max-w-50 ${dupErr.name ? "border-red-500" : ""}`}
               />
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="desc">Mô tả</Label>
+              <Label htmlFor="desc">Mô tả ngắn</Label>
               <Textarea
                 id="desc"
                 name="description"
@@ -297,7 +305,6 @@ export default function AddProductPage() {
                 {descLength}/{DESC_LIMIT} ký tự
               </div>
             </div>
-
             <div className="grid gap-2">
               <Label htmlFor="price">Giá (VNĐ)</Label>
               <Input
@@ -306,10 +313,10 @@ export default function AddProductPage() {
                 type="number"
                 step="1000"
                 min="0"
+                className="max-w-40"
                 required
               />
             </div>
-
             <div className="grid gap-2">
               <Label>Loại sản phẩm</Label>
               <Select
@@ -334,12 +341,12 @@ export default function AddProductPage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="flex items-end gap-2">
               <Input
                 placeholder="Tên loại mới"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
+                className="max-w-sm"
               />
               <Button
                 type="button"
@@ -349,10 +356,8 @@ export default function AddProductPage() {
                 <PlusCircle className="mr-1 h-4 w-4" /> Thêm danh mục
               </Button>
             </div>
-
             <div className="grid gap-2">
               <Label htmlFor="images">Ảnh sản phẩm</Label>
-
               <input
                 id="images"
                 type="file"
@@ -363,7 +368,6 @@ export default function AddProductPage() {
                   if (files.length === 0) return;
 
                   const newImages: ImageItem[] = [];
-
                   for (const file of files) {
                     let finalFile = file;
 
@@ -427,7 +431,6 @@ export default function AddProductPage() {
                   <ImageIcon className="h-4 w-4" />
                   Thêm ảnh
                 </Button>
-
                 <span className="text-muted-foreground max-w-[200px] truncate text-sm">
                   {images.length > 0
                     ? `${images.length} ảnh đã chọn`
@@ -444,7 +447,6 @@ export default function AddProductPage() {
                   }}
                   onDragEnd={({ active, over }) => {
                     setActiveImageId(null);
-
                     if (!over || active.id === over.id) return;
 
                     const oldIndex = images.findIndex(
@@ -486,7 +488,7 @@ export default function AddProductPage() {
                     {activeImage ? (
                       <div className="relative h-[120px] w-[120px] overflow-hidden rounded-lg border border-gray-300 bg-white shadow-md">
                         <Image
-                          src={activeImage.url}
+                          src={activeImage.url || "/placeholder.svg"}
                           alt="drag"
                           fill
                           className="object-cover"
@@ -497,10 +499,56 @@ export default function AddProductPage() {
                 </DndContext>
               )}
             </div>
+            {/* Rich Text Editor Section */}
+            <div className="space-y-4 border-t pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="article-toggle"
+                    className="text-base font-medium"
+                  >
+                    Bài viết chi tiết
+                  </Label>
+                  <p className="text-muted-foreground text-sm">
+                    Thêm bài viết chi tiết về sản phẩm (tùy chọn)
+                  </p>
+                </div>
+                <Switch
+                  id="article-toggle"
+                  className="cursor-pointer"
+                  checked={hasArticle}
+                  onCheckedChange={setHasArticle}
+                />
+              </div>
+
+              <AnimatePresence initial={false}>
+                {hasArticle && (
+                  <motion.div
+                    key="rich-text"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="space-y-2 overflow-hidden"
+                  >
+                    <Label>Nội dung bài viết</Label>
+                    <RichTextEditor
+                      content={articleContent}
+                      onChange={setArticleContent}
+                      placeholder="Viết bài viết chi tiết về sản phẩm..."
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </CardContent>
 
-          <CardFooter>
-            <Button type="submit" className="w-full" disabled={loading}>
+          <CardFooter className="flex justify-end pt-4">
+            <Button
+              type="submit"
+              className="w-full sm:w-[300px]"
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang thêm...
