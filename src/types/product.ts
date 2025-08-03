@@ -7,6 +7,7 @@ export interface Product {
   category: Category;
   imageUrls: string[];
   articleHtml: string;
+  isArticleEnabled: boolean;
 }
 
 export interface Category {
