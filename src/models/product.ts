@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import mongoose from "mongoose";
-import { Category } from "./category";
+import "./category";
 
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
