@@ -166,7 +166,7 @@ export default function ProductDetail({ product }: { product: Product }) {
                         fill
                         className="object-contain"
                         priority={index === 0}
-                        loading={index === 0 ? "eager" : "lazy"}
+                        loading="lazy"
                         sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 600px"
                       />
                     </div>

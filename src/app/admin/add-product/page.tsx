@@ -136,6 +136,8 @@ export default function AddProductPage() {
   const [categoryError, setCategoryError] = useState(false);
   const [descLength, setDescLength] = useState(0);
   const DESC_LIMIT = 500;
+  const MAX_IMAGE_SIZE = 1024 * 1024; // 1MB
+  const MAX_IMAGE_WIDTH = 1024;
 
   // Rich text editor states
   const [hasArticle, setHasArticle] = useState(true);
@@ -368,19 +370,19 @@ export default function AddProductPage() {
                   if (files.length === 0) return;
 
                   const newImages: ImageItem[] = [];
+
                   for (const file of files) {
                     let finalFile = file;
 
-                    if (file.size > 2 * 1024 * 1024) {
+                    if (file.size > MAX_IMAGE_SIZE) {
                       const img = document.createElement("img");
                       img.src = URL.createObjectURL(file);
 
                       await new Promise((resolve) => {
                         img.onload = async () => {
                           const canvas = document.createElement("canvas");
-                          const MAX_WIDTH = 1024;
-                          const scale = MAX_WIDTH / img.width;
-                          canvas.width = MAX_WIDTH;
+                          const scale = MAX_IMAGE_WIDTH / img.width;
+                          canvas.width = MAX_IMAGE_WIDTH;
                           canvas.height = img.height * scale;
 
                           const ctx = canvas.getContext("2d");
@@ -392,14 +394,56 @@ export default function AddProductPage() {
                             canvas.height,
                           );
 
+                          // Nén và kiểm tra kích thước
                           canvas.toBlob(
-                            (blob) => {
-                              if (blob) {
+                            async function process(blob) {
+                              if (!blob) return resolve(true);
+
+                              if (blob.size <= 1024 * 1024) {
                                 finalFile = new File([blob], file.name, {
                                   type: "image/jpeg",
                                 });
+                                return resolve(true);
                               }
-                              resolve(true);
+
+                              // Nếu lớn hơn 1MB, giảm chất lượng
+                              let quality = 0.7;
+                              const tryCompress = () => {
+                                canvas.toBlob(
+                                  (compressedBlob) => {
+                                    if (
+                                      compressedBlob &&
+                                      compressedBlob.size <= 1024 * 1024
+                                    ) {
+                                      finalFile = new File(
+                                        [compressedBlob],
+                                        file.name,
+                                        {
+                                          type: "image/jpeg",
+                                        },
+                                      );
+                                      resolve(true);
+                                    } else if (quality > 0.3) {
+                                      quality -= 0.1;
+                                      tryCompress();
+                                    } else {
+                                      // Không giảm được nữa, dùng bản cuối
+                                      finalFile = new File(
+                                        [compressedBlob!],
+                                        file.name,
+                                        {
+                                          type: "image/jpeg",
+                                        },
+                                      );
+                                      resolve(true);
+                                    }
+                                  },
+                                  "image/jpeg",
+                                  quality,
+                                );
+                              };
+
+                              tryCompress();
                             },
                             "image/jpeg",
                             0.8,
