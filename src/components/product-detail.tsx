@@ -166,7 +166,9 @@ export default function ProductDetail({ product }: { product: Product }) {
                         fill
                         className="object-contain"
                         priority={index === 0}
-                        loading="lazy"
+                        loading={index === 0 ? "eager" : "lazy"}
+                        placeholder="blur"
+                        blurDataURL="/images/placeholder-image.jpg"
                         sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 600px"
                       />
                     </div>

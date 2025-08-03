@@ -52,6 +52,8 @@ const ProductCard = ({
           )}
           onLoad={() => setLoaded(true)}
           loading="lazy"
+          blurDataURL="/images/placeholder-image.jpg"
+          placeholder="blur"
           priority={false}
           {...imageProps}
         />
