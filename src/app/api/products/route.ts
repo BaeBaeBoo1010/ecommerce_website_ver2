@@ -20,30 +20,17 @@ export async function GET(req: NextRequest) {
     await connectMongoDB();
     const { searchParams } = new URL(req.url);
     const categorySlug = searchParams.get("category");
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "16", 10);
 
-    const skip = (page - 1) * limit;
-    const filter: any = {};
+    let filter = {};
 
-    // Lọc theo danh mục
     if (categorySlug && categorySlug !== "all") {
       const category = await Category.findOne({ slug: categorySlug });
-      if (!category) return NextResponse.json({ data: [], total: 0 });
-      filter.category = category._id;
+      if (!category) return NextResponse.json([]);
+      filter = { category: category._id };
     }
 
-    // Lấy tổng số sản phẩm
-    const total = await Product.countDocuments(filter);
-
-    // Lấy sản phẩm phân trang
-    const data = await Product.find(filter)
-      .skip(skip)
-      .limit(limit)
-      .populate("category", "name slug")
-      .lean();
-
-    return NextResponse.json({ data, total });
+    const products = await Product.find(filter).populate("category", "name slug");
+    return NextResponse.json(products);
   } catch (err) {
     console.error("GET products error:", err);
     return NextResponse.json(
