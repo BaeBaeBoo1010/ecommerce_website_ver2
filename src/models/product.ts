@@ -10,13 +10,17 @@ const ProductSchema = new mongoose.Schema({
     ref: "Category",
   },
   imageUrls: {
-  type: [String],
-  required: true,
+    type: [String],
+    required: true,
   },
   articleHtml: {
-      type: String,
-      default: "",
-    },
+    type: String,
+    default: "",
+  },
+  isArticleEnabled: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
 });
