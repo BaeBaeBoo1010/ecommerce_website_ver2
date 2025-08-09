@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 
@@ -13,35 +13,14 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Product } from "@/types/product";
+import type { Product, Category } from "@/types/product";
 import ProductCard from "@/components/product-card";
-import { useDebounce } from "@/hooks/use-debounce";
-
-interface Category {
-  _id: string;
-  name: string;
-  slug: string;
-}
+import Link from "next/link";
 
 type SortOption = "none" | "priceAsc" | "priceDesc";
 const PRODUCTS_PER_PAGE = 16;
 
-/* ------------------------------------------------------------------
- * Helpers
- * ------------------------------------------------------------------*/
-const fetcher = async (url: string) => {
-  const cacheKey = `products-cache:${url}`;
-  if (!navigator.onLine) {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) return JSON.parse(cached);
-    return [];
-  }
-  const res = await fetch(url);
-  const data = await res.json();
-  localStorage.setItem(cacheKey, JSON.stringify(data));
-  return data;
-};
-
+/* ----------------- Helpers ----------------- */
 const sortProducts = (products: Product[], sort: SortOption) => {
   const sorted = [...products];
   if (sort === "priceAsc") return sorted.sort((a, b) => a.price - b.price);
@@ -54,100 +33,85 @@ const paginate = (products: Product[], page: number) => {
   return products.slice(start, start + PRODUCTS_PER_PAGE);
 };
 
-/* ------------------------------------------------------------------
- * ProductListClient (default export)
- * ------------------------------------------------------------------*/
 export default function ProductListClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Search params
+  // Params
   const categorySlug = searchParams.get("category") ?? "all";
-  const rawSearchQuery = searchParams.get("search")?.toLowerCase().trim() || "";
-  const searchQuery = useDebounce(rawSearchQuery, 300);
+  const searchQuery = searchParams.get("search")?.toLowerCase().trim() || "";
   const pageParam = Number(searchParams.get("page"));
   const currentPage = Number.isNaN(pageParam) ? 1 : Math.max(1, pageParam);
 
-  // Local state
-  const [categories, setCategories] = useState<Category[]>([]);
+  // State
   const [sortOption, setSortOption] = useState<SortOption>("none");
 
-  // SWR
-  const apiUrl =
-    categorySlug === "all"
-      ? "/api/products"
-      : `/api/products?category=${categorySlug}`;
-
-  const fallbackData =
-    typeof window === "undefined"
-      ? []
-      : (() => {
-          try {
-            return JSON.parse(
-              localStorage.getItem(`products-cache:${apiUrl}`) || "[]",
-            );
-          } catch {
-            return [];
-          }
-        })();
-
-  const { data: productsData, isLoading } = useSWR<Product[]>(apiUrl, fetcher, {
-    fallbackData,
-    dedupingInterval: 10_000,
+  // Lấy data từ SWR cache đã được inject ở layout
+  const { data: productsData, isLoading } = useSWR<Product[]>("/api/products", {
     revalidateOnFocus: false,
+    revalidateOnReconnect: false,
   });
-
-  useEffect(() => {
-    if (productsData) {
-      localStorage.setItem(
-        `products-cache:${apiUrl}`,
-        JSON.stringify(productsData),
-      );
-    }
-  }, [productsData, apiUrl]);
 
   const products = useMemo(() => productsData || [], [productsData]);
 
-  // Load categories once
-  useEffect(() => {
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then((data) => setCategories(data.categories))
-      .catch((err) => console.error("Lỗi load category:", err));
-  }, []);
-
-  /* ------------------ Derive data ------------------ */
-  const filteredProducts = useMemo(() => {
-    if (!searchQuery) return products;
-    return products.filter((p) => {
-      const q = searchQuery.toLowerCase();
-      const nameMatch = p.name.toLowerCase().includes(q);
-      const descMatch = p.description?.toLowerCase().includes(q);
-      const catName = typeof p.category === "object" ? p.category.name : "";
-      const catSlug = typeof p.category === "object" ? p.category.slug : "";
-      const catMatch =
-        catName.toLowerCase().includes(q) || catSlug.toLowerCase().includes(q);
-      return nameMatch || descMatch || catMatch;
+  // Lấy categories từ products
+  const categories: Category[] = useMemo(() => {
+    const seen = new Map<string, Category>();
+    products.forEach((p) => {
+      if (p.category && typeof p.category === "object") {
+        seen.set(p.category._id, p.category);
+      }
     });
-  }, [products, searchQuery]);
+    return Array.from(seen.values());
+  }, [products]);
+
+  /* ----------------- Derive data ----------------- */
+  const filteredProducts = useMemo(() => {
+    let list = products;
+    if (categorySlug !== "all") {
+      list = list.filter(
+        (p) =>
+          typeof p.category === "object" && p.category.slug === categorySlug,
+      );
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((p) => {
+        const nameMatch = p.name.toLowerCase().includes(q);
+        const descMatch = p.description?.toLowerCase().includes(q);
+        const catName = typeof p.category === "object" ? p.category.name : "";
+        const catSlug = typeof p.category === "object" ? p.category.slug : "";
+        const catMatch =
+          catName.toLowerCase().includes(q) ||
+          catSlug.toLowerCase().includes(q);
+        return nameMatch || descMatch || catMatch;
+      });
+    }
+    return list;
+  }, [products, categorySlug, searchQuery]);
 
   const sortedProducts = useMemo(
     () => sortProducts(filteredProducts, sortOption),
     [filteredProducts, sortOption],
   );
+
   const paginatedProducts = useMemo(
     () => paginate(sortedProducts, currentPage),
     [sortedProducts, currentPage],
   );
+
   const totalPages = Math.ceil(sortedProducts.length / PRODUCTS_PER_PAGE);
   const currentCategory = categories.find((cat) => cat.slug === categorySlug);
 
-  /* ------------------ Helpers ------------------ */
+  /* ----------------- Helpers ----------------- */
   const updateParam = useCallback(
     (key: string, value?: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-      value ? params.set(key, value) : params.delete(key);
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
       params.set("page", "1");
       router.push(`/products?${params.toString()}`);
     },
@@ -163,18 +127,44 @@ export default function ProductListClient() {
     router.push(`/products?${params.toString()}`);
   };
 
-  /* ------------------ Render ------------------ */
+  /* ----------------- Render ----------------- */
   return (
     <div className="mx-auto mt-10 mb-20 max-w-7xl px-4">
       {/* Header & Filter */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">
-          {searchQuery
-            ? "Kết quả tìm kiếm"
-            : categorySlug === "all"
-              ? "Tất cả sản phẩm"
-              : currentCategory?.name || "Sản phẩm"}
-        </h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold">
+            {searchQuery
+              ? `Kết quả tìm kiếm của "${searchQuery}"`
+              : categorySlug === "all"
+                ? "Tất cả sản phẩm"
+                : currentCategory?.name || "Sản phẩm"}
+          </h1>
+
+          {/* Nút "Xem tất cả sản phẩm" chỉ khi đang search */}
+          {searchQuery && (
+            <Link
+              href="/products"
+              className="inline-flex items-center gap-1 rounded-lg border border-blue-600 px-3 py-1.5 text-sm font-medium text-blue-600 transition-all hover:bg-blue-600 hover:text-white"
+            >
+              Xem tất cả trong Shop
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </Link>
+          )}
+        </div>
 
         <div className="flex flex-wrap gap-3">
           {/* Danh mục */}
@@ -212,7 +202,6 @@ export default function ProductListClient() {
       {/* Grid sản phẩm */}
       <div className="grid min-h-[200px] grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {isLoading ? (
-          // Skeleton layout
           Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-3">
               <Skeleton className="h-48 w-full rounded-lg" />

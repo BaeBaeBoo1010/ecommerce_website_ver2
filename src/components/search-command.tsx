@@ -1,5 +1,6 @@
 "use client";
 
+import useSWR from "swr";
 import { useState, useEffect, useRef } from "react";
 import {
   CommandDialog,
@@ -9,22 +10,31 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import { Search, Clock, Loader2 } from "lucide-react";
+import { Search, Clock, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { Product } from "@/types/product";
 
 const LS_KEY = "recent_searches";
 
 export default function SearchCommand() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<string[]>([]);
+  const [results, setResults] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
-  const [recent, setRecent] = useState<string[]>([]);
+  const [recent, setRecent] = useState<{ id: string; name: string }[]>([]);
   const router = useRouter();
+  const { data: allProducts } = useSWR("/api/products");
   const [hasSearched, setHasSearched] = useState(false);
+  const [shortcutKey, setShortcutKey] = useState("⌘");
 
   type Timer = ReturnType<typeof setTimeout>;
   const debounceRef = useRef<Timer | null>(null);
+
+  /* Hiển thị phím tắt ⌘ hoặc Ctrl */
+  useEffect(() => {
+    const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+    setShortcutKey(isMac ? "⌘" : "Ctrl");
+  }, []);
 
   /* Load lịch sử tìm kiếm một lần */
   useEffect(() => {
@@ -54,33 +64,69 @@ export default function SearchCommand() {
       return;
     }
 
-    debounceRef.current = setTimeout(async () => {
+    debounceRef.current = setTimeout(() => {
+      if (!allProducts) return;
+
       setLoading(true);
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-        const { suggestions } = await res.json();
-        setResults(suggestions);
-        setHasSearched(true);
-      } catch {
-        setResults([]);
-        setHasSearched(true);
-      } finally {
-        setLoading(false);
-      }
-    }, 400) as Timer;
+      const keyword = query.trim().toLowerCase();
+
+      const filtered = (allProducts as Product[])
+        .filter((p) => {
+          const keywordLower = keyword.toLowerCase();
+
+          const nameMatch = p.name.toLowerCase().includes(keywordLower);
+          const descMatch =
+            p.description?.toLowerCase().includes(keywordLower) ?? false;
+          const articleMatch = p.articleHtml
+            ? p.articleHtml
+                .replace(/<[^>]+>/g, "")
+                .toLowerCase()
+                .includes(keywordLower)
+            : false;
+
+          return nameMatch || descMatch || articleMatch;
+        })
+        .map((p) => ({ id: p._id, name: p.name }));
+
+      setResults(filtered);
+      setHasSearched(true);
+      setLoading(false);
+    }, 200) as Timer;
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query]);
+  }, [query, allProducts]);
+
+  useEffect(() => {
+    console.log("results", results); // 👈 kiểm tra đủ chưa
+  }, [results]);
 
   /* Khi chọn gợi ý hoặc Enter */
-  const handleSelect = (value: string) => {
+  const handleSelect = (item: { id: string; name: string }) => {
     setOpen(false);
-    const next = [value, ...recent.filter((v) => v !== value)].slice(0, 5);
+
+    // Cập nhật lịch sử tìm kiếm
+    const next = [item, ...recent.filter((v) => v.id !== item.id)].slice(0, 5);
     setRecent(next);
     localStorage.setItem(LS_KEY, JSON.stringify(next));
-    router.push(`/products?search=${encodeURIComponent(value)}`);
+
+    // Luôn điều hướng tới trang chi tiết sản phẩm
+    router.push(`/products/${item.id}`);
+  };
+
+  const handleSearchKeyword = (keyword: string) => {
+    const trimmed = keyword.trim();
+    if (!trimmed) return;
+
+    setOpen(false);
+
+    const entry = { id: trimmed, name: trimmed };
+    const next = [entry, ...recent.filter((v) => v.id !== trimmed)].slice(0, 5);
+    setRecent(next);
+    localStorage.setItem(LS_KEY, JSON.stringify(next));
+
+    router.push(`/products?search=${encodeURIComponent(trimmed)}`);
   };
 
   return (
@@ -95,8 +141,9 @@ export default function SearchCommand() {
         <Search className="h-5 w-5" />
         <span className="text-sm font-medium">Tìm kiếm</span>
         {/* Phím tắt: ẩn trên mobile, hiện ≥ sm */}
-        <kbd className="text-muted-foreground pointer-events-none ml-2 hidden text-[10px] sm:inline">
-          ⌘K
+        <kbd className="text-muted-foreground pointer-events-none ml-6 hidden sm:flex sm:items-center sm:gap-[2px] sm:rounded-sm sm:border sm:bg-gray-100 sm:px-1 sm:py-0">
+          <span className="text-[18px] font-medium">{shortcutKey}</span>
+          <span className="text-[14px]">K</span>
         </kbd>
       </Button>
 
@@ -113,12 +160,20 @@ export default function SearchCommand() {
           onKeyDown={(e) => {
             if (e.key === "Enter" && query.trim()) {
               e.preventDefault();
-              handleSelect(query.trim());
+
+              // 🚫 Không cho enter khi đang loading
+              if (loading) return;
+
+              if (results.length === 1) {
+                handleSelect(results[0]);
+              } else {
+                handleSearchKeyword(query.trim());
+              }
             }
           }}
         />
 
-        <CommandList className="relative min-h-[250px]">
+        <CommandList className="relative min-h-[280px] overflow-y-auto">
           {/* Chỉ hiện khi đã nhập mà không có kết quả */}
           {!query && recent.length === 0 && (
             <div className="text-muted-foreground flex flex-col items-center justify-center py-10 text-center">
@@ -130,10 +185,33 @@ export default function SearchCommand() {
           {/* Gần đây */}
           {!query && recent.length > 0 && (
             <CommandGroup heading="Gần đây">
-              {recent.map((s) => (
-                <CommandItem key={s} value={s} onSelect={() => handleSelect(s)}>
-                  <Clock className="mr-2 h-4 w-4" />
-                  {s}
+              {recent.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  value={item.name}
+                  className="flex items-center justify-between pr-1"
+                  onSelect={() => handleSelect(item)}
+                >
+                  <div className="flex items-center">
+                    <Clock className="mr-2 h-4 w-4" />
+                    {item.name}
+                  </div>
+
+                  {/* Nút xóa riêng */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground h-6 w-6 hover:bg-gray-200"
+                    onClick={(e) => {
+                      e.stopPropagation(); // tránh trigger chọn item
+                      const updated = recent.filter((v) => v.id !== item.id);
+                      setRecent(updated);
+                      localStorage.setItem(LS_KEY, JSON.stringify(updated));
+                    }}
+                    title="Xóa mục này"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -142,15 +220,15 @@ export default function SearchCommand() {
           {/* Kết quả realtime */}
           {results.length > 0 && (
             <CommandGroup heading="Kết quả">
-              {results.map((r) => (
+              {results.map((item) => (
                 <CommandItem
-                  key={r}
-                  value={r}
-                  onSelect={() => handleSelect(r)}
+                  key={item.id}
+                  value={item.name + query}
+                  onSelect={() => handleSelect(item)}
                   className="hover:bg-accent hover:text-accent-foreground cursor-pointer"
                 >
                   <Search className="mr-2 h-4 w-4" />
-                  {r}
+                  {item.name}
                 </CommandItem>
               ))}
             </CommandGroup>

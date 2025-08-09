@@ -1,11 +1,7 @@
-import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/product";
+import { NextResponse } from "next/server";
 
-/**
- * GET /api/search?q=keyword
- * Trả về mảng tên sản phẩm gợi ý theo tên (string[])
- */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const keyword = searchParams.get("q")?.trim();
@@ -17,18 +13,30 @@ export async function GET(req: Request) {
   try {
     await connectMongoDB();
 
-    const regex = new RegExp(keyword, "i"); // không phân biệt hoa thường
-    const products = await Product.find({ name: { $regex: regex } })
-      .limit(8)
-      .select("name -_id");
+    const regex = new RegExp(keyword, "i");
 
-    const suggestions = products.map((p) => p.name);
+    const products = await Product.find(
+      {
+        $or: [
+          { name: { $regex: regex } },
+          { description: { $regex: regex } },
+        ],
+      }
+    )
+      .limit(8)
+      .select("name"); // giữ nguyên _id, không cần ghi gì thêm
+
+    const suggestions = products.map((p) => ({
+      id: p._id.toString(), // đảm bảo trả về chuỗi, tránh lỗi serializing
+      name: p.name,
+    }));
+
     return NextResponse.json({ suggestions });
   } catch (err) {
     console.error("Lỗi tìm kiếm:", err);
     return NextResponse.json(
       { suggestions: [], error: "Lỗi server" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

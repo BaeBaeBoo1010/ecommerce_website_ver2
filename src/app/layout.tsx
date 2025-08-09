@@ -1,3 +1,6 @@
+// src/app/layout.tsx
+export const revalidate = 300;
+
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import Header from "@/components/header";
@@ -5,6 +8,9 @@ import Footer from "@/components/footer";
 import { Toaster } from "@/components/ui/sonner";
 import Providers from "./providers";
 import "./globals.css";
+import { connectMongoDB } from "@/lib/mongodb";
+import { Product } from "@/models/product";
+import { SWRConfig } from "swr";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -20,29 +26,45 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
+  // Fetch dữ liệu từ MongoDB khi render server
+  await connectMongoDB();
+  const products = await Product.find()
+    .populate("category", "name slug")
+    .lean();
+
   return (
-    <html lang="en" className={roboto.className}>
+    <html lang="vi" className={roboto.className}>
       <body>
         <Providers>
-          <Header />
-          <Toaster
-            richColors
-            closeButton
-            theme="light"
-            position="top-left"
-            className="!top-18 !w-80 sm:!top-26"
-            toastOptions={{
-              duration: 3000,
+          <SWRConfig
+            value={{
+              fallback: {
+                "/api/products": JSON.parse(JSON.stringify(products)),
+              },
+              revalidateOnFocus: false,
+              revalidateOnReconnect: false,
+              revalidateIfStale: false,
             }}
-          />
-
-          <main className="">{children}</main>
-          <Footer />
+          >
+            <Header />
+            <Toaster
+              richColors
+              closeButton
+              theme="light"
+              position="top-left"
+              className="!top-18 !w-80 sm:!top-26"
+              toastOptions={{
+                duration: 3000,
+              }}
+            />
+            <main>{children}</main>
+            <Footer />
+          </SWRConfig>
         </Providers>
       </body>
     </html>
