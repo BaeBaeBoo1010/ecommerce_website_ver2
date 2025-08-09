@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, ShoppingCart, User, Loader2 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
+import useSWR from "swr";
 
 import {
   DropdownMenu,
@@ -18,49 +19,42 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import type { Product, Category } from "@/types/product";
 
 import SearchCommand from "./search-command";
 import MobileSidebar from "./sidebar";
 
-/**
- * Sticky, responsive, accessible header component.
- * – Shrinks to a single‑row layout on small screens
- * – Blurred translucent background so content below shines through when scrolling
- * – Prefetches common routes for instant navigation
- * – Renders category list fetched from `/api/categories`
- */
 export default function Header() {
   const { data: session, status } = useSession();
   const isAdmin = session?.user?.role === "admin";
-  const [cartCount] = useState(3);
-  const [categories, setCategories] = useState<
-    { name: string; slug: string }[]
-  >([]);
-  const [loadingCats, setLoadingCats] = useState(true);
-
   const router = useRouter();
 
-  // ⚡️ Prefetch frequently accessed routes
+  // Giữ cartCount tạm thời
+  const cartCount = 3;
+
+  // Prefetch routes
   useEffect(() => {
     router.prefetch("/products");
     router.prefetch("/introduction");
     router.prefetch("/contact");
   }, [router]);
 
-  // 🔄 Load categories once on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/categories");
-        const data = await res.json();
-        setCategories(data.categories);
-      } catch (err) {
-        console.error("Lỗi load danh mục:", err);
-      } finally {
-        setLoadingCats(false);
+  // Lấy products (trong đó đã có category)
+  const { data: productsData, isLoading } = useSWR<Product[]>("/api/products", {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
+
+  const categories = useMemo(() => {
+    const products = productsData || [];
+    const seen = new Map<string, Category>();
+    products.forEach((p) => {
+      if (p.category && typeof p.category === "object") {
+        seen.set(p.category._id, p.category);
       }
-    })();
-  }, []);
+    });
+    return Array.from(seen.values());
+  }, [productsData]);
 
   return (
     <header
@@ -70,10 +64,8 @@ export default function Header() {
       <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-2 px-2 sm:h-20 sm:px-4 lg:h-24 lg:px-6">
         {/* LEFT: Logo + Mobile Sidebar */}
         <div className="flex items-center gap-2 sm:gap-4">
-          {/* Mobile menu button (hidden ≥ lg) */}
           <MobileSidebar />
 
-          {/* Logo */}
           <Link
             href="/"
             aria-label="Trang chủ"
@@ -112,7 +104,7 @@ export default function Header() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="z-[60] mt-2 w-64">
-              {loadingCats ? (
+              {isLoading ? (
                 <DropdownMenuItem disabled className="flex items-center gap-2">
                   <Loader2 className="animate-spin" size={16} /> Đang tải…
                 </DropdownMenuItem>
@@ -159,7 +151,6 @@ export default function Header() {
 
         {/* RIGHT: Cart & User menu */}
         <div className="flex items-center gap-2 sm:gap-4">
-          {/* Cart */}
           <Link
             href="/cart"
             className="relative flex w-[40px] flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-[80px] dark:text-gray-300 dark:hover:bg-neutral-800"
@@ -176,7 +167,6 @@ export default function Header() {
             )}
           </Link>
 
-          {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
