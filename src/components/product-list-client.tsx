@@ -147,7 +147,7 @@ export default function ProductListClient() {
               href="/products"
               className="inline-flex items-center gap-1 rounded-lg border border-blue-600 px-3 py-1.5 text-sm font-medium text-blue-600 transition-all hover:bg-blue-600 hover:text-white"
             >
-              Xem tất cả trong Shop
+              Xem tất cả sản phẩm trong Shop
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-4 w-4"

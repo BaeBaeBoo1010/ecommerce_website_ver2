@@ -55,15 +55,15 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
                 <MapPin className="mt-1 ml-[-4px] h-6 w-6" />
-                <span>1B/1, Đường Quán Tre, Phường Trung Mỹ Tây, TP.HCM</span>
+                <span></span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                <span>0908 357 997 - 0986 456 254</span>
+                <span></span>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                <span>kawaquangminh@gmail.com</span>
+                <span></span>
               </li>
             </ul>
           </div>
