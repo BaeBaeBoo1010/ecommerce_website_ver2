@@ -106,14 +106,20 @@ export default function SearchCommand() {
   const handleSelect = (item: { id: string; name: string }) => {
     setOpen(false);
 
+    const isProductId = /^[a-f\d]{24}$/i.test(item.id);
+
     // Cập nhật lịch sử tìm kiếm
     const next = [item, ...recent.filter((v) => v.id !== item.id)].slice(0, 5);
     setRecent(next);
     localStorage.setItem(LS_KEY, JSON.stringify(next));
 
-    // Luôn điều hướng tới trang chi tiết sản phẩm
-    router.push(`/products/${item.id}`);
+    if (isProductId) {
+      router.push(`/products/${item.id}`);
+    } else {
+      router.push(`/products?search=${encodeURIComponent(item.name)}`);
+    }
   };
+
 
   const handleSearchKeyword = (keyword: string) => {
     const trimmed = keyword.trim();
