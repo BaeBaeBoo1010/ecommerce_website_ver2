@@ -1,12 +1,13 @@
-// products/[id]/page.tsx
-import { notFound } from "next/navigation";
+// app/products/[id]/page.tsx
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/product";
 import type { Metadata } from "next";
-import ProductDetailWrapper from "@/components/product-detail-wrapper";
 import type { Product as ProductType } from "@/types/product";
+import ProductDetail from "@/components/product-detail";
+import ProductDetailWrapper from "@/components/product-detail-wrapper";
+import { headers } from "next/headers";
 
-export const revalidate = 300;
+export const revalidate = 0;
 
 export async function generateMetadata({
   params,
@@ -14,21 +15,18 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   await connectMongoDB();
+  const { id } = await params;
 
-  const { id } = await params; // ✅ Lấy id từ Promise
   const product = (await Product.findById(id)
     .populate("category", "name slug")
     .lean()) as ProductType | null;
 
-  if (!product) {
-    return { title: "Sản phẩm không tồn tại" };
-  }
+  if (!product) return { title: "Sản phẩm không tồn tại" };
 
   const title = `${product.name} - ${product.category?.name || "Sản phẩm"}`;
   const description =
     product.description?.slice(0, 160) ||
     `Mua ${product.name} với giá tốt nhất tại cửa hàng.`;
-
   const imageUrl = product.imageUrls?.[0];
 
   return {
@@ -38,7 +36,7 @@ export async function generateMetadata({
       title,
       description,
       images: imageUrl ? [{ url: imageUrl }] : [],
-      type: "website", // TS hợp lệ
+      type: "website",
     },
     twitter: {
       card: "summary_large_image",
@@ -47,7 +45,8 @@ export async function generateMetadata({
       images: imageUrl ? [imageUrl] : [],
     },
     other: {
-      "og:type": "product", // SEO vẫn là product
+      "og:type": "product",
+      "og:locale": "vi_VN",
     },
   };
 }
@@ -57,13 +56,26 @@ export default async function ProductDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await connectMongoDB();
+  const { id } = await params;
 
-  const { id } = await params; // ✅ Lấy id từ Promise
-  const product = await Product.findById(id).lean();
+  // ✅ Check bot Google chỉ 1 lần khi server render
+  const userAgent = (await headers()).get("user-agent") || "";
+  const isCrawler =
+    /(googlebot|facebookexternalhit|facebookcatalog|tiktokbot|zalo|zbot)/i.test(
+      userAgent,
+    );
 
-  if (!product) return notFound();
 
-  return <ProductDetailWrapper product={JSON.parse(JSON.stringify(product))} />;
+  if (isCrawler) {
+    await connectMongoDB();
+    const product = (await Product.findById(id)
+      .populate("category", "name slug")
+      .lean()) as ProductType | null;
+
+    if (!product) return <div>Sản phẩm không tồn tại</div>;
+
+    return <ProductDetail product={product} />;
+  }
+
+  return <ProductDetailWrapper productId={id} />;
 }
-

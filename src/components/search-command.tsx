@@ -120,7 +120,6 @@ export default function SearchCommand() {
     }
   };
 
-
   const handleSearchKeyword = (keyword: string) => {
     const trimmed = keyword.trim();
     if (!trimmed) return;
@@ -147,9 +146,19 @@ export default function SearchCommand() {
         <Search className="h-5 w-5" />
         <span className="text-sm font-medium">Tìm kiếm</span>
         {/* Phím tắt: ẩn trên mobile, hiện ≥ sm */}
-        <kbd className="text-muted-foreground pointer-events-none ml-6 hidden sm:flex sm:items-center sm:gap-[2px] sm:rounded-sm sm:border sm:bg-gray-100 sm:px-1 sm:py-0">
-          <span className="text-[18px] font-medium">{shortcutKey}</span>
-          <span className="text-[14px]">K</span>
+        <kbd
+          className={`text-muted-foreground pointer-events-none ml-6 hidden sm:flex sm:items-center sm:gap-[2px] sm:rounded-sm sm:border sm:bg-gray-100 sm:px-1 sm:py-0 ${shortcutKey === "Ctrl" ? "text-sm" : "text-lg"}`}
+        >
+          <span
+            className={`font-medium ${shortcutKey === "Ctrl" ? "text-xs" : "text-[18px]"}`}
+          >
+            {shortcutKey}
+          </span>
+          <span
+            className={` ${shortcutKey === "Ctrl" ? "text-xs" : "text-[14px]"}`}
+          >
+            K
+          </span>
         </kbd>
       </Button>
 
@@ -157,27 +166,45 @@ export default function SearchCommand() {
       <CommandDialog
         open={open}
         onOpenChange={setOpen}
+        showCloseButton={false}
         className="rounded-xl border bg-white shadow-xl"
       >
-        <CommandInput
-          placeholder="Tìm sản phẩm bạn cần"
-          value={query}
-          onValueChange={setQuery}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && query.trim()) {
-              e.preventDefault();
-
-              // 🚫 Không cho enter khi đang loading
-              if (loading) return;
-
-              if (results.length === 1) {
-                handleSelect(results[0]);
-              } else {
-                handleSearchKeyword(query.trim());
+        <div className="relative w-full">
+          <CommandInput
+            placeholder="Tìm sản phẩm bạn cần"
+            value={query}
+            onValueChange={(value) => {
+              if (value.length <= 50) {
+                setQuery(value);
               }
-            }
-          }}
-        />
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && query.trim()) {
+                e.preventDefault();
+
+                if (loading) return;
+
+                if (results.length === 1) {
+                  handleSelect(results[0]);
+                } else {
+                  handleSearchKeyword(query.trim());
+                }
+              }
+            }}
+          />
+
+          {query.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+              className="absolute top-1/2 right-2 -translate-y-1/2"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
 
         <CommandList className="relative min-h-[280px] overflow-y-auto">
           {/* Chỉ hiện khi đã nhập mà không có kết quả */}

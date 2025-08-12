@@ -1,21 +1,34 @@
-// components/product-detail-wrapper.tsx
 "use client";
 
 import { useSWRConfig } from "swr";
+import useSWR from "swr";
 import ProductDetail from "./product-detail";
 import type { Product } from "@/types/product";
 import Script from "next/script";
+import Loading from "@/components/loading"
 
 export default function ProductDetailWrapper({
-  product: initialProduct,
+  productId,
 }: {
-  product: Product;
+  productId: string;
 }) {
   const { cache } = useSWRConfig();
   const cachedProducts = cache.get("/api/products");
-  const product =
-    cachedProducts?.data?.find((p: Product) => p._id === initialProduct._id) ||
-    initialProduct;
+  const cachedProduct = cachedProducts?.data?.find(
+    (p: Product) => p._id === productId,
+  );
+
+  const { data: product } = useSWR<Product>(
+    cachedProduct ? null : `/api/products/${productId}`, // chỉ fetch nếu chưa có
+    (url) => fetch(url).then((res) => res.json()),
+    { fallbackData: cachedProduct },
+  );
+
+  if (!product) {
+    return <Loading/>
+  }
+
+
 
   const schemaData = {
     "@context": "https://schema.org/",
@@ -24,10 +37,7 @@ export default function ProductDetailWrapper({
     image: product.imageUrls,
     description: product.description,
     sku: product.productCode,
-    brand: {
-      "@type": "Brand",
-      name: "Tên thương hiệu của bạn",
-    },
+    brand: { "@type": "Brand", name: "Thiết bị điện Quang Minh" },
     offers: {
       "@type": "Offer",
       url: typeof window !== "undefined" ? window.location.href : "",

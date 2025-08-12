@@ -62,7 +62,7 @@ function QuantitySelector({
   };
 
   return (
-    <div className="inline-flex items-center overflow-hidden rounded-lg border shadow-sm">
+    <div className="inline-flex items-center overflow-visible rounded-lg border shadow-sm">
       <button
         onClick={handleDecrease}
         disabled={quantity <= min}
@@ -74,7 +74,7 @@ function QuantitySelector({
 
       <input
         autoFocus={false}
-        className="h-10 w-16 border-x border-gray-300 text-center text-lg font-semibold outline-none focus:ring-1 focus:ring-blue-500"
+        className="h-10 w-16 border border-gray-300 text-center text-lg font-semibold outline-none focus:z-10 focus:ring-2 focus:ring-blue-500"
         min={min}
         max={max}
         value={isNaN(quantity) ? "" : quantity}
