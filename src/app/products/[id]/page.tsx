@@ -7,7 +7,7 @@ import ProductDetail from "@/components/product-detail";
 import ProductDetailWrapper from "@/components/product-detail-wrapper";
 import { headers } from "next/headers";
 
-export const revalidate = 0;
+export const revalidate = 120;
 
 export async function generateMetadata({
   params,

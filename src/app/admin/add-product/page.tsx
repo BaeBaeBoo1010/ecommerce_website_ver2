@@ -141,9 +141,7 @@ export default function AddProductPage() {
 
   // Rich text editor states
   const [hasArticle, setHasArticle] = useState(true);
-  const [articleContent, setArticleContent] = useState(
-    "<h1>Tiêu đề</h1><p>Đây là đoạn văn bản.</p><ul><li>Mục 1</li><li>Mục 2</li></ul>",
-  );
+  const [articleContent, setArticleContent] = useState("");
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
   const [activeImageId, setActiveImageId] = useState<string | null>(null);

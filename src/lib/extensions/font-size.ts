@@ -14,7 +14,7 @@ export const FontSize = Mark.create({
 
   addOptions() {
     return {
-      types: ['textStyle', 'paragraph', 'heading'], // ✅ THÊM các node hỗ trợ
+      types: ['textStyle', 'paragraph', 'heading'],
     };
   },
 
