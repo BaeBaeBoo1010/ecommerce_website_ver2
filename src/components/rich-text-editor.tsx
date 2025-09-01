@@ -705,7 +705,7 @@ export default function RichTextEditor({
 
         {/* Editor */}
         <div
-          className={`editor-wrapper cursor-text rounded-b-lg border border-gray-300 transition focus-within:border-black-500 focus-within:ring-1 focus-within:ring-black-400 ${isFullscreen ? "flex-1 rounded-none border-0" : "min-h-[200px]"} `}
+          className={`editor-wrapper focus-within:border-black-500 focus-within:ring-black-400 cursor-text rounded-b-lg border border-gray-300 transition focus-within:ring-1 ${isFullscreen ? "flex-1 overflow-y-scroll rounded-none border-0" : "min-h-[200px]"} `}
           onClick={() => editor.chain().focus().run()}
         >
           <EditorContent
