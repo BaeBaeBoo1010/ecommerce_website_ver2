@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
 import { Settings, Loader2 } from "lucide-react";
 import { Product, Category } from "@/types/product";
 import Image from "next/image";
@@ -33,33 +34,28 @@ const MSG: Record<string, string> = {
   DELETE_FAILED: "Xoá thất bại",
 };
 
-/* ─── Component ─── */
-export default function ProductManagementPage() {
-  /* state */
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+export default function ProductManagementPage() {
+  /* swr */
+  const {
+    data: products = [],
+    mutate: mutateProducts,
+    isLoading,
+  } = useSWR<Product[]>("/api/products", fetcher);
+  const { data: catData } = useSWR<{ categories: Category[] }>(
+    "/api/categories",
+    fetcher,
+  );
+
+  const categories = catData?.categories ?? [];
+
+  /* UI state */
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<keyof Product | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  /* fetch data once */
-  useEffect(() => {
-    fetch("/api/products")
-      .then((res) => res.json())
-      .then(setProducts)
-      .catch(() => toast.error("Lỗi tải sản phẩm"))
-      .finally(() => setLoading(false));
-
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then((data) => setCategories(data.categories))
-      .catch(() => toast.error("Lỗi tải danh mục"));
-  }, []);
-
 
   /* sort helper */
   const handleSort = (field: keyof Product) => {
@@ -71,26 +67,26 @@ export default function ProductManagementPage() {
   };
 
   /* view list */
-const viewProducts = useMemo(() => {
-  return [...products]
-    .filter(
-      (p) => selectedCategory === "all" || p.category._id === selectedCategory,
-    )
-    .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      if (!sortField) return 0;
-      const A = a[sortField] as string | number;
-      const B = b[sortField] as string | number;
-      return typeof A === "number"
-        ? sortOrder === "asc"
-          ? A - (B as number)
-          : (B as number) - A
-        : sortOrder === "asc"
-          ? (A as string).localeCompare(B as string)
-          : (B as string).localeCompare(A as string);
-    });
-}, [products, selectedCategory, search, sortField, sortOrder]);
-
+  const viewProducts = useMemo(() => {
+    return [...products]
+      .filter(
+        (p) =>
+          selectedCategory === "all" || p.category._id === selectedCategory,
+      )
+      .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+      .sort((a, b) => {
+        if (!sortField) return 0;
+        const A = a[sortField] as string | number;
+        const B = b[sortField] as string | number;
+        return typeof A === "number"
+          ? sortOrder === "asc"
+            ? A - (B as number)
+            : (B as number) - A
+          : sortOrder === "asc"
+            ? (A as string).localeCompare(B as string)
+            : (B as string).localeCompare(A as string);
+      });
+  }, [products, selectedCategory, search, sortField, sortOrder]);
 
   /* delete category */
   const handleDeleteCategory = async () => {
@@ -111,9 +107,9 @@ const viewProducts = useMemo(() => {
         return;
       }
 
-      setCategories((prev) => prev.filter((c) => c._id !== selectedCategory));
-      setSelectedCategory("all");
       toast.success("Đã xoá danh mục");
+      // revalidate lại categories
+      mutateProducts();
     } catch {
       toast.error("Lỗi hệ thống khi xoá danh mục");
     }
@@ -123,7 +119,7 @@ const viewProducts = useMemo(() => {
   const handleDeleteProduct = async (id: string) => {
     if (!window.confirm("Bạn có chắc chắn muốn xoá sản phẩm này?")) return;
 
-    setDeletingId(id); // Đánh dấu đang xoá sản phẩm này
+    setDeletingId(id);
 
     try {
       const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
@@ -134,12 +130,16 @@ const viewProducts = useMemo(() => {
         return;
       }
 
-      setProducts((prev) => prev.filter((p) => p._id !== id));
       toast.success("Đã xoá sản phẩm");
+      // Cập nhật cache SWR
+      mutateProducts(
+        products.filter((p) => p._id !== id),
+        false,
+      );
     } catch {
       toast.error("Lỗi hệ thống khi xoá sản phẩm");
     } finally {
-      setDeletingId(null); // Xoá xong thì reset
+      setDeletingId(null);
     }
   };
 
@@ -192,7 +192,7 @@ const viewProducts = useMemo(() => {
           </div>
 
           {/* table */}
-          {loading ? (
+          {isLoading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="mr-2 h-6 w-6 animate-spin" /> Đang tải...
             </div>
