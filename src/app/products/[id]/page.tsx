@@ -11,10 +11,112 @@ export const revalidate = 120;
 
 // ✅ Hàm dùng chung check bot
 async function isCrawler() {
-  const userAgent = (await headers()).get("user-agent") || "";
-  return /(googlebot|facebookexternalhit|facebookcatalog|tiktokbot|zalo|zbot|twitterbot|bingbot)/i.test(
-    userAgent,
-  );
+  const headersList = await headers()
+  const userAgent = headersList.get("user-agent") || ""
+  const acceptHeader = headersList.get("accept") || ""
+  const acceptLanguage = headersList.get("accept-language") || ""
+  const acceptEncoding = headersList.get("accept-encoding") || ""
+
+  // Danh sách bot phổ biến và đầy đủ hơn
+  const botPatterns = [
+    // Search engine bots
+    "googlebot",
+    "bingbot",
+    "slurp",
+    "duckduckbot",
+    "baiduspider",
+    "yandexbot",
+    "sogou",
+    "exabot",
+    "facebot",
+    "ia_archiver",
+
+    // Social media bots
+    "facebookexternalhit",
+    "facebookcatalog",
+    "twitterbot",
+    "linkedinbot",
+    "pinterestbot",
+    "redditbot",
+    "whatsapp",
+    "telegrambot",
+    "discordbot",
+    "tiktokbot",
+    "zalo",
+    "zbot",
+    "viberbot",
+
+    // SEO và monitoring tools
+    "ahrefsbot",
+    "semrushbot",
+    "mj12bot",
+    "dotbot",
+    "rogerbot",
+    "screaming frog",
+    "sitebulb",
+    "deepcrawl",
+    "botify",
+    "oncrawl",
+
+    // Security và analysis bots
+    "securitytrails",
+    "shodan",
+    "censys",
+    "masscan",
+    "nmap",
+
+    // Other common bots
+    "applebot",
+    "amazonbot",
+    "slackbot",
+    "skypebot",
+    "wechatbot",
+    "vkshare",
+    "okhttp",
+    "python-requests",
+    "curl",
+    "wget",
+    "postman",
+    "insomnia",
+    "httpie",
+    "node-fetch",
+    "axios",
+  ]
+
+  // Kiểm tra user agent
+  const userAgentLower = userAgent.toLowerCase()
+  const isBotByUserAgent = botPatterns.some((pattern) => userAgentLower.includes(pattern))
+
+  // Kiểm tra các dấu hiệu đặc trưng của bot
+  const suspiciousPatterns = [
+    // User agent rỗng hoặc quá ngắn
+    userAgent.length === 0 || userAgent.length < 10,
+
+    // Không có accept header hoặc accept header đặc trưng của bot
+    !acceptHeader || acceptHeader === "*/*",
+
+    // Không có accept-language
+    !acceptLanguage,
+
+    // Accept-encoding đặc trưng của bot
+    acceptEncoding === "gzip" || acceptEncoding === "identity",
+
+    // User agent chứa các từ khóa đặc trưng
+    /bot|crawler|spider|scraper|fetcher|validator|checker|monitor/i.test(userAgent),
+
+    // User agent có format đặc trưng của bot
+    /^[a-zA-Z]+\/[\d.]+$/.test(userAgent), // Ví dụ: "curl/7.68.0"
+
+    // Các pattern đặc trưng khác
+    /headless|phantom|selenium|webdriver|puppeteer|playwright/i.test(userAgent),
+  ]
+
+  const isSuspicious = suspiciousPatterns.some(Boolean)
+
+  // Kiểm tra IP ranges của các bot lớn (optional - cần thêm logic IP checking)
+  // const clientIP = headersList.get('x-forwarded-for') || headersList.get('x-real-ip');
+
+  return isBotByUserAgent || isSuspicious
 }
 
 export async function generateMetadata({
