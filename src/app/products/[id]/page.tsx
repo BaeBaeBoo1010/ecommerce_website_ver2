@@ -5,17 +5,18 @@ import type { Metadata } from "next";
 import type { Product as ProductType } from "@/types/product";
 import ProductDetail from "@/components/product-detail";
 import ProductDetailWrapper from "@/components/product-detail-wrapper";
-import { headers } from "next/headers";
+// import { headers } from "next/headers";
+import { isCrawler } from "@/lib/is-crawler";
 
 export const revalidate = 120;
 
-// ✅ Hàm dùng chung check bot
-async function isCrawler() {
-  const userAgent = (await headers()).get("user-agent") || "";
-  return /(googlebot|facebookexternalhit|facebookcatalog|tiktokbot|zalo|zbot|twitterbot|bingbot)/i.test(
-    userAgent,
-  );
-}
+// // ✅ Hàm dùng chung check bot
+// async function isCrawler() {
+//   const userAgent = (await headers()).get("user-agent") || "";
+//   return /(googlebot|facebookexternalhit|facebookcatalog|tiktokbot|zalo|zbot|twitterbot|bingbot)/i.test(
+//     userAgent,
+//   );
+// }
 
 export async function generateMetadata({
   params,
