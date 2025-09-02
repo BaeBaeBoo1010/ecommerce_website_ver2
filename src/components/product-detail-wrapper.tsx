@@ -6,6 +6,7 @@ import ProductDetail from "./product-detail";
 import type { Product } from "@/types/product";
 import Script from "next/script";
 import Loading from "@/components/loading"
+import { useEffect } from "react";
 
 export default function ProductDetailWrapper({
   productId,
@@ -23,6 +24,13 @@ export default function ProductDetailWrapper({
     (url) => fetch(url).then((res) => res.json()),
     { fallbackData: cachedProduct },
   );
+
+  useEffect(() => {
+    if (product) {
+      const title = `${product.name} | Thiết bị điện Quang Minh`;
+      document.title = title;
+    }
+  }, [product]);
 
   if (!product) {
     return <Loading/>

@@ -21,9 +21,6 @@ const roboto = Roboto({
 export const metadata: Metadata = {
   title: "Thiết bị điện Quang Minh",
   description: "Automate your house",
-  icons: {
-    icon: "/favicon.png",
-  },
 };
 
 export default async function RootLayout({
@@ -39,6 +36,9 @@ export default async function RootLayout({
 
   return (
     <html lang="vi" className={roboto.className}>
+      <head>
+        <link rel="icon" href="/favicon.png" />
+      </head>
       <body>
         <Providers>
           <SWRConfig
