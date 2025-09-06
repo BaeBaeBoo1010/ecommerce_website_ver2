@@ -1,34 +1,69 @@
-// middleware.ts  (thư mục gốc)
+// middleware.ts
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { isbot } from "isbot";
 
 export const config = {
-  matcher: ["/admin/:path*"],      // chạy cho mọi URL /admin/**
+  matcher: ["/admin/:path*", "/products/:path*"],
 };
 
 export default async function middleware(req: NextRequest) {
-  // Lấy token từ cookie (Edge‑safe, không cần crypto Node)
-  const token =
-  (await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-    cookieName: "__Secure-authjs.session-token", // Cookie trên Vercel
-  })) ||
-  (await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-  })); // Cookie local
-  
-  // 1️⃣  Chưa đăng nhập  →  /login
-  if (!token) {
-    return NextResponse.redirect(new URL("/auth/login", req.url));
+  const { pathname } = req.nextUrl;
+
+  // ✅ 1. Check bot cho trang sản phẩm
+  if (pathname.startsWith("/products/")) {
+    const res = NextResponse.next();
+    const ua = req.headers.get("user-agent") || "";
+
+    // Lấy cookie botCache
+    const botCache = req.cookies.get("botCache")?.value ?? "user";
+
+    if (botCache === "bot") {
+      // Bot đã được cache → rewrite
+      const url = req.nextUrl.clone();
+      url.pathname = "/ssr" + pathname;
+      return NextResponse.rewrite(url);
+    }
+
+    if (botCache === "user") {
+      // User đã được cache → cho qua
+      return res;
+    }
+
+    // Nếu chưa có cookie → detect lần đầu
+    if (isbot(ua)) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/ssr" + pathname;
+      const rewriteRes = NextResponse.rewrite(url);
+      rewriteRes.cookies.set("botCache", "bot", { path: "/", maxAge: 60 * 60 });
+      return rewriteRes;
+    } else {
+      res.cookies.set("botCache", "user", { path: "/", maxAge: 60 * 60 });
+      return res;
+    }
   }
 
-  // 2️⃣  Đã đăng nhập nhưng KHÔNG phải admin → về trang chủ
-  if (token.role !== "admin") {
-    return NextResponse.redirect(new URL("/", req.url));
+  // ✅ 2. Check đăng nhập cho admin
+  if (pathname.startsWith("/admin")) {
+    const token =
+      (await getToken({
+        req,
+        secret: process.env.NEXTAUTH_SECRET,
+        cookieName: "__Secure-authjs.session-token",
+      })) ||
+      (await getToken({
+        req,
+        secret: process.env.NEXTAUTH_SECRET,
+      }));
+
+    if (!token) {
+      return NextResponse.redirect(new URL("/auth/login", req.url));
+    }
+
+    if (token.role !== "admin") {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
   }
 
-  // 3️⃣  Admin hợp lệ → cho qua
   return NextResponse.next();
 }
