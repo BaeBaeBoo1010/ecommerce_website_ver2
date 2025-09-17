@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-export const revalidate = 300;
+export const revalidate = 300; // ISR: cache 5 phút
 
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
@@ -8,6 +8,7 @@ import Footer from "@/components/footer";
 import { Toaster } from "@/components/ui/sonner";
 import Providers from "./providers";
 import "./globals.css";
+import { cache } from "react";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/product";
 import { SWRConfig } from "swr";
@@ -16,6 +17,14 @@ const roboto = Roboto({
   subsets: ["latin"],
   weight: ["400", "700"],
   display: "swap",
+});
+
+const getProducts = cache(async () => {
+  await connectMongoDB();
+  const products = await Product.find()
+    .populate("category", "name slug")
+    .lean();
+  return JSON.parse(JSON.stringify(products));
 });
 
 export const metadata: Metadata = {
@@ -28,11 +37,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Fetch dữ liệu từ MongoDB khi render server
-  await connectMongoDB();
-  const products = await Product.find()
-    .populate("category", "name slug")
-    .lean();
+  const products = await getProducts(); // Cached + ISR
 
   return (
     <html lang="vi" className={roboto.className}>
@@ -43,9 +48,7 @@ export default async function RootLayout({
         <Providers>
           <SWRConfig
             value={{
-              fallback: {
-                "/api/products": JSON.parse(JSON.stringify(products)),
-              },
+              fallback: { "/api/products": products },
               revalidateOnFocus: false,
               revalidateOnReconnect: false,
               revalidateIfStale: false,
@@ -58,9 +61,7 @@ export default async function RootLayout({
               theme="light"
               position="top-left"
               className="!top-18 !w-80 sm:!top-26"
-              toastOptions={{
-                duration: 3000,
-              }}
+              toastOptions={{ duration: 3000 }}
             />
             <main>{children}</main>
             <Footer />
