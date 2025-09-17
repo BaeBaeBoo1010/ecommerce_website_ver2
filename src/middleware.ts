@@ -2,13 +2,20 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
 export const config = {
-  matcher: ["/admin/:path*"], // ❌ bỏ /products vì không cần rewrite hay check bot
+  matcher: ["/admin/:path*", "/products/:path*"],
 }
 
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // ✅ Check đăng nhập cho admin
+  // ✅ 1. Rewrite toàn bộ trang sản phẩm sang SSR
+  if (pathname.startsWith("/products/")) {
+    const url = req.nextUrl.clone()
+    url.pathname = "/ssr" + pathname
+    return NextResponse.rewrite(url)
+  }
+
+  // ✅ 2. Check đăng nhập cho admin
   if (pathname.startsWith("/admin")) {
     try {
       const token =
