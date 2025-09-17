@@ -24,12 +24,17 @@ export default async function middleware(req: NextRequest) {
     // Nếu chưa cache, detect user-agent
     if (!botCache) {
       try {
+        const acceptHeader = req.headers.get("accept") || ""
+        const isHtmlRequest = acceptHeader.includes("text/html")
+        const isGetRequest = req.method === "GET"
+
         const isBotRequest =
-          isbot(ua) ||
-          ua.toLowerCase().includes("bot") ||
-          ua.toLowerCase().includes("crawler") ||
-          ua.toLowerCase().includes("spider") ||
-          req.headers.get("accept")?.includes("text/html") === false
+          isGetRequest &&
+          isHtmlRequest &&
+          (isbot(ua) ||
+            ua.toLowerCase().includes("bot") ||
+            ua.toLowerCase().includes("crawler") ||
+            ua.toLowerCase().includes("spider"))
 
         if (isBotRequest) {
           const url = req.nextUrl.clone()
@@ -38,7 +43,7 @@ export default async function middleware(req: NextRequest) {
 
           rewriteRes.cookies.set("botCache", "bot", {
             path: "/products",
-            maxAge: 86400 * 7, // 7 days instead of 1 hour
+            maxAge: 86400 * 7, // 7 days
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
@@ -46,10 +51,9 @@ export default async function middleware(req: NextRequest) {
           return rewriteRes
         } else {
           const res = NextResponse.next()
-
           res.cookies.set("botCache", "user", {
             path: "/products",
-            maxAge: 86400 * 7, // 7 days instead of 1 hour
+            maxAge: 86400 * 7, // 7 days
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
@@ -58,11 +62,10 @@ export default async function middleware(req: NextRequest) {
         }
       } catch (error) {
         console.error("[Middleware] Bot detection error:", error)
-        // Fallback to treating as user if detection fails
         const res = NextResponse.next()
         res.cookies.set("botCache", "user", {
           path: "/products",
-          maxAge: 3600, // Shorter cache for error cases
+          maxAge: 3600,
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
@@ -71,9 +74,9 @@ export default async function middleware(req: NextRequest) {
       }
     }
 
-    // Nếu cache là user → cho qua
     return NextResponse.next()
   }
+
 
   // ✅ 2. Check đăng nhập cho admin
   if (pathname.startsWith("/admin")) {
