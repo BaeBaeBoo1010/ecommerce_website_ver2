@@ -2,7 +2,7 @@
 export const revalidate = 300; // ISR: cache 5 phút
 
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
+import { Roboto, Inter } from "next/font/google";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Toaster } from "@/components/ui/sonner";
@@ -17,6 +17,14 @@ const roboto = Roboto({
   subsets: ["latin"],
   weight: ["400", "700"],
   display: "swap",
+  variable: "--font-roboto",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
+  variable: "--font-inter",
 });
 
 const getProducts = cache(async () => {
@@ -40,7 +48,13 @@ export default async function RootLayout({
   const products = await getProducts(); // Cached + ISR
 
   return (
-    <html lang="vi" className={roboto.className}>
+    <html
+      lang="vi"
+      className={`${inter.variable} ${roboto.variable}`}
+      style={{
+        fontFamily: "var(--font-inter), var(--font-roboto), sans-serif",
+      }}
+    >
       <head>
         <link rel="icon" href="/favicon.png" />
       </head>

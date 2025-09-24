@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import type React from "react";
@@ -43,7 +44,8 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import RichTextEditor from "@/components/rich-text-editor";
+import TinyEditor from "@/components/tiny-editor";
+import { useRouter } from "next/navigation";
 
 /* ---------- Types ---------- */
 interface Category {
@@ -124,6 +126,7 @@ function SortableImage({
 }
 
 export default function AddProductPage() {
+  const router = useRouter(); 
   const formRef = useRef<HTMLFormElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -177,6 +180,54 @@ export default function AddProductPage() {
     setArticleContent("");
   }
 
+  // Function to extract and upload images from rich text
+  async function uploadArticleImages(
+    htmlContent: string,
+    productCode: string,
+  ): Promise<string> {
+    if (!htmlContent) return htmlContent;
+
+    const tempImages =
+      ((TinyEditor as any).getTempImages?.() as Map<string, File>) || new Map();
+    if (tempImages.size === 0) return htmlContent;
+
+    let updatedContent = htmlContent;
+    let imageCounter = 1;
+
+    await Promise.all(
+      Array.from(tempImages.entries()).map(async ([tempUrl, file]) => {
+        if (!updatedContent.includes(tempUrl)) return;
+
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("productCode", productCode);
+          formData.append("public_id", imageCounter.toString());
+
+          const uploadResponse = await fetch("/api/upload-image", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (uploadResponse.ok) {
+            const { url } = await uploadResponse.json();
+            updatedContent = updatedContent.replace(
+              new RegExp(tempUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
+              url,
+            );
+            imageCounter++;
+          }
+        } catch (error) {
+          console.error("Error uploading article image:", error);
+        }
+      }),
+    );
+
+    (TinyEditor as any).clearTempImages?.();
+    return updatedContent;
+  }
+
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -192,10 +243,21 @@ export default function AddProductPage() {
     const formData = new FormData(e.currentTarget);
     formData.set("category", selectedCategory);
 
-    // Add article content if enabled
-    if (hasArticle) {
-      formData.set("articleContent", articleContent);
+    let finalArticleContent = articleContent;
+    if (hasArticle && articleContent) {
+      const productCode = (formData.get("productCode") as string)?.trim();
+      if (productCode) {
+        finalArticleContent = await uploadArticleImages(
+          articleContent,
+          productCode,
+        );
+      }
     }
+
+    // Add processed article content + trạng thái bật/tắt bài viết
+    formData.set("articleHtml", hasArticle ? finalArticleContent : "");
+    formData.set("isArticleEnabled", hasArticle.toString());
+
 
     images.forEach((img) => {
       formData.append("images", img.file);
@@ -221,6 +283,7 @@ export default function AddProductPage() {
       }
 
       toast.success("🎉 Đã thêm sản phẩm");
+      router.refresh();
       resetForm();
     } catch (error) {
       console.error("Lỗi hệ thống:", error);
@@ -574,8 +637,8 @@ export default function AddProductPage() {
                     className="space-y-2 overflow-hidden"
                   >
                     <Label>Nội dung bài viết</Label>
-                    <RichTextEditor
-                      content={articleContent}
+                    <TinyEditor
+                      value={articleContent}
                       onChange={setArticleContent}
                       placeholder="Viết bài viết chi tiết về sản phẩm..."
                     />

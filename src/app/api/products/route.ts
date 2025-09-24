@@ -52,6 +52,7 @@ export async function POST(req: Request) {
     const category = formData.get("category") as string;
     const productCode = (formData.get("productCode") as string)?.trim();
     const articleHtml = (formData.get("articleHtml") as string)?.trim() || "";
+    const isArticleEnabled = formData.get("isArticleEnabled") === "true";
 
     if (!files.length || !name || !productCode || !category || isNaN(price)) {
       return NextResponse.json(
@@ -101,6 +102,7 @@ export async function POST(req: Request) {
       productCode,
       imageUrls,
       articleHtml,
+      isArticleEnabled,
     });
 
     return NextResponse.json(
