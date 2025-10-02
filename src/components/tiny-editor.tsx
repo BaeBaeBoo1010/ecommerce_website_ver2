@@ -144,11 +144,9 @@ export default function TinyEditor({
             "code",
             "help",
             "wordcount",
-            "formatpainter",
-            "editimage",
           ],
           toolbar:
-            "undo redo formatpainter | blocks fontsizeinput | " +
+            "undo redo | blocks fontsizeinput | " +
             " bold italic underline forecolor backcolor | alignleft aligncenter " +
             "alignright alignjustify | bullist numlist outdent indent | fullscreen",
           font_size_input_default_unit: "px",

@@ -98,10 +98,6 @@ export default function SearchCommand() {
     };
   }, [query, allProducts]);
 
-  useEffect(() => {
-    console.log("results", results); // 👈 kiểm tra đủ chưa
-  }, [results]);
-
   /* Khi chọn gợi ý hoặc Enter */
   const handleSelect = (item: { id: string; name: string }) => {
     setOpen(false);
