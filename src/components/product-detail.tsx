@@ -147,7 +147,7 @@ export default function ProductDetail({ product }: { product: Product }) {
               <Swiper
                 spaceBetween={10}
                 slidesPerView={1}
-                loop={true}
+                loop={product.imageUrls.length > 1}
                 effect="fade"
                 fadeEffect={{ crossFade: true }}
                 onSlideChange={(swiper) =>
