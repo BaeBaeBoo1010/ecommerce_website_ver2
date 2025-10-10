@@ -1,14 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* app/api/products/article-upload/route.ts */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server"
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary"
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-})
+cloudinary.config(true);
 
 const ERROR = {
   MISSING_FIELD: "MISSING_FIELD",

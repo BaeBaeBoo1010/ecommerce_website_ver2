@@ -1,3 +1,4 @@
+// api/products/route.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
@@ -5,7 +6,7 @@ import { Product } from "@/models/product";
 import { Category } from "@/models/category";
 import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 
-cloudinary.config({ secure: true });
+cloudinary.config(true);
 
 const ERROR = {
   DUP_NAME: "DUP_NAME",
