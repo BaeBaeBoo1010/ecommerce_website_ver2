@@ -69,18 +69,16 @@ export default function ProductManagementPage() {
     setCurrentPage(1);
   }, [selectedCategory, search, sortField, sortOrder]);
 
-  
-  
-useEffect(() => {
-  if (containerRef.current) {
-    const top =
-      containerRef.current.getBoundingClientRect().top + window.scrollY - 106; // offset 26px
-    window.scrollTo({
-      top,
-      behavior: "smooth",
-    });
-  }
-}, [currentPage]);
+  useEffect(() => {
+    if (containerRef.current) {
+      const top =
+        containerRef.current.getBoundingClientRect().top + window.scrollY - 106; // offset 26px
+      window.scrollTo({
+        top,
+        behavior: "smooth",
+      });
+    }
+  }, [currentPage]);
 
   /* sort helper */
   const handleSort = (field: keyof Product) => {
@@ -246,14 +244,14 @@ useEffect(() => {
                 <Button
                   variant="destructive"
                   onClick={handleDeleteCategory}
-                  className="gap-2 shadow-sm transition-all hover:shadow-md"
+                  className="gap-2 shadow-sm transition-all hover:shadow-lg"
                 >
                   <Trash2 className="h-4 w-4" />
                   Xoá danh mục
                 </Button>
 
                 <Link href="/admin/add-product">
-                  <Button className="gap-2 shadow-sm transition-all hover:shadow-md">
+                  <Button className="gap-2 bg-green-600 shadow-sm transition-all hover:bg-green-400 hover:shadow-lg">
                     <Plus className="h-4 w-4" />
                     Thêm sản phẩm
                   </Button>
@@ -297,7 +295,7 @@ useEffect(() => {
               <div className="border-border/50 overflow-hidden rounded-xl border shadow-sm">
                 <div className="overflow-x-auto">
                   <Table className="w-full table-fixed">
-                    <TableHeader>
+                    <TableHeader className="select-none">
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
                         <TableHead className="w-16 font-semibold">
                           Ảnh
@@ -322,7 +320,14 @@ useEffect(() => {
                           onClick={() => handleSort("productCode")}
                           className="hover:text-primary w-24 cursor-pointer font-semibold transition-colors"
                         >
-                          Mã SP
+                          <div className="flex items-center gap-2">
+                            Mã SP
+                            {sortField === "productCode" && (
+                              <span className="text-primary">
+                                {sortOrder === "asc" ? "↑" : "↓"}
+                              </span>
+                            )}
+                          </div>
                         </TableHead>
 
                         <TableHead className="w-32 font-semibold">
@@ -362,8 +367,7 @@ useEffect(() => {
                             </div>
                           </TableCell>
 
-                          {/* wrap text */}
-                          <TableCell className="w-80 break-words">
+                          <TableCell className="w-80 break-words whitespace-normal">
                             {p.name}
                           </TableCell>
 
@@ -376,7 +380,7 @@ useEffect(() => {
                             </Badge>
                           </TableCell>
 
-                          <TableCell className="w-32 break-words">
+                          <TableCell className="w-32 break-words whitespace-normal">
                             <div className="space-y-1">
                               <div className="text-sm font-medium">
                                 {p.category?.name}

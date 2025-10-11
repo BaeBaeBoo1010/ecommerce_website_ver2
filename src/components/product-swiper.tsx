@@ -94,7 +94,7 @@ export default function ProductSwiper({
                   href={`/products/${p._id}`}
                   className="group flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:shadow-lg sm:h-96"
                 >
-                  <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
+                  <div className="relative aspect-square w-full rounded-lg bg-white">
                     <Image
                       src={p.imageUrls?.[0] || "/images/placeholder.png"}
                       alt={p.name}
@@ -106,11 +106,11 @@ export default function ProductSwiper({
                   </div>
 
                   <div className="mt-3 flex flex-grow flex-col">
-                    <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:text-lg">
+                    <h3 className="line-clamp-3 text-sm font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:text-lg">
                       {p.name}
                     </h3>
                     <p className="mt-auto text-base font-bold text-[#ee4d2d] sm:text-lg">
-                      {p.price.toLocaleString("vi-VN")} đ
+                      {p.price.toLocaleString("vi-VN")}<span className="text-xs">đ</span>
                     </p>
                   </div>
                 </Link>

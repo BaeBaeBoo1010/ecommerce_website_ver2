@@ -338,9 +338,8 @@ export default function AddProductPage() {
           <div className="flex gap-2">
             {/* Nút Reset */}
             <Button
-              type="button"
               variant="destructive"
-              className="flex items-center gap-2 px-3 py-1 text-sm font-medium"
+              className="flex items-center shadow-sm gap-2 px-3 py-1 text-sm font-medium hover:shadow-lg"
               onClick={() => {
                 if (
                   confirm(
@@ -358,7 +357,7 @@ export default function AddProductPage() {
             {/* Nút Về trang quản lý */}
             <Link
               href="/admin/product-management"
-              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white shadow transition-colors hover:bg-blue-700"
+              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-400 hover:shadow-lg"
             >
               <ArrowLeft className="h-4 w-4" />
               Về trang quản lý

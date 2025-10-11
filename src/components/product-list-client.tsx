@@ -125,7 +125,13 @@ export default function ProductListClient() {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", page.toString());
     router.push(`/products?${params.toString()}`);
+
+    // Đợi router render rồi mới scroll
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 150);
   };
+
 
   /* ----------------- Render ----------------- */
   return (
@@ -218,48 +224,60 @@ export default function ProductListClient() {
 
       {/* Pagination */}
       {!isLoading && totalPages > 1 && (
-        <div className="mt-10 flex justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            « Trước
-          </Button>
+        <div className="flex flex-col items-center gap-4 pt-10 sm:flex-row sm:justify-between">
+          <p className="text-muted-foreground text-sm">
+            Trang {currentPage} / {totalPages} • Hiển thị{" "}
+            {paginatedProducts.length} / {filteredProducts.length} sản phẩm
+          </p>
 
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter(
-              (page) =>
-                Math.abs(page - currentPage) <= 2 ||
-                page === 1 ||
-                page === totalPages,
-            )
-            .map((page, idx, arr) => {
-              const prev = arr[idx - 1];
-              const showDots = prev && page - prev > 1;
-              return (
-                <span key={page} className="flex items-center gap-1">
-                  {showDots && <span className="px-1">…</span>}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={currentPage === 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              className="gap-1 transition-all hover:shadow-sm disabled:opacity-50"
+            >
+              ← Trước
+            </Button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+
+                return (
                   <Button
-                    variant={page === currentPage ? "secondary" : "outline"}
+                    key={pageNum}
                     size="sm"
-                    onClick={() => handlePageChange(page)}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    onClick={() => handlePageChange(pageNum)}
+                    className="h-9 w-9 p-0 transition-all hover:shadow-sm"
                   >
-                    {page}
+                    {pageNum}
                   </Button>
-                </span>
-              );
-            })}
+                );
+              })}
+            </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            Sau »
-          </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+              className="gap-1 transition-all hover:shadow-sm disabled:opacity-50"
+            >
+              Sau →
+            </Button>
+          </div>
         </div>
       )}
     </div>

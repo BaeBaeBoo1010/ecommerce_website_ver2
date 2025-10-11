@@ -255,7 +255,7 @@
 }
 
 /* Cho phép chọn chữ, nhưng không chọn được hình ảnh hoặc icon */
-img, svg, picture, canvas, p, span, h1, h2, h3, h4, h5, h6, label, Button {
+* {
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: auto;

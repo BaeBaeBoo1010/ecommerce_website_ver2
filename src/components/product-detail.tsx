@@ -20,6 +20,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { StaticImport } from "next/dist/shared/lib/get-img-props";
+import { useInView } from "react-intersection-observer";
 
 function QuantitySelector({
   quantity,
@@ -103,6 +104,10 @@ export default function ProductDetail({ product }: { product: Product }) {
   const [thumbsSwiper, setThumbsSwiper] = useState<any>(null);
   const [activeThumbIndex, setActiveThumbIndex] = useState(0);
   const [showQuantitySelector, setShowQuantitySelector] = useState(false);
+  const { ref: articleRef, inView: articleInView } = useInView({
+    triggerOnce: true,
+    rootMargin: "200px", // bắt đầu load sớm khi người dùng gần tới
+  });
 
   useEffect(() => {
     if (openSheet) {
@@ -139,173 +144,250 @@ export default function ProductDetail({ product }: { product: Product }) {
 
   return (
     <>
-      <main>
-        <div className="flex flex-col rounded-sm bg-white md:flex-row">
-          {/* Ảnh sản phẩm */}
-          <div className="flex items-center justify-center md:max-w-[600px] md:flex-1">
-            <div className="w-full max-w-[600px]">
-              <Swiper
-                spaceBetween={10}
-                slidesPerView={1}
-                loop={product.imageUrls.length > 1}
-                effect="fade"
-                fadeEffect={{ crossFade: true }}
-                onSlideChange={(swiper) =>
-                  setActiveThumbIndex(swiper.realIndex)
-                }
-                thumbs={{ swiper: thumbsSwiper }}
-                modules={[Thumbs, EffectFade]}
-                className="rounded-sm"
-              >
-                {product.imageUrls.map((url, index) => (
-                  <SwiperSlide key={index}>
-                    <div className="relative h-[250px] w-full bg-white sm:h-[300px] md:h-[400px]">
-                      <Image
-                        src={url}
-                        alt={`${product.name} ${index + 1}`}
-                        fill
-                        className="object-contain"
-                        priority={index === 0}
-                        loading={index === 0 ? "eager" : "lazy"}
-                        placeholder="blur"
-                        blurDataURL="/images/placeholder-image.jpg"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 600px"
-                      />
-                    </div>
-                  </SwiperSlide>
-                ))}
-              </Swiper>
-
-              {/* Thumbnails */}
-              {product.imageUrls.length > 1 && (
-                <div className="mt-2 flex justify-center">
+      <div className="min-h-screen bg-gray-100">
+        <main className="mx-auto w-full max-w-7xl px-4 py-8 md:px-8">
+          {/* Card tổng */}
+          <div className="rounded-lg bg-white">
+            {/* Thông tin sản phẩm */}
+            <div className="flex flex-col lg:flex-row">
+              {/* Ảnh sản phẩm */}
+              <div className="flex items-center justify-center md:max-w-[600px] md:flex-1">
+                <div className="w-full max-w-[600px]">
                   <Swiper
-                    onSwiper={setThumbsSwiper}
-                    spaceBetween={8}
-                    slidesPerView={Math.min(product.imageUrls.length, 5)}
-                    loop={false}
-                    breakpoints={{
-                      0: { spaceBetween: 4 },
-                      640: { spaceBetween: 8 },
-                      1024: { spaceBetween: 15 },
-                    }}
-                    className="mt-0 !overflow-visible md:mt-2"
-                    modules={[Thumbs]}
+                    spaceBetween={10}
+                    slidesPerView={1}
+                    loop={product.imageUrls.length > 1}
+                    effect="fade"
+                    fadeEffect={{ crossFade: true }}
+                    onSlideChange={(swiper) =>
+                      setActiveThumbIndex(swiper.realIndex)
+                    }
+                    thumbs={{ swiper: thumbsSwiper }}
+                    modules={[Thumbs, EffectFade]}
+                    className="rounded-sm"
                   >
                     {product.imageUrls.map((url, index) => (
-                      <SwiperSlide key={index} className="group !w-auto">
-                        <div
-                          className={`relative h-[30px] w-[30px] cursor-pointer overflow-hidden rounded-xl border-2 border-gray-300 opacity-50 transition-all duration-300 ease-in-out lg:h-[70px] lg:w-[70px] ${
-                            index === activeThumbIndex
-                              ? "scale-110 border-gray-600 opacity-100 shadow-md"
-                              : "hover:opacity-100"
-                          }`}
-                        >
+                      <SwiperSlide key={index}>
+                        <div className="relative h-[250px] w-full bg-white sm:h-[300px] md:h-[400px]">
                           <Image
                             src={url}
-                            alt={`Thumbnail ${index + 1}`}
+                            alt={`${product.name} ${index + 1}`}
                             fill
                             className="object-contain"
-                            loading="lazy"
-                            sizes="(max-width: 768px) 30px, (max-width: 1024px) 50px, 70px"
+                            priority={index === 0}
+                            loading={index === 0 ? "eager" : "lazy"}
+                            placeholder="blur"
+                            blurDataURL="/images/placeholder-image.jpg"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 600px"
                           />
                         </div>
                       </SwiperSlide>
                     ))}
                   </Swiper>
+
+                  {/* Thumbnails */}
+                  {product.imageUrls.length > 1 && (
+                    <div className="mt-2 flex justify-center">
+                      <Swiper
+                        onSwiper={setThumbsSwiper}
+                        spaceBetween={8}
+                        slidesPerView={Math.min(product.imageUrls.length, 5)}
+                        loop={false}
+                        breakpoints={{
+                          0: { spaceBetween: 4 },
+                          640: { spaceBetween: 8 },
+                          1024: { spaceBetween: 15 },
+                        }}
+                        className="mt-0 !overflow-visible md:mt-2"
+                        modules={[Thumbs]}
+                      >
+                        {product.imageUrls.map((url, index) => (
+                          <SwiperSlide key={index} className="group !w-auto">
+                            <div
+                              className={`relative h-[30px] w-[30px] cursor-pointer overflow-hidden rounded-xl border-2 border-gray-300 opacity-50 transition-all duration-300 ease-in-out lg:h-[70px] lg:w-[70px] ${
+                                index === activeThumbIndex
+                                  ? "scale-110 border-gray-600 opacity-100 shadow-md"
+                                  : "hover:opacity-100"
+                              }`}
+                            >
+                              <Image
+                                src={url}
+                                alt={`Thumbnail ${index + 1}`}
+                                fill
+                                className="object-contain"
+                                loading="lazy"
+                                sizes="(max-width: 768px) 30px, (max-width: 1024px) 50px, 70px"
+                              />
+                            </div>
+                          </SwiperSlide>
+                        ))}
+                      </Swiper>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* Thông tin sản phẩm */}
-          <section className="flex flex-col justify-between p-6 md:flex-1">
-            <div>
-              <h1 className="mb-5 text-4xl font-extrabold tracking-tight text-gray-900">
-                {product.name}
-              </h1>
+              {/* Nội dung thông tin sản phẩm */}
+              <section className="flex flex-col justify-between p-6 md:flex-1">
+                <div>
+                  <h1 className="mb-5 text-4xl font-extrabold tracking-tight text-gray-900">
+                    {product.name}
+                  </h1>
 
-              {typeof product.category === "object" && (
-                <p className="mb-4 text-sm text-gray-500">
-                  Danh mục:{" "}
-                  <Link
-                    href={`/products?category=${product.category.slug}&page=1`}
-                    shallow
-                    className="cursor-pointer rounded-lg bg-gray-200 p-2 font-medium transition-all hover:text-blue-500"
-                    aria-label={`Xem sản phẩm danh mục ${product.category.name}`}
-                  >
-                    {product.category.name}
-                  </Link>
-                </p>
-              )}
-
-              <p className="mb-6 text-4xl font-bold text-[#EE4D2D]">
-                {product.price.toLocaleString("vi-VN")} ₫
-              </p>
-
-              <div className="prose mb-8 max-w-none text-gray-700">
-                {product.description ? (
-                  <>
-                    {/* Mobile: cắt mô tả nếu dài */}
-                    <p className="block md:hidden">
-                      {showFullDescription || product.description.length <= 250
-                        ? product.description
-                        : `${product.description.slice(0, 250)}...`}
-                      {product.description.length > 250 && (
-                        <button
-                          onClick={() =>
-                            setShowFullDescription(!showFullDescription)
-                          }
-                          className="ml-1 text-blue-600 underline"
-                        >
-                          {showFullDescription ? "Thu gọn" : "Xem thêm"}
-                        </button>
-                      )}
+                  {typeof product.category === "object" && (
+                    <p className="mb-4 text-sm text-gray-500">
+                      Danh mục:{" "}
+                      <Link
+                        href={`/products?category=${product.category.slug}&page=1`}
+                        shallow
+                        className="cursor-pointer rounded-lg bg-gray-200 p-2 font-medium transition-all hover:text-blue-500"
+                      >
+                        {product.category.name}
+                      </Link>
                     </p>
+                  )}
 
-                    {/* Desktop: luôn hiển thị đầy đủ */}
-                    <p className="hidden md:block">{product.description}</p>
-                  </>
-                ) : (
-                  <p className="text-gray-400 italic">
-                    Chưa có mô tả cho sản phẩm này.
+                  <p className="mb-6 text-4xl font-bold text-[#EE4D2D]">
+                    {product.price.toLocaleString("vi-VN")} ₫
                   </p>
+
+                  <div className="prose mb-8 max-w-none text-gray-700">
+                    {product.description ? (
+                      <>
+                        {/* Mobile: cắt mô tả nếu dài */}
+                        <p className="block md:hidden">
+                          {showFullDescription ||
+                          product.description.length <= 250
+                            ? product.description
+                            : `${product.description.slice(0, 250)}...`}
+                          {product.description.length > 250 && (
+                            <button
+                              onClick={() =>
+                                setShowFullDescription(!showFullDescription)
+                              }
+                              className="ml-1 text-blue-600 underline"
+                            >
+                              {showFullDescription ? "Thu gọn" : "Xem thêm"}
+                            </button>
+                          )}
+                        </p>
+
+                        {/* Desktop: luôn hiển thị đầy đủ */}
+                        <p className="hidden md:block">{product.description}</p>
+                      </>
+                    ) : (
+                      <p className="text-gray-400 italic">
+                        Chưa có mô tả cho sản phẩm này.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Chọn số lượng - desktop */}
+                  <div className="hidden items-center gap-4 md:flex">
+                    <label
+                      htmlFor="quantity"
+                      className="text-lg font-semibold text-gray-700"
+                    >
+                      Số lượng:
+                    </label>
+                    <QuantitySelector
+                      quantity={quantity}
+                      setQuantity={setQuantity}
+                    />
+                  </div>
+                </div>
+
+                {/* Nút hành động - desktop */}
+                <div className="mt-6 hidden flex-col gap-4 md:flex md:flex-row md:gap-6">
+                  <button
+                    className="flex-1 cursor-pointer rounded-lg border-2 border-indigo-500 bg-white p-4 text-indigo-600 shadow-sm transition-colors duration-300 hover:bg-indigo-50 hover:text-indigo-700 focus:ring-4 focus:ring-indigo-200 focus:outline-none"
+                    onClick={() => handleAction("add")}
+                  >
+                    Thêm vào giỏ hàng
+                  </button>
+                  <button
+                    className="flex-1 cursor-pointer rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 p-4 text-lg font-semibold text-white shadow-md transition-transform duration-300 hover:scale-[1.07] hover:from-blue-700 hover:to-indigo-600 focus:ring-4 focus:ring-indigo-300 focus:outline-none"
+                    onClick={() => handleAction("buy")}
+                  >
+                    Mua ngay
+                  </button>
+                </div>
+              </section>
+            </div>
+
+            {/* Bài viết chi tiết */}
+            {product.isArticleEnabled && product.articleHtml && (
+              <section
+                ref={articleRef}
+                className="mt-10 min-h-[200px] rounded-lg bg-white p-6 shadow-sm"
+              >
+                {articleInView ? (
+                  <article
+                    className="prose prose-headings:font-semibold prose-headings:text-gray-900 prose-a:text-blue-600 hover:prose-a:underline prose-strong:text-gray-800 prose-img:mx-auto prose-img:rounded-lg prose-img:shadow-md prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-table:overflow-hidden prose-table:rounded-lg prose-table:border prose-table:border-gray-200 prose-th:bg-gray-100 prose-th:text-gray-800 prose-td:border-gray-200 dark:prose-invert animate-fadeIn max-w-none"
+                    dangerouslySetInnerHTML={{ __html: product.articleHtml }}
+                  />
+                ) : (
+                  <div className="flex h-40 items-center justify-center text-gray-400">
+                    <span>Đang tải bài viết...</span>
+                  </div>
                 )}
-              </div>
 
-              {/* Chọn số lượng - desktop */}
-              <div className="hidden items-center gap-4 md:flex">
-                <label
-                  htmlFor="quantity"
-                  className="text-lg font-semibold text-gray-700"
-                >
-                  Số lượng:
-                </label>
-                <QuantitySelector
-                  quantity={quantity}
-                  setQuantity={setQuantity}
-                />
-              </div>
-            </div>
+                {/* Responsive media styles */}
+                <style jsx>{`
+                  @keyframes fadeIn {
+                    from {
+                      opacity: 0;
+                      transform: translateY(10px);
+                    }
+                    to {
+                      opacity: 1;
+                      transform: translateY(0);
+                    }
+                  }
 
-            {/* Nút hành động - desktop */}
-            <div className="mt-6 hidden flex-col gap-4 md:flex md:flex-row md:gap-6">
-              <button
-                className="flex-1 cursor-pointer rounded-lg border-2 border-indigo-500 bg-white p-4 text-indigo-600 shadow-sm transition-colors duration-300 hover:bg-indigo-50 hover:text-indigo-700 focus:ring-4 focus:ring-indigo-200 focus:outline-none"
-                onClick={() => handleAction("add")}
-              >
-                Thêm vào giỏ hàng
-              </button>
-              <button
-                className="flex-1 cursor-pointer rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 p-4 text-lg font-semibold text-white shadow-md transition-transform duration-300 hover:scale-[1.07] hover:from-blue-700 hover:to-indigo-600 focus:ring-4 focus:ring-indigo-300 focus:outline-none"
-                onClick={() => handleAction("buy")}
-              >
-                Mua ngay
-              </button>
-            </div>
-          </section>
-        </div>
-      </main>
+                  .animate-fadeIn {
+                    animation: fadeIn 0.5s ease-in-out;
+                  }
+
+                  article iframe {
+                    width: 100%;
+                    height: 400px;
+                    border-radius: 12px;
+                    margin: 1.5rem 0;
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                  }
+
+                  @media (max-width: 768px) {
+                    article iframe {
+                      height: 240px;
+                    }
+                  }
+
+                  article img {
+                    display: block;
+                    margin: 1.25rem auto;
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: 12px;
+                    object-fit: contain;
+                  }
+
+                  article figure {
+                    margin: 1.5rem 0;
+                    text-align: center;
+                  }
+
+                  article figcaption {
+                    font-size: 0.9rem;
+                    color: #6b7280;
+                    margin-top: 0.5rem;
+                  }
+                `}</style>
+              </section>
+            )}
+          </div>
+        </main>
+      </div>
 
       {/* Nút hành động - mobile */}
       <div className="fixed right-0 bottom-0 left-0 z-10 flex items-center justify-between gap-2 bg-white p-4 shadow-md md:hidden">

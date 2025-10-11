@@ -3,22 +3,19 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image, { ImageProps } from "next/image";
-import clsx from "clsx";
 import type { Product } from "@/types/product";
 
 interface ProductCardProps {
   product: Product;
-  href?: string; // custom link
-  className?: string; // override wrapper
-  priceClassName?: string; // override price color
-  imageProps?: Partial<ImageProps>; // tuỳ biến thẻ Image Next
+  href?: string;
+  className?: string;
+  priceClassName?: string;
+  imageProps?: Partial<ImageProps>;
 }
 
 const ProductCard = ({
   product,
   href = `/products/${product._id}`,
-  className = "",
-  priceClassName = "text-[#EE4D2D]",
   imageProps = {},
 }: ProductCardProps) => {
   const [loaded, setLoaded] = useState(false);
@@ -26,14 +23,11 @@ const ProductCard = ({
   return (
     <Link
       href={href}
-      className={clsx(
-        "group rounded-xl border p-2 transition hover:scale-105 hover:shadow-md",
-        className,
-      )}
+      className="group group flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-lg sm:h-90"
     >
       {/* Ảnh */}
       <div
-        className="relative w-full overflow-hidden rounded"
+        className="relative w-full rounded"
         style={{ height: imageProps.height ?? 208 }}
       >
         {!loaded && (
@@ -45,26 +39,23 @@ const ProductCard = ({
           alt={product.name}
           fill
           sizes={imageProps.sizes ?? "(max-width:1024px) 50vw, 25vw"}
-          className={clsx(
-            "object-contain transition-opacity duration-500",
-            loaded ? "opacity-100" : "opacity-0",
-            imageProps.className,
-          )}
+          className="object-contain transition-transform duration-300 group-hover:scale-105"
           onLoad={() => setLoaded(true)}
           loading="lazy"
-          blurDataURL="/images/placeholder-image.jpg"
-          placeholder="blur"
           priority={false}
           {...imageProps}
         />
       </div>
 
       {/* Nội dung */}
-      <div className="mt-2 line-clamp-2 text-lg font-semibold text-gray-800 transition group-hover:text-blue-600">
-        {product.name}
-      </div>
-      <div className={clsx("mt-1 text-lg font-bold", priceClassName)}>
-        {product.price.toLocaleString("vi-VN")} đ
+      <div className="mt-3 flex flex-grow flex-col">
+        <h3 className="line-clamp-3 text-sm font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:text-lg">
+          {product.name}
+        </h3>
+        <p className="mt-auto text-base font-bold text-[#ee4d2d] sm:text-lg">
+          {product.price.toLocaleString("vi-VN")}
+          <span className="text-xs">đ</span>
+        </p>
       </div>
     </Link>
   );
