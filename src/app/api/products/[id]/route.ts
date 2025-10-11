@@ -4,6 +4,9 @@ import { Product } from "@/models/product"
 import { v2 as cloudinary } from "cloudinary"
 import type { UploadApiResponse } from "cloudinary"
 
+if (!process.env.CLOUDINARY_URL) {
+  console.error("⚠️ Missing CLOUDINARY_URL in environment");
+}
 cloudinary.config({ secure: true })
 
 function extractPublicId(url: string) {

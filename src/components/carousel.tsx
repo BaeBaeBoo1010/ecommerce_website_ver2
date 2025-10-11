@@ -38,7 +38,6 @@ export default function Carousel({ isLoading }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const swiperRef = useRef<SwiperType | null>(null);
 
-
   /* ---------- SKELETON PLACEHOLDERS ---------- */
   const SkeletonTextBlock = () => (
     <div className="space-y-4 md:space-y-5">
@@ -63,7 +62,7 @@ export default function Carousel({ isLoading }: Props) {
       <div
         onMouseEnter={() => swiperRef.current?.autoplay?.stop()}
         onMouseLeave={() => swiperRef.current?.autoplay?.start()}
-        className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-8 px-4 py-2 sm:px-6 sm:py-4 md:grid-cols-2"
+        className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-8 px-4 py-2 pb-10 sm:px-6 sm:py-4 sm:pb-0 md:grid-cols-2"
       >
         {/* ---------- TEXT CONTENT ---------- */}
         <div className="order-2 flex h-50 justify-center md:order-1 md:items-center">
@@ -197,5 +196,3 @@ export default function Carousel({ isLoading }: Props) {
     </div>
   );
 }
-
-

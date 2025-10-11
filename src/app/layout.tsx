@@ -73,9 +73,9 @@ export default async function RootLayout({
               richColors
               closeButton
               theme="light"
-              position="top-left"
-              className="!top-18 !w-80 sm:!top-26"
-              toastOptions={{ duration: 3000 }}
+              position="top-right"
+              className="!top-18 !w-80 sm:!top-26 !z-1"
+              toastOptions={{ duration: 2000 }}
             />
             <main>{children}</main>
             <Footer />

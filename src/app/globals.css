@@ -246,3 +246,17 @@
 .tox-promotion {
   display: none !important;
 }
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* Cho phép chọn chữ, nhưng không chọn được hình ảnh hoặc icon */
+img, svg, picture, canvas, p, span, h1, h2, h3, h4, h5, h6, label, Button {
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: auto;
+}

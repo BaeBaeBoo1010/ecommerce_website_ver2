@@ -125,6 +125,7 @@ export default function Header() {
 
         {/* MIDDLE: Nav links & Search (hidden < lg for links) */}
         <div className="flex flex-1 items-center gap-3 overflow-hidden">
+          {/* Nav links */}
           <nav className="hidden shrink-0 items-center gap-2 lg:flex">
             {[
               { href: "/", label: "Trang chủ" },
@@ -144,7 +145,7 @@ export default function Header() {
           </nav>
 
           {/* Search */}
-          <div className="min-w-0 flex-1">
+          <div className="flex w-full justify-center sm:min-w-0 sm:flex-1 sm:justify-start">
             <SearchCommand />
           </div>
         </div>

@@ -140,7 +140,7 @@ export default function SearchCommand() {
         onClick={() => setOpen(true)}
       >
         <Search className="h-5 w-5" />
-        <span className="text-sm font-medium">Tìm kiếm</span>
+        <span className="hidden sm:flex text-sm font-medium">Tìm kiếm</span>
         {/* Phím tắt: ẩn trên mobile, hiện ≥ sm */}
         <kbd
           className={`text-muted-foreground pointer-events-none ml-6 hidden sm:flex sm:items-center sm:gap-[2px] sm:rounded-sm sm:border sm:bg-gray-100 sm:px-1 sm:py-0 ${shortcutKey === "Ctrl" ? "text-sm" : "text-lg"}`}

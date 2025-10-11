@@ -41,14 +41,14 @@ export default function ProductSwiper({
   if (!showSkeleton && !products?.length) return null;
 
   return (
-    <section className="relative px-2 md:px-0">
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-800 sm:text-2xl">
+    <section>
+      <div className="mb-2 flex items-center justify-between gap-2 sm:mb-4">
+        <h2 className="max-w-[75%] truncate text-lg font-semibold text-gray-800 sm:max-w-none sm:text-3xl">
           {title}
         </h2>
         <Link
           href={`/products?category=${slug}&page=1`}
-          className="inline-flex items-center gap-1 rounded-lg border border-blue-600 px-3 py-1.5 text-sm font-medium text-blue-600 transition-all hover:bg-blue-600 hover:text-white"
+          className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg border border-blue-600 px-2 py-1.5 text-xs font-medium text-blue-600 transition-all hover:bg-blue-600 hover:text-white sm:px-3 sm:text-sm"
         >
           Xem tất cả
           <svg
@@ -129,6 +129,22 @@ export default function ProductSwiper({
           border-radius: 9999px;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
           top: 45%;
+          transition: all 0.3s ease;
+          z-index: 50;
+        }
+
+        .swiper-button-next:hover,
+        .swiper-button-prev:hover {
+          background-color: #2563eb;
+          color: white;
+        }
+
+        .swiper-button-disabled {
+          opacity: 0.5 !important;
+          cursor: not-allowed !important;
+          background-color: white !important;
+          color: gray !important;
+          pointer-events: auto !important;
         }
 
         .swiper-button-next::after,
@@ -137,12 +153,6 @@ export default function ProductSwiper({
           font-weight: bold;
         }
 
-        .swiper-button-disabled {
-          display: none;
-          pointer-events: none;
-        }
-
-        /* Ẩn nút trên màn hình nhỏ hơn 768px */
         @media (max-width: 768px) {
           .swiper-button-next,
           .swiper-button-prev {

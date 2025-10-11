@@ -1,4 +1,4 @@
-// api/products/route.ts
+// app/api/products/route.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
@@ -6,7 +6,10 @@ import { Product } from "@/models/product";
 import { Category } from "@/models/category";
 import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 
-cloudinary.config(true);
+if (!process.env.CLOUDINARY_URL) {
+  console.error("⚠️ Missing CLOUDINARY_URL in environment");
+}
+cloudinary.config({ secure: true });
 
 const ERROR = {
   DUP_NAME: "DUP_NAME",
@@ -15,7 +18,7 @@ const ERROR = {
   UPLOAD_FAILED: "UPLOAD_FAILED",
 } as const;
 
-// GET /api/products
+// 🟢 GET /api/products
 export async function GET(req: NextRequest) {
   try {
     await connectMongoDB();
@@ -41,7 +44,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/products
+// 🟢 POST /api/products
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -76,7 +79,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, code, field }, { status: 409 });
     }
 
-    // Upload ảnh lên Cloudinary
+    // ✅ Upload ảnh lên Cloudinary (bắt HTTPS link)
     const imageUrls: string[] = [];
 
     for (const file of files) {
@@ -84,13 +87,21 @@ export async function POST(req: Request) {
 
       const uploaded = await new Promise<UploadApiResponse>((resolve, reject) => {
         cloudinary.uploader
-          .upload_stream({ folder: `products/${productCode}` }, (err, result) => {
-            if (err || !result) return reject(err);
-            resolve(result);
-          })
+          .upload_stream(
+            {
+              folder: `products/${productCode}`,
+              resource_type: "image",
+              overwrite: false,
+            },
+            (err, result) => {
+              if (err || !result) return reject(err);
+              resolve(result);
+            }
+          )
           .end(buffer);
       });
 
+      // ✅ luôn lấy link HTTPS
       imageUrls.push(uploaded.secure_url);
     }
 

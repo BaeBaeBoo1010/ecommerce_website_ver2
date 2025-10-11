@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import type React from "react";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Card,
   CardHeader,
@@ -26,7 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, PlusCircle, ImageIcon, X } from "lucide-react";
+import { Loader2, PlusCircle, ImageIcon, X, ArrowLeft, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -45,7 +44,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import TinyEditor from "@/components/tiny-editor";
-import { useRouter } from "next/navigation";
+import { mutate } from "swr";
+import Link from "next/link";
 
 /* ---------- Types ---------- */
 interface Category {
@@ -126,7 +126,6 @@ function SortableImage({
 }
 
 export default function AddProductPage() {
-  const router = useRouter(); 
   const formRef = useRef<HTMLFormElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -176,7 +175,6 @@ export default function AddProductPage() {
     setNewCategoryName("");
     setDupErr({});
     setCategoryError(false);
-    setHasArticle(false);
     setArticleContent("");
   }
 
@@ -187,46 +185,42 @@ export default function AddProductPage() {
   ): Promise<string> {
     if (!htmlContent) return htmlContent;
 
-    const tempImages =
-      ((TinyEditor as any).getTempImages?.() as Map<string, File>) || new Map();
-    if (tempImages.size === 0) return htmlContent;
-
-    let updatedContent = htmlContent;
-    let imageCounter = 1;
-
-    await Promise.all(
-      Array.from(tempImages.entries()).map(async ([tempUrl, file]) => {
-        if (!updatedContent.includes(tempUrl)) return;
-
-        try {
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("productCode", productCode);
-          formData.append("public_id", imageCounter.toString());
-
-          const uploadResponse = await fetch("/api/upload-image", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (uploadResponse.ok) {
-            const { url } = await uploadResponse.json();
-            updatedContent = updatedContent.replace(
-              new RegExp(tempUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
-              url,
-            );
-            imageCounter++;
-          }
-        } catch (error) {
-          console.error("Error uploading article image:", error);
-        }
-      }),
+    // Tìm tất cả blob URL trong HTML
+    const blobUrls = Array.from(
+      htmlContent.matchAll(/src="(blob:[^"]+)"/g),
+      (m) => m[1],
     );
 
-    (TinyEditor as any).clearTempImages?.();
+    let updatedContent = htmlContent;
+
+    for (const blobUrl of blobUrls) {
+      try {
+        const blob = await fetch(blobUrl).then((r) => r.blob());
+        const file = new File([blob], "image.jpg", { type: blob.type });
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("productCode", productCode);
+
+        const res = await fetch("/api/products/article-upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error("Upload failed");
+        const data = await res.json();
+
+        if (data?.url) {
+          // ✅ Thay thế blob URL bằng link Cloudinary thật
+          updatedContent = updatedContent.replaceAll(blobUrl, data.url);
+        }
+      } catch (err) {
+        console.error("❌ Upload ảnh bài viết thất bại:", err);
+      }
+    }
+
     return updatedContent;
   }
-
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -236,6 +230,12 @@ export default function AddProductPage() {
     if (!selectedCategory) {
       toast.error("Vui lòng chọn loại sản phẩm");
       setCategoryError(true);
+      setLoading(false);
+      return;
+    }
+
+    if (hasArticle && !articleContent.trim()) {
+      toast.error("Vui lòng nhập nội dung bài viết chi tiết");
       setLoading(false);
       return;
     }
@@ -257,7 +257,6 @@ export default function AddProductPage() {
     // Add processed article content + trạng thái bật/tắt bài viết
     formData.set("articleHtml", hasArticle ? finalArticleContent : "");
     formData.set("isArticleEnabled", hasArticle.toString());
-
 
     images.forEach((img) => {
       formData.append("images", img.file);
@@ -283,8 +282,9 @@ export default function AddProductPage() {
       }
 
       toast.success("🎉 Đã thêm sản phẩm");
-      router.refresh();
+      mutate("/api/products");
       resetForm();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       console.error("Lỗi hệ thống:", error);
       toast.error("Lỗi hệ thống, thử lại sau");
@@ -329,9 +329,41 @@ export default function AddProductPage() {
       className="container mx-auto max-w-6xl py-2"
     >
       <Card className="rounded-2xl shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl">Thêm sản phẩm</CardTitle>
-          <CardDescription>Tạo mới sản phẩm vào cửa hàng</CardDescription>
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-2xl">Thêm sản phẩm</CardTitle>
+            <CardDescription>Tạo mới sản phẩm vào cửa hàng</CardDescription>
+          </div>
+
+          <div className="flex gap-2">
+            {/* Nút Reset */}
+            <Button
+              type="button"
+              variant="destructive"
+              className="flex items-center gap-2 px-3 py-1 text-sm font-medium"
+              onClick={() => {
+                if (
+                  confirm(
+                    "Bạn có chắc muốn reset tất cả dữ liệu về trạng thái ban đầu?",
+                  )
+                ) {
+                  resetForm();
+                }
+              }}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reset
+            </Button>
+
+            {/* Nút Về trang quản lý */}
+            <Link
+              href="/admin/product-management"
+              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white shadow transition-colors hover:bg-blue-700"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Về trang quản lý
+            </Link>
+          </div>
         </CardHeader>
 
         <form ref={formRef} onSubmit={handleSubmit}>
@@ -626,25 +658,22 @@ export default function AddProductPage() {
                 />
               </div>
 
-              <AnimatePresence initial={false}>
-                {hasArticle && (
-                  <motion.div
-                    key="rich-text"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.25, ease: "easeInOut" }}
-                    className="space-y-2 overflow-hidden"
-                  >
-                    <Label>Nội dung bài viết</Label>
-                    <TinyEditor
-                      value={articleContent}
-                      onChange={setArticleContent}
-                      placeholder="Viết bài viết chi tiết về sản phẩm..."
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{
+                  opacity: hasArticle ? 1 : 0,
+                  height: hasArticle ? "auto" : 0,
+                }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="space-y-2 overflow-hidden"
+              >
+                <Label>Nội dung bài viết</Label>
+                <TinyEditor
+                  value={articleContent}
+                  onChange={setArticleContent}
+                  placeholder="Viết bài viết chi tiết về sản phẩm..."
+                />
+              </motion.div>
             </div>
           </CardContent>
 
