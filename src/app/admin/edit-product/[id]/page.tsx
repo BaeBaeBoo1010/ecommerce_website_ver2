@@ -11,6 +11,7 @@ import {
   Card,
   CardHeader,
   CardTitle,
+  CardDescription,
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
@@ -25,7 +26,15 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, PlusCircle, ImageIcon, RotateCw, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  Loader2,
+  PlusCircle,
+  ImageIcon,
+  X,
+  ArrowLeft,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -43,16 +52,18 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import TinyEditor from "@/components/tiny-editor";
+import Link from "next/link";
 
 /* ---------- Types ---------- */
 type ImageItem = {
   id: string;
   file?: File;
   url: string;
-  isExisting?: boolean; // để phân biệt ảnh cũ và ảnh mới
+  isExisting?: boolean;
 };
 
-/* ---------- Bản đồ thông báo ---------- */
+/* ---------- Message maps ---------- */
 const MSG_PRODUCT: Record<string, string> = {
   DUP_NAME: "Tên sản phẩm đã tồn tại",
   DUP_CODE: "Mã sản phẩm đã tồn tại",
@@ -133,7 +144,7 @@ function SortableImage({
   );
 }
 
-/* ---------- Component chính ---------- */
+/* ---------- Main Component ---------- */
 export default function EditProductPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
@@ -143,18 +154,75 @@ export default function EditProductPage() {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [dupErr, setDupErr] = useState<{ name?: boolean; code?: boolean }>({});
   const [categoryError, setCategoryError] = useState(false);
   const [descLength, setDescLength] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
   const DESC_LIMIT = 500;
+  const MAX_IMAGE_SIZE = 1024 * 1024; // 1MB
+  const MAX_IMAGE_WIDTH = 1024;
+
+  const [hasArticle, setHasArticle] = useState(false);
+  const [articleContent, setArticleContent] = useState("");
+
+  const [productData, setProductData] = useState({
+    name: "",
+    code: "",
+    desc: "",
+    price: "",
+  });
+
+  const [fieldError, setFieldError] = useState({
+    name: "",
+    code: "",
+    desc: "",
+    price: "",
+    category: "",
+    images: "",
+  });
+
+  const validateField = (field: string, value: string) => {
+    let error = "";
+
+    switch (field) {
+      case "name":
+        if (!value.trim()) error = "Vui lòng nhập tên sản phẩm";
+        break;
+      case "code":
+        if (!value.trim()) error = "Vui lòng nhập mã sản phẩm";
+        break;
+      case "desc":
+        if (!value.trim()) error = "Vui lòng nhập mô tả ngắn";
+        break;
+      case "price":
+        if (!value.trim()) error = "Vui lòng nhập giá sản phẩm";
+        else if (Number(value) <= 0) error = "Giá phải lớn hơn 0";
+        break;
+      case "category":
+        if (!value.trim()) error = "Vui lòng chọn loại sản phẩm";
+        break;
+    }
+
+    setFieldError((prev) => ({ ...prev, [field]: error }));
+    return error === "";
+  };
 
   // Drag & Drop
   const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const activeImage = images.find((img) => img.id === activeImageId);
 
-  /* === Lấy dữ liệu sản phẩm và danh mục === */
+  useEffect(() => {
+    if (activeImageId) {
+      document.body.style.cursor = "grabbing";
+    } else {
+      document.body.style.cursor = "";
+    }
+    return () => {
+      document.body.style.cursor = "";
+    };
+  }, [activeImageId]);
+
+  /* === Load product and categories === */
   useEffect(() => {
     (async () => {
       try {
@@ -180,7 +248,19 @@ export default function EditProductPage() {
             : pData.category,
         );
 
-        // Xử lý ảnh hiện tại
+        setProductData({
+          name: pData.name || "",
+          code: pData.productCode || "",
+          desc: pData.description || "",
+          price: pData.price?.toString() || "",
+        });
+
+        if (pData.articleHtml) {
+          setArticleContent(pData.articleHtml);
+          setHasArticle(pData.isArticleEnabled ?? true);
+        }
+
+        // Process existing images
         const existingImages: ImageItem[] = [];
         if (pData.imageUrls && Array.isArray(pData.imageUrls)) {
           pData.imageUrls.forEach((url: string, index: number) => {
@@ -191,7 +271,6 @@ export default function EditProductPage() {
             });
           });
         } else if (pData.imageUrl) {
-          // Fallback cho trường hợp chỉ có 1 ảnh
           existingImages.push({
             id: "existing-0",
             url: pData.imageUrl,
@@ -206,18 +285,108 @@ export default function EditProductPage() {
     })();
   }, [id, router]);
 
-  /* === Gửi form cập nhật sản phẩm === */
+  async function uploadArticleImages(
+    htmlContent: string,
+    productCode: string,
+  ): Promise<string> {
+    if (!htmlContent) return htmlContent;
+
+    const blobUrls = Array.from(
+      htmlContent.matchAll(/src="(blob:[^"]+)"/g),
+      (m) => m[1],
+    );
+
+    let updatedContent = htmlContent;
+
+    for (const blobUrl of blobUrls) {
+      try {
+        const blob = await fetch(blobUrl).then((r) => r.blob());
+        const file = new File([blob], "image.jpg", { type: blob.type });
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("productCode", productCode);
+
+        const res = await fetch("/api/products/article-upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error("Upload failed");
+        const data = await res.json();
+
+        if (data?.url) {
+          updatedContent = updatedContent.replaceAll(blobUrl, data.url);
+        }
+      } catch (err) {
+        console.error("❌ Upload ảnh bài viết thất bại:", err);
+      }
+    }
+
+    return updatedContent;
+  }
+
+  /* === Submit form === */
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!product) return;
 
     setLoading(true);
-    setDupErr({});
+
+    if (images.length === 0) {
+      setFieldError((prev) => ({
+        ...prev,
+        images: "Vui lòng thêm ít nhất 1 ảnh",
+      }));
+      toast.error("Vui lòng thêm ít nhất 1 ảnh sản phẩm");
+      setLoading(false);
+      return;
+    } else {
+      setFieldError((prev) => ({ ...prev, images: "" }));
+    }
+
+    const isNameValid = validateField("name", productData.name);
+    const isCodeValid = validateField("code", productData.code);
+    const isDescValid = validateField("desc", productData.desc);
+    const isPriceValid = validateField("price", productData.price);
+    const isCategoryValid = validateField("category", selectedCategory);
+
+    if (
+      !isNameValid ||
+      !isCodeValid ||
+      !isDescValid ||
+      !isPriceValid ||
+      !isCategoryValid
+    ) {
+      toast.error("Vui lòng nhập đầy đủ thông tin sản phẩm");
+      setLoading(false);
+      return;
+    }
+
+    if (hasArticle && !articleContent.trim()) {
+      toast.error("Vui lòng nhập nội dung bài viết chi tiết");
+      setLoading(false);
+      return;
+    }
 
     const formData = new FormData(e.currentTarget);
     formData.set("category", selectedCategory);
 
-    // Phân loại ảnh cũ và ảnh mới
+    let finalArticleContent = articleContent;
+    if (hasArticle && articleContent) {
+      const productCode = (formData.get("productCode") as string)?.trim();
+      if (productCode) {
+        finalArticleContent = await uploadArticleImages(
+          articleContent,
+          productCode,
+        );
+      }
+    }
+
+    formData.set("articleHtml", hasArticle ? finalArticleContent : "");
+    formData.set("isArticleEnabled", hasArticle.toString());
+
+    // Classify old and new images
     const keptImageUrls: string[] = [];
     const newImages: File[] = [];
 
@@ -229,12 +398,10 @@ export default function EditProductPage() {
       }
     });
 
-    // Thêm ảnh cũ được giữ lại
     keptImageUrls.forEach((url) => {
       formData.append("keptImageUrls", url);
     });
 
-    // Thêm ảnh mới
     newImages.forEach((file) => {
       formData.append("images", file);
     });
@@ -249,12 +416,6 @@ export default function EditProductPage() {
 
       if (!res.ok) {
         toast.error(MSG_PRODUCT[data.code] ?? "Cập nhật thất bại");
-        if (res.status === 409 && data.field) {
-          setDupErr({
-            name: data.field === "name",
-            code: data.field === "productCode",
-          });
-        }
         return;
       }
 
@@ -267,7 +428,7 @@ export default function EditProductPage() {
     }
   }
 
-  /* === Thêm danh mục mới === */
+  /* === Add new category === */
   async function handleAddCategory() {
     const trimmed = newCategoryName.trim();
     if (!trimmed) return toast("Hãy nhập tên danh mục");
@@ -311,7 +472,14 @@ export default function EditProductPage() {
         : product.category,
     );
 
-    // Reset ảnh về trạng thái ban đầu
+    setProductData({
+      name: product.name || "",
+      code: product.productCode || "",
+      desc: product.description || "",
+      price: product.price?.toString() || "",
+    });
+
+    // Reset images to initial state
     const existingImages: ImageItem[] = [];
     if (product.imageUrls && Array.isArray(product.imageUrls)) {
       product.imageUrls.forEach((url: string, index: number) => {
@@ -330,10 +498,26 @@ export default function EditProductPage() {
     }
     setImages(existingImages);
 
+    if (product.articleHtml) {
+      setArticleContent(product.articleHtml);
+      setHasArticle(product.isArticleEnabled ?? true);
+    } else {
+      setArticleContent("");
+      setHasArticle(false);
+    }
+
     setDescLength(product.description?.length ?? 0);
     setNewCategoryName("");
-    setDupErr({});
     setCategoryError(false);
+
+    setFieldError({
+      name: "",
+      code: "",
+      desc: "",
+      price: "",
+      category: "",
+      images: "",
+    });
   }
 
   if (!product) {
@@ -346,70 +530,118 @@ export default function EditProductPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="container mx-auto max-w-2xl py-2"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="container mx-auto max-w-6xl py-2"
     >
       <Card className="rounded-2xl shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl">Chỉnh sửa sản phẩm</CardTitle>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleReset}
-            disabled={loading}
-            className="text-sm"
-          >
-            <RotateCw className="h-4 w-4" />
-            Đặt lại
-          </Button>
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-2xl">Chỉnh sửa sản phẩm</CardTitle>
+            <CardDescription>Cập nhật thông tin sản phẩm</CardDescription>
+          </div>
+
+          <div className="flex gap-2">
+            {/* Reset button */}
+            <Button
+              variant="destructive"
+              className="flex items-center gap-2 px-3 py-1 text-sm font-medium shadow-sm hover:shadow-lg"
+              onClick={() => {
+                if (
+                  confirm(
+                    "Bạn có chắc muốn reset tất cả dữ liệu về trạng thái ban đầu?",
+                  )
+                ) {
+                  handleReset();
+                }
+              }}
+              disabled={loading}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reset
+            </Button>
+
+            {/* Back to management button */}
+            <Link
+              href="/admin/product-management"
+              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-400 hover:shadow-lg"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Về trang quản lý
+            </Link>
+          </div>
         </CardHeader>
 
         <form onSubmit={handleSubmit} ref={formRef}>
-          <CardContent className="space-y-6">
-            {/* Tên sản phẩm */}
+          <CardContent className="space-y-4">
+            {/* Product name */}
             <div className="grid gap-2">
               <Label htmlFor="name">Tên sản phẩm</Label>
               <Input
                 id="name"
                 name="name"
-                defaultValue={product.name}
-                required
-                className={dupErr.name ? "border-red-500" : ""}
+                value={productData.name}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setProductData((p) => ({ ...p, name: value }));
+                  validateField("name", value);
+                }}
+                onBlur={(e) => validateField("name", e.target.value)}
+                className={`max-w-xl ${fieldError.name ? "border-red-500" : ""}`}
               />
+              {fieldError.name && (
+                <p className="text-sm text-red-500">{fieldError.name}</p>
+              )}
             </div>
 
-            {/* Mã sản phẩm */}
+            {/* Product code */}
             <div className="grid gap-2">
               <Label htmlFor="code">Mã sản phẩm</Label>
               <Input
                 id="code"
                 name="productCode"
-                defaultValue={product.productCode}
-                required
-                className={dupErr.code ? "border-red-500" : ""}
+                value={productData.code}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setProductData((p) => ({ ...p, code: value }));
+                  validateField("code", value);
+                }}
+                onBlur={(e) => validateField("code", e.target.value)}
+                className={`max-w-50 ${fieldError.code ? "border-red-500" : ""}`}
               />
+              {fieldError.code && (
+                <p className="text-sm text-red-500">{fieldError.code}</p>
+              )}
             </div>
 
-            {/* Mô tả */}
+            {/* Description */}
             <div className="grid gap-2">
-              <Label htmlFor="desc">Mô tả</Label>
+              <Label htmlFor="desc">Mô tả ngắn</Label>
               <Textarea
                 id="desc"
                 name="description"
                 rows={4}
-                defaultValue={product.description}
-                required
+                value={productData.desc}
                 maxLength={DESC_LIMIT}
-                onChange={(e) => setDescLength(e.target.value.length)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setProductData((p) => ({ ...p, desc: value }));
+                  setDescLength(value.length);
+                  validateField("desc", value);
+                }}
+                onBlur={(e) => validateField("desc", e.target.value)}
+                className={fieldError.desc ? "border-red-500" : ""}
               />
+              {fieldError.desc && (
+                <p className="text-sm text-red-500">{fieldError.desc}</p>
+              )}
               <div className="text-muted-foreground text-right text-sm">
                 {descLength}/{DESC_LIMIT} ký tự
               </div>
             </div>
 
-            {/* Giá */}
+            {/* Price */}
             <div className="grid gap-2">
               <Label htmlFor="price">Giá (VNĐ)</Label>
               <Input
@@ -417,12 +649,22 @@ export default function EditProductPage() {
                 name="price"
                 type="number"
                 step="1000"
-                defaultValue={product.price}
-                required
+                min="0"
+                value={productData.price}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setProductData((p) => ({ ...p, price: value }));
+                  validateField("price", value);
+                }}
+                onBlur={(e) => validateField("price", e.target.value)}
+                className={`max-w-40 ${fieldError.price ? "border-red-500" : ""}`}
               />
+              {fieldError.price && (
+                <p className="text-sm text-red-500">{fieldError.price}</p>
+              )}
             </div>
 
-            {/* Loại sản phẩm */}
+            {/* Category */}
             <div className="grid gap-2">
               <Label>Loại sản phẩm</Label>
               <Select
@@ -430,9 +672,13 @@ export default function EditProductPage() {
                 value={selectedCategory}
                 onValueChange={(val) => {
                   setSelectedCategory(val);
+                  setCategoryError(false);
+                  validateField("category", val);
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={fieldError.category ? "border-red-500" : ""}
+                >
                   <SelectValue placeholder="Chọn loại sản phẩm" />
                 </SelectTrigger>
                 <SelectContent>
@@ -443,9 +689,12 @@ export default function EditProductPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {fieldError.category && (
+                <p className="text-sm text-red-500">{fieldError.category}</p>
+              )}
             </div>
 
-            {/* Thêm danh mục mới */}
+            {/* Add new category */}
             <div className="flex items-end gap-2">
               <Input
                 placeholder="Tên loại mới"
@@ -454,7 +703,7 @@ export default function EditProductPage() {
                   setNewCategoryName(e.target.value);
                   setCategoryError(false);
                 }}
-                className={categoryError ? "border-red-500" : ""}
+                className={`max-w-sm ${categoryError ? "border-red-500" : ""}`}
               />
               <Button
                 type="button"
@@ -465,7 +714,7 @@ export default function EditProductPage() {
               </Button>
             </div>
 
-            {/* Ảnh sản phẩm */}
+            {/* Product images */}
             <div className="grid gap-2">
               <Label htmlFor="images">Ảnh sản phẩm</Label>
               <input
@@ -478,19 +727,19 @@ export default function EditProductPage() {
                   if (files.length === 0) return;
 
                   const newImages: ImageItem[] = [];
+
                   for (const file of files) {
                     let finalFile = file;
 
-                    // Resize nếu ảnh lớn hơn 2MB
-                    if (file.size > 2 * 1024 * 1024) {
+                    if (file.size > MAX_IMAGE_SIZE) {
                       const img = document.createElement("img");
                       img.src = URL.createObjectURL(file);
+
                       await new Promise((resolve) => {
                         img.onload = async () => {
                           const canvas = document.createElement("canvas");
-                          const MAX_WIDTH = 1024;
-                          const scale = MAX_WIDTH / img.width;
-                          canvas.width = MAX_WIDTH;
+                          const scale = MAX_IMAGE_WIDTH / img.width;
+                          canvas.width = MAX_IMAGE_WIDTH;
                           canvas.height = img.height * scale;
 
                           const ctx = canvas.getContext("2d");
@@ -503,13 +752,52 @@ export default function EditProductPage() {
                           );
 
                           canvas.toBlob(
-                            (blob) => {
-                              if (blob) {
+                            async function process(blob) {
+                              if (!blob) return resolve(true);
+
+                              if (blob.size <= 1024 * 1024) {
                                 finalFile = new File([blob], file.name, {
                                   type: "image/jpeg",
                                 });
+                                return resolve(true);
                               }
-                              resolve(true);
+
+                              let quality = 0.7;
+                              const tryCompress = () => {
+                                canvas.toBlob(
+                                  (compressedBlob) => {
+                                    if (
+                                      compressedBlob &&
+                                      compressedBlob.size <= 1024 * 1024
+                                    ) {
+                                      finalFile = new File(
+                                        [compressedBlob],
+                                        file.name,
+                                        {
+                                          type: "image/jpeg",
+                                        },
+                                      );
+                                      resolve(true);
+                                    } else if (quality > 0.3) {
+                                      quality -= 0.1;
+                                      tryCompress();
+                                    } else {
+                                      finalFile = new File(
+                                        [compressedBlob!],
+                                        file.name,
+                                        {
+                                          type: "image/jpeg",
+                                        },
+                                      );
+                                      resolve(true);
+                                    }
+                                  },
+                                  "image/jpeg",
+                                  quality,
+                                );
+                              };
+
+                              tryCompress();
                             },
                             "image/jpeg",
                             0.8,
@@ -527,6 +815,7 @@ export default function EditProductPage() {
                   }
 
                   setImages((prev) => [...prev, ...newImages]);
+                  setFieldError((prev) => ({ ...prev, images: "" }));
                   e.target.value = "";
                 }}
                 className="hidden"
@@ -542,77 +831,121 @@ export default function EditProductPage() {
                   <ImageIcon className="h-4 w-4" />
                   Thêm ảnh
                 </Button>
+                {fieldError.images && (
+                  <p className="text-sm text-red-500">{fieldError.images}</p>
+                )}
                 <span className="text-muted-foreground max-w-[200px] truncate text-sm">
                   {images.length > 0 ? `${images.length} ảnh` : "Chưa có ảnh"}
                 </span>
               </div>
 
-              {images.length > 0 && (
-                <DndContext
-                  collisionDetection={closestCenter}
-                  sensors={sensors}
-                  onDragStart={({ active }) => {
-                    setActiveImageId(active.id as string);
-                  }}
-                  onDragEnd={({ active, over }) => {
-                    setActiveImageId(null);
-                    if (!over || active.id === over.id) return;
+              <DndContext
+                collisionDetection={closestCenter}
+                sensors={sensors}
+                onDragStart={({ active }) => {
+                  setActiveImageId(active.id as string);
+                }}
+                onDragEnd={({ active, over }) => {
+                  setActiveImageId(null);
+                  if (!over || active.id === over.id) return;
 
-                    const oldIndex = images.findIndex(
-                      (img) => img.id === active.id,
-                    );
-                    const newIndex = images.findIndex(
-                      (img) => img.id === over.id,
-                    );
+                  const oldIndex = images.findIndex(
+                    (img) => img.id === active.id,
+                  );
+                  const newIndex = images.findIndex(
+                    (img) => img.id === over.id,
+                  );
 
-                    if (oldIndex !== -1 && newIndex !== -1) {
-                      setImages((prev) => arrayMove(prev, oldIndex, newIndex));
-                    }
-                  }}
-                  onDragCancel={() => setActiveImageId(null)}
+                  if (oldIndex !== -1 && newIndex !== -1) {
+                    setImages((prev) => arrayMove(prev, oldIndex, newIndex));
+                  }
+                }}
+                onDragCancel={() => setActiveImageId(null)}
+              >
+                <SortableContext
+                  items={images.map((i) => i.id)}
+                  strategy={rectSortingStrategy}
                 >
-                  <SortableContext
-                    items={images.map((i) => i.id)}
-                    strategy={rectSortingStrategy}
-                  >
-                    <div className="flex flex-wrap items-start gap-2">
-                      {images.map((img, idx) => (
-                        <SortableImage
-                          key={img.id}
-                          id={img.id}
-                          url={img.url}
-                          index={idx}
-                          activeImageId={activeImageId}
-                          isExisting={img.isExisting}
-                          onRemove={() => {
-                            setImages((prev) =>
-                              prev.filter((i) => i.id !== img.id),
-                            );
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
+                  <div className="flex flex-wrap items-start gap-2">
+                    {images.map((img, idx) => (
+                      <SortableImage
+                        key={img.id}
+                        id={img.id}
+                        url={img.url}
+                        index={idx}
+                        activeImageId={activeImageId}
+                        isExisting={img.isExisting}
+                        onRemove={() => {
+                          setImages((prev) =>
+                            prev.filter((i) => i.id !== img.id),
+                          );
+                        }}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
 
-                  <DragOverlay>
-                    {activeImage ? (
-                      <div className="relative h-[120px] w-[120px] overflow-hidden rounded-lg border border-gray-300 bg-white shadow-md">
-                        <Image
-                          src={activeImage.url || "/placeholder.svg"}
-                          alt="drag"
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                    ) : null}
-                  </DragOverlay>
-                </DndContext>
-              )}
+                <DragOverlay>
+                  {activeImage ? (
+                    <div className="relative h-[120px] w-[120px] overflow-hidden rounded-lg border border-gray-300 bg-white shadow-md">
+                      <Image
+                        src={activeImage.url || "/placeholder.svg"}
+                        alt="drag"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+            </div>
+
+            <div className="space-y-4 border-t pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="article-toggle"
+                    className="text-base font-medium"
+                  >
+                    Bài viết chi tiết
+                  </Label>
+                  <p className="text-muted-foreground text-sm">
+                    Thêm bài viết chi tiết về sản phẩm (tùy chọn)
+                  </p>
+                </div>
+                <Switch
+                  id="article-toggle"
+                  className="cursor-pointer"
+                  checked={hasArticle}
+                  onCheckedChange={setHasArticle}
+                />
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{
+                  opacity: hasArticle ? 1 : 0,
+                  height: hasArticle ? "auto" : 0,
+                }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="space-y-2 overflow-hidden"
+              >
+                <Label>Nội dung bài viết</Label>
+                <TinyEditor
+                  value={articleContent}
+                  onChange={setArticleContent}
+                  placeholder="Viết bài viết chi tiết về sản phẩm..."
+                />
+              </motion.div>
             </div>
           </CardContent>
 
-          <CardFooter>
-            <Button type="submit" className="flex-1" disabled={loading}>
+          <CardFooter className="flex justify-end pt-4">
+            <Button
+              type="submit"
+              className="w-full sm:w-[300px]"
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang lưu...

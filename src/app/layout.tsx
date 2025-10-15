@@ -1,11 +1,11 @@
 // src/app/layout.tsx
-export const revalidate = 300; // ISR: cache 5 phút
+export const revalidate = 30; // ISR: cache 5 phút
 
 import type { Metadata } from "next";
 import { Roboto, Inter } from "next/font/google";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import { Toaster } from "@/components/ui/sonner";
+import AppToaster from "@/components/app-toaster";
 import Providers from "./providers";
 import "./globals.css";
 import { cache } from "react";
@@ -69,14 +69,7 @@ export default async function RootLayout({
             }}
           >
             <Header />
-            <Toaster
-              richColors
-              closeButton
-              theme="light"
-              position="top-right"
-              className="!top-18 !w-80 sm:!top-26 !z-1"
-              toastOptions={{ duration: 2000 }}
-            />
+            <AppToaster />
             <main>{children}</main>
             <Footer />
           </SWRConfig>

@@ -25,7 +25,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, PlusCircle, ImageIcon, X, ArrowLeft, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  PlusCircle,
+  ImageIcon,
+  X,
+  ArrowLeft,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -57,11 +64,9 @@ interface Category {
 const MSG_PRODUCT: Record<string, string> = {
   DUP_NAME: "Tên sản phẩm đã tồn tại",
   DUP_CODE: "Mã sản phẩm đã tồn tại",
-  MISSING_FIELD: "Thiếu dữ liệu bắt buộc",
 };
 
 const MSG_CATEGORY: Record<string, string> = {
-  MISSING_NAME: "Tên danh mục là bắt buộc",
   DUP_NAME: "Tên danh mục đã tồn tại",
 };
 
@@ -126,6 +131,49 @@ function SortableImage({
 }
 
 export default function AddProductPage() {
+  const [productData, setProductData] = useState({
+    name: "",
+    code: "",
+    desc: "",
+    price: "",
+    category: "",
+  });
+
+  const [fieldError, setFieldError] = useState({
+    name: "",
+    code: "",
+    desc: "",
+    price: "",
+    category: "",
+    images: "",
+  });
+
+  const validateField = (field: string, value: string) => {
+    let error = "";
+
+    switch (field) {
+      case "name":
+        if (!value.trim()) error = "Vui lòng nhập tên sản phẩm";
+        break;
+      case "code":
+        if (!value.trim()) error = "Vui lòng nhập mã sản phẩm";
+        break;
+      case "desc":
+        if (!value.trim()) error = "Vui lòng nhập mô tả ngắn";
+        break;
+      case "price":
+        if (!value.trim()) error = "Vui lòng nhập giá sản phẩm";
+        else if (Number(value) <= 0) error = "Giá phải lớn hơn 0";
+        break;
+      case "category":
+        if (!value.trim()) error = "Vui lòng chọn loại sản phẩm";
+        break;
+    }
+
+    setFieldError((prev) => ({ ...prev, [field]: error }));
+    return error === "";
+  };
+
   const formRef = useRef<HTMLFormElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -134,8 +182,6 @@ export default function AddProductPage() {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [dupErr, setDupErr] = useState<{ name?: boolean; code?: boolean }>({});
-  const [categoryError, setCategoryError] = useState(false);
   const [descLength, setDescLength] = useState(0);
   const DESC_LIMIT = 500;
   const MAX_IMAGE_SIZE = 1024 * 1024; // 1MB
@@ -173,9 +219,23 @@ export default function AddProductPage() {
     setImages([]);
     setSelectedCategory("");
     setNewCategoryName("");
-    setDupErr({});
-    setCategoryError(false);
     setArticleContent("");
+    setProductData({
+      name: "",
+      code: "",
+      desc: "",
+      price: "",
+      category: "",
+    });
+    setFieldError({
+      name: "",
+      code: "",
+      desc: "",
+      price: "",
+      category: "",
+      images: "",
+    });
+    setDescLength(0);
   }
 
   // Function to extract and upload images from rich text
@@ -225,27 +285,43 @@ export default function AddProductPage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    setDupErr({});
 
-    if (!selectedCategory) {
-      toast.error("Vui lòng chọn loại sản phẩm");
-      setCategoryError(true);
+    if (images.length === 0) {
+      setFieldError((prev) => ({
+        ...prev,
+        images: "Vui lòng thêm ít nhất 1 ảnh",
+      }));
+      toast.error("Vui lòng thêm ít nhất 1 ảnh sản phẩm");
+      setLoading(false);
+      return;
+    } else {
+      setFieldError((prev) => ({ ...prev, images: "" }));
+    }
+
+    const isNameValid = validateField("name", productData.name);
+    const isCodeValid = validateField("code", productData.code);
+    const isDescValid = validateField("desc", productData.desc);
+    const isPriceValid = validateField("price", productData.price);
+    const isCategoryValid = validateField("category", selectedCategory);
+
+    if (
+      !isNameValid ||
+      !isCodeValid ||
+      !isDescValid ||
+      !isPriceValid ||
+      !isCategoryValid
+    ) {
+      toast.error("Vui lòng nhập đầy đủ thông tin sản phẩm");
       setLoading(false);
       return;
     }
 
-    if (hasArticle && !articleContent.trim()) {
-      toast.error("Vui lòng nhập nội dung bài viết chi tiết");
-      setLoading(false);
-      return;
-    }
-
-    const formData = new FormData(e.currentTarget);
-    formData.set("category", selectedCategory);
+    const submissionData = new FormData(e.currentTarget);
+    submissionData.set("category", selectedCategory);
 
     let finalArticleContent = articleContent;
     if (hasArticle && articleContent) {
-      const productCode = (formData.get("productCode") as string)?.trim();
+      const productCode = (submissionData.get("productCode") as string)?.trim();
       if (productCode) {
         finalArticleContent = await uploadArticleImages(
           articleContent,
@@ -255,29 +331,23 @@ export default function AddProductPage() {
     }
 
     // Add processed article content + trạng thái bật/tắt bài viết
-    formData.set("articleHtml", hasArticle ? finalArticleContent : "");
-    formData.set("isArticleEnabled", hasArticle.toString());
+    submissionData.set("articleHtml", hasArticle ? finalArticleContent : "");
+    submissionData.set("isArticleEnabled", hasArticle.toString());
 
     images.forEach((img) => {
-      formData.append("images", img.file);
+      submissionData.append("images", img.file);
     });
 
     try {
       const res = await fetch("/api/products", {
         method: "POST",
-        body: formData,
+        body: submissionData,
       });
 
       const data = await res.json();
 
       if (!res.ok) {
         toast.error(MSG_PRODUCT[data.code] ?? "Không thể thêm sản phẩm");
-        if (res.status === 409 && data.field) {
-          setDupErr({
-            name: data.field === "name",
-            code: data.field === "productCode",
-          });
-        }
         return;
       }
 
@@ -323,9 +393,9 @@ export default function AddProductPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       className="container mx-auto max-w-6xl py-2"
     >
       <Card className="rounded-2xl shadow-lg">
@@ -339,7 +409,7 @@ export default function AddProductPage() {
             {/* Nút Reset */}
             <Button
               variant="destructive"
-              className="flex items-center shadow-sm gap-2 px-3 py-1 text-sm font-medium hover:shadow-lg"
+              className="flex items-center gap-2 px-3 py-1 text-sm font-medium shadow-sm hover:shadow-lg"
               onClick={() => {
                 if (
                   confirm(
@@ -372,18 +442,36 @@ export default function AddProductPage() {
               <Input
                 id="name"
                 name="name"
-                required
-                className={`max-w-xl ${dupErr.name ? "border-red-500" : ""}`}
+                value={productData.name}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setProductData((p) => ({ ...p, name: value }));
+                  validateField("name", value);
+                }}
+                onBlur={(e) => validateField("name", e.target.value)}
+                className={`max-w-xl ${fieldError.name ? "border-red-500" : ""}`}
               />
+              {fieldError.name && (
+                <p className="text-sm text-red-500">{fieldError.name}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="code">Mã sản phẩm</Label>
               <Input
                 id="code"
                 name="productCode"
-                required
-                className={`max-w-50 ${dupErr.name ? "border-red-500" : ""}`}
+                value={productData.code}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setProductData((p) => ({ ...p, code: value }));
+                  validateField("code", value);
+                }}
+                onBlur={(e) => validateField("code", e.target.value)}
+                className={`max-w-50 ${fieldError.code ? "border-red-500" : ""}`}
               />
+              {fieldError.code && (
+                <p className="text-sm text-red-500">{fieldError.code}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="desc">Mô tả ngắn</Label>
@@ -391,10 +479,20 @@ export default function AddProductPage() {
                 id="desc"
                 name="description"
                 rows={4}
-                required
+                value={productData.desc}
                 maxLength={DESC_LIMIT}
-                onChange={(e) => setDescLength(e.target.value.length)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setProductData((p) => ({ ...p, desc: value }));
+                  setDescLength(value.length);
+                  validateField("desc", value);
+                }}
+                onBlur={(e) => validateField("desc", e.target.value)}
+                className={fieldError.desc ? "border-red-500" : ""}
               />
+              {fieldError.desc && (
+                <p className="text-sm text-red-500">{fieldError.desc}</p>
+              )}
               <div className="text-muted-foreground text-right text-sm">
                 {descLength}/{DESC_LIMIT} ký tự
               </div>
@@ -407,33 +505,45 @@ export default function AddProductPage() {
                 type="number"
                 step="1000"
                 min="0"
-                className="max-w-40"
-                required
+                value={productData.price}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setProductData((p) => ({ ...p, price: value }));
+                  validateField("price", value);
+                }}
+                onBlur={(e) => validateField("price", e.target.value)}
+                className={`max-w-40 ${fieldError.price ? "border-red-500" : ""}`}
               />
+              {fieldError.price && (
+                <p className="text-sm text-red-500">{fieldError.price}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label>Loại sản phẩm</Label>
               <Select
-                key={selectedCategory}
                 value={selectedCategory}
-                onValueChange={(val) => {
-                  setSelectedCategory(val);
-                  setCategoryError(false);
+                onValueChange={(value) => {
+                  setSelectedCategory(value);
+                  setProductData((p) => ({ ...p, category: value }));
+                  validateField("category", value);
                 }}
               >
                 <SelectTrigger
-                  className={categoryError ? "border-red-500" : ""}
+                  className={`${fieldError.category ? "border-red-500" : ""}`}
                 >
                   <SelectValue placeholder="Chọn loại sản phẩm" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c._id} value={c._id}>
-                      {c.name}
+                  {categories.map((cat) => (
+                    <SelectItem key={cat._id} value={cat._id}>
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {fieldError.category && (
+                <p className="text-sm text-red-500">{fieldError.category}</p>
+              )}
             </div>
             <div className="flex items-end gap-2">
               <Input
@@ -552,6 +662,7 @@ export default function AddProductPage() {
                   }
 
                   setImages((prev) => [...prev, ...newImages]);
+                  setFieldError((prev) => ({ ...prev, images: "" }));
                   e.target.value = "";
                 }}
                 className="hidden"
@@ -567,6 +678,9 @@ export default function AddProductPage() {
                   <ImageIcon className="h-4 w-4" />
                   Thêm ảnh
                 </Button>
+                {fieldError.images && (
+                  <p className="text-sm text-red-500">{fieldError.images}</p>
+                )}
                 <span className="text-muted-foreground max-w-[200px] truncate text-sm">
                   {images.length > 0
                     ? `${images.length} ảnh đã chọn`

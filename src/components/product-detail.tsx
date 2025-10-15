@@ -230,7 +230,7 @@ export default function ProductDetail({ product }: { product: Product }) {
               {/* Nội dung thông tin sản phẩm */}
               <section className="flex flex-col justify-between p-6 md:flex-1">
                 <div>
-                  <h1 className="mb-5 text-4xl font-extrabold tracking-tight text-gray-900">
+                  <h1 className="mb-5 text-4xl font-bold tracking-tight text-gray-900">
                     {product.name}
                   </h1>
 
