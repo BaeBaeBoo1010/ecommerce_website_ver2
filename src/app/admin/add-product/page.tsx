@@ -51,7 +51,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import TinyEditor from "@/components/tiny-editor";
-import { mutate } from "swr";
 import Link from "next/link";
 
 /* ---------- Types ---------- */
@@ -238,6 +237,19 @@ export default function AddProductPage() {
     setDescLength(0);
   }
 
+  function isHtmlEmpty(html: string): boolean {
+    if (!html || !html.trim()) return true;
+
+    // Remove all HTML tags and entities
+    const text = html
+      .replace(/<[^>]*>/g, "") // Remove HTML tags
+      .replace(/&nbsp;/g, " ") // Replace &nbsp; with space
+      .replace(/&[a-z]+;/gi, "") // Remove other HTML entities
+      .trim();
+
+    return text.length === 0;
+  }
+
   // Function to extract and upload images from rich text
   async function uploadArticleImages(
     htmlContent: string,
@@ -316,6 +328,14 @@ export default function AddProductPage() {
       return;
     }
 
+    if (hasArticle && isHtmlEmpty(articleContent)) {
+      toast.error(
+        "Vui lòng nhập nội dung bài viết chi tiết hoặc tắt tính năng này",
+      );
+      setLoading(false);
+      return;
+    }
+
     const submissionData = new FormData(e.currentTarget);
     submissionData.set("category", selectedCategory);
 
@@ -352,7 +372,19 @@ export default function AddProductPage() {
       }
 
       toast.success("🎉 Đã thêm sản phẩm");
-      mutate("/api/products");
+      try {
+        const revalidateRes = await fetch("/api/revalidate", {
+          method: "POST",
+        });
+        const revalidateData = await revalidateRes.json();
+        if (revalidateData.success) {
+          console.log("✅ Revalidated toàn bộ cache ISR thành công!");
+        } else {
+          console.warn("⚠️ Revalidate thất bại:", revalidateData.error);
+        }
+      } catch (err) {
+        console.error("⚠️ Lỗi khi gọi API revalidate:", err);
+      }
       resetForm();
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {

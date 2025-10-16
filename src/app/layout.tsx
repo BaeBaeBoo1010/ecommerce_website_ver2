@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-export const revalidate = 30; // ISR: cache 5 phút
+export const revalidate = 300; // ISR: cache 5 phút
 
 import type { Metadata } from "next";
 import { Roboto, Inter } from "next/font/google";

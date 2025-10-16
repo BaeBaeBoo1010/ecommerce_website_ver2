@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import type React from "react";
@@ -54,6 +55,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import TinyEditor from "@/components/tiny-editor";
 import Link from "next/link";
+import useSWR from "swr";
 
 /* ---------- Types ---------- */
 type ImageItem = {
@@ -148,15 +150,18 @@ function SortableImage({
 export default function EditProductPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [initialState, setInitialState] = useState<any>(null);
+  const [hasChanges, setHasChanges] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryError, setCategoryError] = useState(false);
   const [descLength, setDescLength] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
+  const editorInitialized = useRef(false);
   const DESC_LIMIT = 500;
   const MAX_IMAGE_SIZE = 1024 * 1024; // 1MB
   const MAX_IMAGE_WIDTH = 1024;
@@ -211,6 +216,14 @@ export default function EditProductPage() {
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const activeImage = images.find((img) => img.id === activeImageId);
 
+  const { data: categoriesData } = useSWR("/api/categories", (url) =>
+    fetch(url).then((r) => r.json()),
+  );
+
+  const { data: productsData } = useSWR("/api/products", (url) =>
+    fetch(url).then((r) => r.json()),
+  );
+
   useEffect(() => {
     if (activeImageId) {
       document.body.style.cursor = "grabbing";
@@ -222,68 +235,170 @@ export default function EditProductPage() {
     };
   }, [activeImageId]);
 
-  /* === Load product and categories === */
+  // Load categories
   useEffect(() => {
-    (async () => {
-      try {
-        const [pRes, cRes] = await Promise.all([
-          fetch(`/api/products/${id}`),
-          fetch("/api/categories"),
-        ]);
+    if (categoriesData?.categories) {
+      setCategories(categoriesData.categories);
+    }
+  }, [categoriesData]);
 
-        const pData = await pRes.json();
-        const cData = await cRes.json();
+  useEffect(() => {
+    if (!productsData || !id) return;
 
-        if (!pRes.ok) {
-          toast.error(MSG_PRODUCT[pData.code] ?? "Không thể tải sản phẩm");
-          router.push("/admin/product-management");
-          return;
-        }
+    // Find the product from cached list
+    const foundProduct = productsData.find((p: Product) => p._id === id);
 
-        setDescLength(pData.description?.length ?? 0);
-        setCategories(cData.categories);
-        setSelectedCategory(
-          typeof pData.category === "object"
-            ? pData.category._id
-            : pData.category,
-        );
+    if (!foundProduct) {
+      toast.error("Sản phẩm không tồn tại");
+      router.push("/admin/product-management");
+      return;
+    }
 
-        setProductData({
-          name: pData.name || "",
-          code: pData.productCode || "",
-          desc: pData.description || "",
-          price: pData.price?.toString() || "",
+    const pData = foundProduct;
+
+    setDescLength(pData.description?.length ?? 0);
+
+    const categoryId =
+      typeof pData.category === "object" ? pData.category._id : pData.category;
+
+    setSelectedCategory(categoryId);
+
+    const newProductData = {
+      name: pData.name || "",
+      code: pData.productCode || "",
+      desc: pData.description || "",
+      price: pData.price?.toString() || "",
+    };
+
+    setProductData(newProductData);
+
+    const articleEnabled = pData.isArticleEnabled ?? false;
+    const articleHtml = pData.articleHtml || "";
+
+    setHasArticle(articleEnabled);
+    setArticleContent(articleHtml);
+    editorInitialized.current = false;
+
+    // Process existing images
+    const existingImages: ImageItem[] = [];
+    if (pData.imageUrls && Array.isArray(pData.imageUrls)) {
+      pData.imageUrls.forEach((url: string, index: number) => {
+        existingImages.push({
+          id: `existing-${index}`,
+          url,
+          isExisting: true,
         });
+      });
+    } else if (pData.imageUrl) {
+      existingImages.push({
+        id: "existing-0",
+        url: pData.imageUrl,
+        isExisting: true,
+      });
+    }
+    setImages(existingImages);
+    setProduct(pData);
 
-        if (pData.articleHtml) {
-          setArticleContent(pData.articleHtml);
-          setHasArticle(pData.isArticleEnabled ?? true);
-        }
+    setInitialState({
+      name: newProductData.name,
+      code: newProductData.code,
+      desc: newProductData.desc,
+      price: newProductData.price,
+      category: categoryId,
+      images: existingImages.map((img) => ({
+        id: img.id,
+        url: img.url,
+        isExisting: img.isExisting,
+      })),
+      hasArticle: articleEnabled,
+      articleContent: normalizeHtml(articleHtml),
+    });
+  }, [productsData, id, router]);
 
-        // Process existing images
-        const existingImages: ImageItem[] = [];
-        if (pData.imageUrls && Array.isArray(pData.imageUrls)) {
-          pData.imageUrls.forEach((url: string, index: number) => {
-            existingImages.push({
-              id: `existing-${index}`,
-              url,
-              isExisting: true,
-            });
-          });
-        } else if (pData.imageUrl) {
-          existingImages.push({
-            id: "existing-0",
-            url: pData.imageUrl,
-            isExisting: true,
-          });
-        }
-        setImages(existingImages);
-        setProduct(pData);
-      } catch {
-        toast.error("Lỗi tải dữ liệu, thử lại sau.");
-      }
-    })();
-  }, [id, router]);
+  const normalizeHtml = (html: string): string => {
+    if (!html) return "";
+    // Remove extra whitespace, newlines, and normalize spacing
+    return html
+      .trim()
+      .replace(/\s+/g, " ")
+      .replace(/>\s+</g, "><")
+      .replace(/\s+>/g, ">")
+      .replace(/<\s+/g, "<");
+  };
+
+  const isHtmlEmpty = (html: string): boolean => {
+    if (!html || !html.trim()) return true
+
+    // Remove all HTML tags and decode HTML entities
+    const text = html
+      .replace(/<[^>]*>/g, "") // Remove HTML tags
+      .replace(/&nbsp;/g, " ") // Replace &nbsp; with space
+      .replace(/&[a-z]+;/gi, "") // Remove other HTML entities
+      .trim()
+
+    return text.length === 0
+  }
+
+  useEffect(() => {
+    if (
+      !editorInitialized.current &&
+      initialState &&
+      hasArticle &&
+      articleContent
+    ) {
+      // Wait a bit for TinyEditor to fully initialize and normalize content
+      const timer = setTimeout(() => {
+        editorInitialized.current = true;
+        setInitialState((prev: any) => ({
+          ...prev,
+          articleContent: normalizeHtml(articleContent),
+        }));
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [articleContent, hasArticle, initialState]);
+
+  useEffect(() => {
+    if (!initialState || !initialState.name || !initialState.images) {
+      setHasChanges(false);
+      return;
+    }
+
+    // Compare images by their serializable properties only (not File objects)
+    const currentImagesState = images.map((img) => ({
+      id: img.id,
+      url: img.url,
+      isExisting: img.isExisting,
+    }));
+
+    const imagesChanged =
+      JSON.stringify(currentImagesState) !==
+      JSON.stringify(initialState.images);
+
+    const articleChanged =
+      hasArticle !== initialState.hasArticle ||
+      (hasArticle &&
+        normalizeHtml(articleContent) !==
+          normalizeHtml(initialState.articleContent));
+
+    const changed =
+      productData.name !== initialState.name ||
+      productData.code !== initialState.code ||
+      productData.desc !== initialState.desc ||
+      productData.price !== initialState.price ||
+      selectedCategory !== initialState.category ||
+      articleChanged ||
+      imagesChanged;
+
+    setHasChanges(changed);
+  }, [
+    productData,
+    selectedCategory,
+    images,
+    hasArticle,
+    articleContent,
+    initialState,
+  ]);
 
   async function uploadArticleImages(
     htmlContent: string,
@@ -363,8 +478,8 @@ export default function EditProductPage() {
       return;
     }
 
-    if (hasArticle && !articleContent.trim()) {
-      toast.error("Vui lòng nhập nội dung bài viết chi tiết");
+    if (hasArticle && isHtmlEmpty(articleContent)) {
+      toast.error("Vui lòng nhập nội dung bài viết chi tiết hoặc tắt tính năng này");
       setLoading(false);
       return;
     }
@@ -420,6 +535,19 @@ export default function EditProductPage() {
       }
 
       toast.success("Sản phẩm đã được cập nhật");
+      try {
+        const revalidateRes = await fetch("/api/revalidate", {
+          method: "POST",
+        });
+        const revalidateData = await revalidateRes.json();
+        if (revalidateData.success) {
+          console.log("✅ Revalidated toàn bộ cache ISR thành công!");
+        } else {
+          console.warn("⚠️ Revalidate thất bại:", revalidateData.error);
+        }
+      } catch (err) {
+        console.error("⚠️ Lỗi khi gọi API revalidate:", err);
+      }
       router.push("/admin/product-management");
     } catch {
       toast.error("Lỗi hệ thống, vui lòng thử lại sau.");
@@ -463,50 +591,31 @@ export default function EditProductPage() {
 
   /* === Reset form === */
   function handleReset() {
-    if (!product) return;
+    if (!initialState) return;
 
     formRef.current?.reset();
-    setSelectedCategory(
-      typeof product.category === "object"
-        ? product.category._id
-        : product.category,
-    );
 
+    setSelectedCategory(initialState.category);
     setProductData({
-      name: product.name || "",
-      code: product.productCode || "",
-      desc: product.description || "",
-      price: product.price?.toString() || "",
+      name: initialState.name,
+      code: initialState.code,
+      desc: initialState.desc,
+      price: initialState.price,
     });
 
-    // Reset images to initial state
-    const existingImages: ImageItem[] = [];
-    if (product.imageUrls && Array.isArray(product.imageUrls)) {
-      product.imageUrls.forEach((url: string, index: number) => {
-        existingImages.push({
-          id: `existing-${index}`,
-          url,
-          isExisting: true,
-        });
-      });
-    } else if (product.imageUrls) {
-      existingImages.push({
-        id: "existing-0",
-        url: product.imageUrls,
-        isExisting: true,
-      });
-    }
-    setImages(existingImages);
+    // Restore images from initial state
+    const restoredImages = initialState.images.map((img: any) => ({
+      id: img.id,
+      url: img.url,
+      isExisting: img.isExisting,
+    }));
+    setImages(restoredImages);
 
-    if (product.articleHtml) {
-      setArticleContent(product.articleHtml);
-      setHasArticle(product.isArticleEnabled ?? true);
-    } else {
-      setArticleContent("");
-      setHasArticle(false);
-    }
+    setHasArticle(initialState.hasArticle);
+    setArticleContent(initialState.articleContent);
+    setDescLength(initialState.desc?.length ?? 0);
+    editorInitialized.current = false;
 
-    setDescLength(product.description?.length ?? 0);
     setNewCategoryName("");
     setCategoryError(false);
 
@@ -518,14 +627,8 @@ export default function EditProductPage() {
       category: "",
       images: "",
     });
-  }
 
-  if (!product) {
-    return (
-      <div className="flex w-full justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    toast.success("Đã khôi phục về trạng thái ban đầu");
   }
 
   return (
@@ -546,7 +649,7 @@ export default function EditProductPage() {
             {/* Reset button */}
             <Button
               variant="destructive"
-              className="flex items-center gap-2 px-3 py-1 text-sm font-medium shadow-sm hover:shadow-lg"
+              className="flex items-center gap-2 px-3 py-1 text-sm font-medium shadow-sm hover:shadow-lg disabled:cursor-not-allowed"
               onClick={() => {
                 if (
                   confirm(
@@ -556,7 +659,7 @@ export default function EditProductPage() {
                   handleReset();
                 }
               }}
-              disabled={loading}
+              disabled={loading || !hasChanges}
             >
               <RefreshCw className="h-4 w-4" />
               Reset
@@ -943,8 +1046,8 @@ export default function EditProductPage() {
           <CardFooter className="flex justify-end pt-4">
             <Button
               type="submit"
-              className="w-full sm:w-[300px]"
-              disabled={loading}
+              className="w-full sm:w-[300px] disabled:cursor-not-allowed"
+              disabled={loading || !hasChanges}
             >
               {loading ? (
                 <>

@@ -81,7 +81,7 @@ export default function Header() {
             />
             <div className="flex flex-col leading-tight">
               <span className="text-xs text-gray-500 sm:text-sm">
-                Thiết bị điện
+                Thiết bị cảm ứng
               </span>
               <span className="text-lg font-bold whitespace-nowrap text-gray-700 sm:text-2xl dark:text-white">
                 Quang&nbsp;Minh

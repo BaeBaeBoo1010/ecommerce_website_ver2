@@ -20,7 +20,7 @@ export default function Loading() {
 
         <div className="flex flex-col items-start leading-tight">
           <span className="text-sm text-gray-500 sm:text-base">
-            Thiết bị điện
+            Thiết bị cảm ứng
           </span>
           <span className="text-3xl font-bold whitespace-nowrap text-gray-700 sm:text-4xl dark:text-white">
             Quang Minh

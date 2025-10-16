@@ -45,10 +45,17 @@ export default function ProductManagementPage() {
     data: products = [],
     mutate: mutateProducts,
     isLoading,
-  } = useSWR<Product[]>("/api/products", fetcher);
+  } = useSWR<Product[]>("/api/products", fetcher, {
+    revalidateOnMount: true,
+    revalidateOnFocus: true,
+  });
   const { data: catData } = useSWR<{ categories: Category[] }>(
     "/api/categories",
     fetcher,
+    {
+      revalidateOnMount: true,
+      revalidateOnFocus: true,
+    },
   );
 
   const categories = catData?.categories ?? [];

@@ -18,7 +18,7 @@ export default function Footer() {
             <span className="text-xl font-bold">Quang Minh</span>
           </div>
           <p className="text-muted-foreground text-sm">
-            Thiết bị điện thông minh - Automate your house
+            Thiết bị cảm ứng thông minh - Automate your house
           </p>
         </div>
         <CardContent className="mx-auto grid max-w-screen-xl grid-cols-1 gap-8 px-4 py-10 text-sm text-gray-700 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
