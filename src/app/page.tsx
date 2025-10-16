@@ -1,10 +1,7 @@
 import HomeClient from "@/components/home-client";
-import { getHomeData } from "@/lib/home-service";
-import type { CategoryWithProducts } from "@/types/product";
 
-export const revalidate = 300; // ISR: rebuild HTML sau 5 phút khi có truy cập
+export const revalidate = 300; // vẫn giữ ISR nếu muốn, nhưng client fetch từ cache SWR
 
-export default async function Page() {
-  const data: CategoryWithProducts[] = await getHomeData(); // gọi thẳng DB, 0 HTTP
-  return <HomeClient initialData={data} />;
+export default function Page() {
+  return <HomeClient />; // bỏ initialData
 }

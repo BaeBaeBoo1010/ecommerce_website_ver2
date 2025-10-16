@@ -145,7 +145,7 @@ export default function ProductDetail({ product }: { product: Product }) {
   return (
     <>
       <div className="min-h-screen bg-gray-100">
-        <main className="mx-auto w-full max-w-7xl px-4 py-8 md:px-8">
+        <main className="mx-auto w-full max-w-7xl px-0 py-0 md:px-8 md:py-8">
           {/* Card tổng */}
           <div className="rounded-lg bg-white">
             {/* Thông tin sản phẩm */}

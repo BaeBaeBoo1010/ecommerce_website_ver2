@@ -13,7 +13,7 @@ const ERROR = {
 export async function GET() {
   await connectMongoDB();
   const categories = await Category.find().sort({ name: 1 });
-  return NextResponse.json({ categories });
+  return NextResponse.json(categories);
 }
 
 /* ───────── POST /api/categories ─────────

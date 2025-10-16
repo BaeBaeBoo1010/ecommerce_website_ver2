@@ -11,6 +11,7 @@ import "./globals.css";
 import { cache } from "react";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/product";
+import { Category } from "@/models/category";
 import { SWRConfig } from "swr";
 
 const roboto = Roboto({
@@ -27,12 +28,20 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+// Cached + ISR cho products
 const getProducts = cache(async () => {
   await connectMongoDB();
   const products = await Product.find()
     .populate("category", "name slug")
     .lean();
   return JSON.parse(JSON.stringify(products));
+});
+
+// Cached + ISR cho categories
+const getCategories = cache(async () => {
+  await connectMongoDB();
+  const categories = await Category.find().lean();
+  return JSON.parse(JSON.stringify(categories));
 });
 
 export const metadata: Metadata = {
@@ -45,7 +54,11 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const products = await getProducts(); // Cached + ISR
+  // Fetch song song để tối ưu
+  const [products, categories] = await Promise.all([
+    getProducts(),
+    getCategories(),
+  ]);
 
   return (
     <html
@@ -62,10 +75,14 @@ export default async function RootLayout({
         <Providers>
           <SWRConfig
             value={{
-              fallback: { "/api/products": products },
+              fallback: {
+                "/api/products": products,
+                "/api/categories": categories,
+              },
               revalidateOnFocus: false,
               revalidateOnReconnect: false,
               revalidateIfStale: false,
+              revalidateOnMount: false,
             }}
           >
             <Header />

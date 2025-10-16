@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
+import useSWR from "swr";
 import {
   Sheet,
   SheetTrigger,
@@ -10,31 +11,35 @@ import {
   SheetTitle,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu, Home, Box, Info, Phone, Loader2 } from "lucide-react";
+import { Menu, Home, Box, Info, Phone } from "lucide-react";
+import type { Product, Category } from "@/types/product";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function MobileSidebar() {
-  const [categories, setCategories] = useState<
-    { name: string; slug: string }[]
-  >([]);
-  const [loading, setLoading] = useState(true);
+  const { data: products = [], isLoading } = useSWR<Product[]>(
+    "/api/products",
+    fetcher,
+    {
+      revalidateOnMount: true,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  );
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/categories");
-        const data = await res.json();
-        setCategories(data.categories);
-      } catch (err) {
-        console.error("Lỗi load danh mục:", err);
-      } finally {
-        setLoading(false);
+  // Lấy danh sách category duy nhất từ products
+  const categories: Category[] = useMemo(() => {
+    const map = new Map<string, Category>();
+    products.forEach((p) => {
+      if (p.category?._id && !map.has(p.category._id)) {
+        map.set(p.category._id, p.category);
       }
-    })();
-  }, []);
+    });
+    return Array.from(map.values());
+  }, [products]);
 
   return (
     <Sheet>
-      {/* ───────────────── Trigger ───────────────── */}
       <SheetTrigger asChild>
         <button
           aria-label="Mở menu"
@@ -44,22 +49,17 @@ export default function MobileSidebar() {
         </button>
       </SheetTrigger>
 
-      {/* ───────────────── Content ───────────────── */}
       <SheetContent
         side="left"
-        aria-describedby=""
         className="flex w-72 flex-col bg-white px-0 pt-4 pb-6 dark:bg-neutral-900"
       >
-        {/* Header */}
         <SheetHeader>
           <SheetTitle className="text-left text-lg font-semibold tracking-wide">
             Menu
           </SheetTitle>
         </SheetHeader>
 
-        {/* Navigation links */}
         <nav className="flex flex-1 flex-col overflow-y-auto px-6">
-          {/* Primary */}
           {[
             { href: "/", label: "Trang chủ", icon: Home },
             { href: "/products", label: "Sản phẩm", icon: Box },
@@ -77,17 +77,15 @@ export default function MobileSidebar() {
             </SheetClose>
           ))}
 
-          {/* Divider */}
           <div className="my-3 border-t border-gray-200 dark:border-neutral-700" />
 
-          {/* Categories */}
           <p className="mb-2 px-1 text-xs font-semibold tracking-wider text-gray-500 dark:text-gray-400">
             DANH MỤC SẢN PHẨM
           </p>
 
-          {loading ? (
+          {isLoading ? (
             <div className="flex items-center gap-2 px-1 text-sm text-gray-500">
-              <Loader2 className="h-4 w-4 animate-spin" /> Đang tải…
+              <Menu className="h-4 w-4 animate-spin" /> Đang tải…
             </div>
           ) : categories.length === 0 ? (
             <span className="px-1 text-sm text-gray-500">
@@ -95,7 +93,7 @@ export default function MobileSidebar() {
             </span>
           ) : (
             categories.map((cat) => (
-              <SheetClose asChild key={cat.slug}>
+              <SheetClose asChild key={cat._id}>
                 <Link
                   href={`/products?category=${cat.slug}`}
                   className="mb-1 flex items-center rounded-md px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-100 active:bg-gray-200 dark:text-gray-300 dark:hover:bg-neutral-800"

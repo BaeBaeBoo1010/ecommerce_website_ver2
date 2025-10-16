@@ -55,7 +55,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import TinyEditor from "@/components/tiny-editor";
 import Link from "next/link";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 
 /* ---------- Types ---------- */
 type ImageItem = {
@@ -151,7 +151,6 @@ function SortableImage({
 export default function EditProductPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
-  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -217,28 +216,20 @@ export default function EditProductPage() {
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const activeImage = images.find((img) => img.id === activeImageId);
 
-  // const { data: categoriesData } = useSWR("/api/categories", (url) =>
-  //   fetch(url).then((r) => r.json()),
-  // );
-
-  // const { data: productsData } = useSWR("/api/products", (url) =>
-  //   fetch(url).then((r) => r.json()),
-  // );
-
   const { data: productsData = [] } = useSWR<Product[]>(
     "/api/products",
     fetcher,
     {
-      revalidateOnMount: true,
-      revalidateOnFocus: true,
+      revalidateOnMount: false,
+      revalidateOnFocus: false,
     },
   );
-  const { data: categoriesData } = useSWR<{ categories: Category[] }>(
+  const { data: categories = [] } = useSWR<Category[]>(
     "/api/categories",
     fetcher,
     {
-      revalidateOnMount: true,
-      revalidateOnFocus: true,
+      revalidateOnMount: false,
+      revalidateOnFocus: false,
     },
   );
 
@@ -252,13 +243,6 @@ export default function EditProductPage() {
       document.body.style.cursor = "";
     };
   }, [activeImageId]);
-
-  // Load categories
-  useEffect(() => {
-    if (categoriesData?.categories) {
-      setCategories(categoriesData.categories);
-    }
-  }, [categoriesData]);
 
   useEffect(() => {
     if (!productsData || !id) return;
@@ -466,18 +450,6 @@ export default function EditProductPage() {
 
     setLoading(true);
 
-    if (images.length === 0) {
-      setFieldError((prev) => ({
-        ...prev,
-        images: "Vui lòng thêm ít nhất 1 ảnh",
-      }));
-      toast.error("Vui lòng thêm ít nhất 1 ảnh sản phẩm");
-      setLoading(false);
-      return;
-    } else {
-      setFieldError((prev) => ({ ...prev, images: "" }));
-    }
-
     const isNameValid = validateField("name", productData.name);
     const isCodeValid = validateField("code", productData.code);
     const isDescValid = validateField("desc", productData.desc);
@@ -494,6 +466,18 @@ export default function EditProductPage() {
       toast.error("Vui lòng nhập đầy đủ thông tin sản phẩm");
       setLoading(false);
       return;
+    }
+
+    if (images.length === 0) {
+      setFieldError((prev) => ({
+        ...prev,
+        images: "Vui lòng thêm ít nhất 1 ảnh",
+      }));
+      toast.error("Vui lòng thêm ít nhất 1 ảnh sản phẩm");
+      setLoading(false);
+      return;
+    } else {
+      setFieldError((prev) => ({ ...prev, images: "" }));
     }
 
     if (hasArticle && isHtmlEmpty(articleContent)) {
@@ -597,7 +581,11 @@ export default function EditProductPage() {
       }
 
       const newCat = data.category;
-      setCategories((prev) => [...prev, newCat]);
+      mutate(
+        "/api/categories",
+        (cats: Category[] = []) => [...cats, newCat],
+        false,
+      );
       setSelectedCategory(newCat._id);
       setNewCategoryName("");
       setCategoryError(false);

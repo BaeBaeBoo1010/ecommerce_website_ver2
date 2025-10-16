@@ -106,7 +106,7 @@ export default function ProductSwiper({
                   </div>
 
                   <div className="mt-3 flex flex-grow flex-col">
-                    <h3 className="line-clamp-3 text-sm font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:text-lg">
+                    <h3 className="line-clamp-3 h-[4.0rem] text-sm font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:h-[4.5rem] sm:text-lg md:h-[5.5rem]">
                       {p.name}
                     </h3>
                     <p className="mt-auto text-base font-bold text-[#ee4d2d] sm:text-lg">

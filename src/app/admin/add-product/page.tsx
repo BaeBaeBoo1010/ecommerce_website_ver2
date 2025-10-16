@@ -52,6 +52,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import TinyEditor from "@/components/tiny-editor";
 import Link from "next/link";
+import useSWR, { mutate } from "swr";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 /* ---------- Types ---------- */
 interface Category {
@@ -175,11 +178,11 @@ export default function AddProductPage() {
 
   const formRef = useRef<HTMLFormElement | null>(null);
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
 
   type ImageItem = { id: string; file: File; url: string };
   const [images, setImages] = useState<ImageItem[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryError, setCategoryError] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [descLength, setDescLength] = useState(0);
   const DESC_LIMIT = 500;
@@ -193,6 +196,15 @@ export default function AddProductPage() {
   const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
 
+  const { data: categories = [] } = useSWR<Category[]>(
+    "/api/categories",
+    fetcher,
+    {
+      revalidateOnMount: false,
+      revalidateOnFocus: false,
+    },
+  );
+
   useEffect(() => {
     if (activeImageId) {
       document.body.style.cursor = "grabbing";
@@ -205,13 +217,6 @@ export default function AddProductPage() {
   }, [activeImageId]);
 
   const activeImage = images.find((img) => img.id === activeImageId);
-
-  useEffect(() => {
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((d) => setCategories(d.categories))
-      .catch(() => toast.error("Không thể tải danh mục"));
-  }, []);
 
   function resetForm() {
     formRef.current?.reset();
@@ -298,18 +303,6 @@ export default function AddProductPage() {
     e.preventDefault();
     setLoading(true);
 
-    if (images.length === 0) {
-      setFieldError((prev) => ({
-        ...prev,
-        images: "Vui lòng thêm ít nhất 1 ảnh",
-      }));
-      toast.error("Vui lòng thêm ít nhất 1 ảnh sản phẩm");
-      setLoading(false);
-      return;
-    } else {
-      setFieldError((prev) => ({ ...prev, images: "" }));
-    }
-
     const isNameValid = validateField("name", productData.name);
     const isCodeValid = validateField("code", productData.code);
     const isDescValid = validateField("desc", productData.desc);
@@ -326,6 +319,18 @@ export default function AddProductPage() {
       toast.error("Vui lòng nhập đầy đủ thông tin sản phẩm");
       setLoading(false);
       return;
+    }
+
+    if (images.length === 0) {
+      setFieldError((prev) => ({
+        ...prev,
+        images: "Vui lòng thêm ít nhất 1 ảnh",
+      }));
+      toast.error("Vui lòng thêm ít nhất 1 ảnh sản phẩm");
+      setLoading(false);
+      return;
+    } else {
+      setFieldError((prev) => ({ ...prev, images: "" }));
     }
 
     if (hasArticle && isHtmlEmpty(articleContent)) {
@@ -397,7 +402,7 @@ export default function AddProductPage() {
 
   async function handleAddCategory() {
     const trimmed = newCategoryName.trim();
-    if (!trimmed) return toast("Nhập tên danh mục");
+    if (!trimmed) return toast("Hãy nhập tên danh mục");
 
     try {
       const res = await fetch("/api/categories", {
@@ -409,14 +414,22 @@ export default function AddProductPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.code === "DUP_NAME") {
+          setCategoryError(true);
+        }
         toast.error(MSG_CATEGORY[data.code] ?? "Không thể tạo danh mục");
         return;
       }
 
       const newCat = data.category;
-      setCategories((prev) => [...prev, newCat]);
+      mutate(
+        "/api/categories",
+        (cats: Category[] = []) => [...cats, newCat],
+        false,
+      );
       setSelectedCategory(newCat._id);
       setNewCategoryName("");
+      setCategoryError(false);
       toast.success("Đã thêm danh mục mới");
     } catch {
       toast.error("Lỗi hệ thống khi thêm danh mục");
@@ -550,25 +563,27 @@ export default function AddProductPage() {
                 <p className="text-sm text-red-500">{fieldError.price}</p>
               )}
             </div>
+            {/* Category */}
             <div className="grid gap-2">
               <Label>Loại sản phẩm</Label>
               <Select
+                key={selectedCategory}
                 value={selectedCategory}
-                onValueChange={(value) => {
-                  setSelectedCategory(value);
-                  setProductData((p) => ({ ...p, category: value }));
-                  validateField("category", value);
+                onValueChange={(val) => {
+                  setSelectedCategory(val);
+                  setCategoryError(false);
+                  validateField("category", val);
                 }}
               >
                 <SelectTrigger
-                  className={`${fieldError.category ? "border-red-500" : ""}`}
+                  className={fieldError.category ? "border-red-500" : ""}
                 >
                   <SelectValue placeholder="Chọn loại sản phẩm" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat._id} value={cat._id}>
-                      {cat.name}
+                  {categories.map((c) => (
+                    <SelectItem key={c._id} value={c._id}>
+                      {c.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -577,12 +592,17 @@ export default function AddProductPage() {
                 <p className="text-sm text-red-500">{fieldError.category}</p>
               )}
             </div>
+
+            {/* Add new category */}
             <div className="flex items-end gap-2">
               <Input
                 placeholder="Tên loại mới"
                 value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                className="max-w-sm"
+                onChange={(e) => {
+                  setNewCategoryName(e.target.value);
+                  setCategoryError(false);
+                }}
+                className={`max-w-sm ${categoryError ? "border-red-500" : ""}`}
               />
               <Button
                 type="button"

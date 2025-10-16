@@ -47,18 +47,18 @@ export default function ProductManagementPage() {
     isLoading,
   } = useSWR<Product[]>("/api/products", fetcher, {
     revalidateOnMount: true,
-    revalidateOnFocus: true,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
   });
-  const { data: catData } = useSWR<{ categories: Category[] }>(
+  const { data: categories = [] } = useSWR<Category[]>(
     "/api/categories",
     fetcher,
     {
       revalidateOnMount: true,
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
     },
   );
-
-  const categories = catData?.categories ?? [];
 
   /* UI state */
   const [selectedCategory, setSelectedCategory] = useState("all");
