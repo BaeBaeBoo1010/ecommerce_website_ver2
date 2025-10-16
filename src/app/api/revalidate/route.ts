@@ -7,7 +7,6 @@ export async function POST() {
     const paths = [
       "/",
       "/products",
-      "/products/[id]",
     ];
 
     for (const path of paths) {

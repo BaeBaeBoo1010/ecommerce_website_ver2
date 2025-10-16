@@ -78,6 +78,7 @@ const MSG_CATEGORY: Record<string, string> = {
   DUP_NAME: "Tên danh mục đã tồn tại",
 };
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 /* ---------- Sortable Image Component ---------- */
 function SortableImage({
   id,
@@ -216,12 +217,29 @@ export default function EditProductPage() {
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const activeImage = images.find((img) => img.id === activeImageId);
 
-  const { data: categoriesData } = useSWR("/api/categories", (url) =>
-    fetch(url).then((r) => r.json()),
-  );
+  // const { data: categoriesData } = useSWR("/api/categories", (url) =>
+  //   fetch(url).then((r) => r.json()),
+  // );
 
-  const { data: productsData } = useSWR("/api/products", (url) =>
-    fetch(url).then((r) => r.json()),
+  // const { data: productsData } = useSWR("/api/products", (url) =>
+  //   fetch(url).then((r) => r.json()),
+  // );
+
+  const { data: productsData = [] } = useSWR<Product[]>(
+    "/api/products",
+    fetcher,
+    {
+      revalidateOnMount: true,
+      revalidateOnFocus: true,
+    },
+  );
+  const { data: categoriesData } = useSWR<{ categories: Category[] }>(
+    "/api/categories",
+    fetcher,
+    {
+      revalidateOnMount: true,
+      revalidateOnFocus: true,
+    },
   );
 
   useEffect(() => {
@@ -289,10 +307,10 @@ export default function EditProductPage() {
           isExisting: true,
         });
       });
-    } else if (pData.imageUrl) {
+    } else if (pData.imageUrls) {
       existingImages.push({
         id: "existing-0",
-        url: pData.imageUrl,
+        url: pData.imageUrls,
         isExisting: true,
       });
     }
