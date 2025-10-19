@@ -11,10 +11,6 @@ import type { Swiper as SwiperType } from "swiper";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Product } from "@/types/product";
 import Link from "next/link";
-
-import "swiper/css";
-import "swiper/css/thumbs";
-import "swiper/css/effect-fade";
 import { toast } from "sonner";
 
 interface Props {
@@ -47,7 +43,7 @@ export default function Carousel({ products, isLoading }: Props) {
       }
     }
 
-    const random = [...products].sort(() => Math.random() - 0.5).slice(0, 3);
+    const random = [...products].sort(() => Math.random() - 0.5).slice(0, 5);
     setRandomProducts(random);
     localStorage.setItem(
       key,
@@ -79,25 +75,27 @@ export default function Carousel({ products, isLoading }: Props) {
 
   /* ---------- SKELETON ---------- */
   const SkeletonTextBlock = () => (
-    <div className="space-y-4 md:space-y-5">
-      <Skeleton className="h-8 w-2/3 sm:h-9" />
-      <Skeleton className="h-4 w-1/2 sm:h-5" />
-      <Skeleton className="h-20 w-full sm:h-24" />
-      <div className="flex gap-3">
-        <Skeleton className="h-10 w-28" />
-        <Skeleton className="h-10 w-28" />
+    <div className="w-full space-y-5 md:space-y-6">
+      <Skeleton className="h-8 w-3/4 sm:h-9 md:h-10" />
+      <Skeleton className="h-5 w-1/3 sm:h-6" />
+      <Skeleton className="h-20 w-full sm:h-24 md:h-28" />
+      <div className="flex flex-wrap gap-3 pt-2">
+        <Skeleton className="h-10 w-28 sm:h-11 sm:w-32" />
+        <Skeleton className="h-10 w-28 sm:h-11 sm:w-32" />
       </div>
     </div>
   );
 
   const SkeletonImage = ({ large = false }: { large?: boolean }) => (
     <div
-      className={`relative ${
+      className={`relative overflow-hidden rounded-lg bg-gray-200 shadow-sm ${
         large
-          ? "h-[250px] sm:h-[300px] md:h-[400px]"
-          : "h-[30px] w-[30px] lg:h-[70px] lg:w-[70px]"
-      } w-full overflow-hidden rounded-lg bg-gray-200`}
-    />
+          ? "h-[250px] w-full sm:h-[300px] md:h-[400px]"
+          : "h-[35px] w-[35px] sm:h-[50px] sm:w-[50px] lg:h-[70px] lg:w-[70px]"
+      }`}
+    >
+      <Skeleton className="absolute inset-0" />
+    </div>
   );
 
   return (
@@ -126,8 +124,8 @@ export default function Carousel({ products, isLoading }: Props) {
                 </h1>
 
                 {slides[activeIndex].category && (
-                  <p className="mb-4 text-sm text-gray-500">
-                    Danh mục:{" "}
+                  <p className="mb-4 text-sm text-gray-500 flex justify-center sm:inline-block">
+                    <span className="hidden sm:inline">Danh mục:{" "}</span>
                     <Link
                       href={`/products?category=${slides[activeIndex].categorySlug}&page=1`}
                       className="cursor-pointer rounded-lg bg-gray-200 p-2 font-medium transition-all hover:text-blue-500"
@@ -150,7 +148,7 @@ export default function Carousel({ products, isLoading }: Props) {
                 {slides[activeIndex].type === "product" && (
                   <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:gap-4">
                     <button
-                      className="inline-flex cursor-pointer items-center justify-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm text-white transition hover:scale-105 hover:bg-blue-700 sm:text-base"
+                      className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition duration-80 hover:scale-103 hover:bg-blue-500 active:scale-100 active:bg-blue-700 sm:text-base"
                       onClick={() =>
                         toast.success("Đã thêm 1 sản phẩm vào giỏ hàng")
                       }
@@ -160,7 +158,7 @@ export default function Carousel({ products, isLoading }: Props) {
 
                     <Link
                       href={`/products/${(slides[activeIndex] as any).productId}`}
-                      className="inline-flex items-center justify-center gap-2 rounded bg-gray-100 px-4 py-2 text-sm hover:scale-105 hover:bg-gray-200 sm:text-base"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm transition hover:scale-103 hover:bg-gray-200 active:scale-100 active:opacity-80 sm:text-base"
                     >
                       <Info size={18} /> Thông tin
                     </Link>
@@ -221,7 +219,7 @@ export default function Carousel({ products, isLoading }: Props) {
               <div className="flex justify-center">
                 <Swiper
                   onSwiper={setThumbsSwiper}
-                  slidesPerView={4}
+                  slidesPerView={6}
                   loop={false}
                   breakpoints={{
                     0: { spaceBetween: 4 },

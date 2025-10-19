@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Carousel from "@/components/carousel";
-import ProductSwiperSkeleton from "@/components/product-swiper-skeleton";
+import { ProductSwiperSkeleton } from "@/components/product-swiper-skeleton";
 import type { Product, CategoryWithProducts } from "@/types/product";
 import { useSession } from "next-auth/react";
 import useSWR from "swr";
@@ -29,7 +29,7 @@ export default function HomeClient() {
   const { data: products } = useSWR<Product[]>("/api/products", {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
-    revalidateOnMount: false,
+    revalidateOnMount: true,
   });
 
   // 🔹 Tách products ra theo category

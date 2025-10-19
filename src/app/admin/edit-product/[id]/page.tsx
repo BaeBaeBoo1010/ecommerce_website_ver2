@@ -402,6 +402,20 @@ export default function EditProductPage() {
     initialState,
   ]);
 
+  // Cảnh báo khi reload hoặc tắt tab
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasChanges]);
+
   async function uploadArticleImages(
     htmlContent: string,
     productCode: string,
@@ -447,6 +461,11 @@ export default function EditProductPage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!product) return;
+
+    const confirmUpdate = window.confirm(
+      "Bạn có chắc chắn muốn cập nhật sản phẩm này không?",
+    );
+    if (!confirmUpdate) return;
 
     setLoading(true);
 

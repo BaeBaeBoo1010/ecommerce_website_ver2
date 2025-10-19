@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { StaticImport } from "next/dist/shared/lib/get-img-props";
 import { useInView } from "react-intersection-observer";
+import { Loader2 } from "lucide-react";
 
 function QuantitySelector({
   quantity,
@@ -145,7 +146,7 @@ export default function ProductDetail({ product }: { product: Product }) {
   return (
     <>
       <div className="min-h-screen bg-gray-100">
-        <main className="mx-auto w-full max-w-7xl px-0 py-0 md:px-8 md:py-8">
+        <main className="mx-auto w-full max-w-7xl px-0 py-0 md:px-4 md:py-4">
           {/* Card tổng */}
           <div className="rounded-lg bg-white">
             {/* Thông tin sản phẩm */}
@@ -319,16 +320,16 @@ export default function ProductDetail({ product }: { product: Product }) {
             {product.isArticleEnabled && product.articleHtml && (
               <section
                 ref={articleRef}
-                className="mt-10 min-h-[200px] rounded-lg bg-white p-6 shadow-sm"
+                className="mt-2 min-h-[200px] rounded-lg bg-white p-6 shadow-sm"
               >
                 {articleInView ? (
                   <article
-                    className="prose prose-headings:font-semibold prose-headings:text-gray-900 prose-a:text-blue-600 hover:prose-a:underline prose-strong:text-gray-800 prose-img:mx-auto prose-img:rounded-lg prose-img:shadow-md prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-table:overflow-hidden prose-table:rounded-lg prose-table:border prose-table:border-gray-200 prose-th:bg-gray-100 prose-th:text-gray-800 prose-td:border-gray-200 dark:prose-invert animate-fadeIn max-w-none"
+                    className="prose dark:prose-invert prose-headings:font-semibold prose-headings:text-gray-900 prose-a:text-blue-600 hover:prose-a:underline prose-strong:text-gray-800 prose-img:mx-auto prose-img:rounded-lg prose-img:shadow-md prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-table:overflow-hidden prose-table:rounded-lg prose-table:border prose-table:border-gray-200 prose-th:bg-gray-100 prose-th:text-gray-800 prose-td:border-gray-200 animate-fadeIn max-w-none [&_iframe]:mx-auto [&_iframe]:block [&_iframe]:rounded-lg [&_iframe]:shadow-md max-sm:[&_iframe]:max-h-70 max-sm:[&_iframe]:max-w-full sm:[&_iframe]:h-auto sm:[&_iframe]:max-w-full"
                     dangerouslySetInnerHTML={{ __html: product.articleHtml }}
                   />
                 ) : (
                   <div className="flex h-40 items-center justify-center text-gray-400">
-                    <span>Đang tải bài viết...</span>
+                    <Loader2 className="text-primary h-10 w-10 animate-spin" />
                   </div>
                 )}
 

@@ -149,6 +149,7 @@ export default function TinyEditor({
             "undo redo | blocks fontsizeinput | " +
             " bold italic underline forecolor backcolor | alignleft aligncenter " +
             "alignright alignjustify | bullist numlist outdent indent | fullscreen",
+          image_caption: true,
           font_size_input_default_unit: "px",
           content_style:
             "body { font-family:Inter,Roboto,sans-serif; font-size:16px; line-height:1.75; } img { border-radius: 8px; display: block; margin-left: auto; margin-right: auto;}",
