@@ -21,7 +21,7 @@ export default function TinyEditor({
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
-}) {
+  }) {
   const tempImagesRef = useRef<{ blobUrl: string; file: File }[]>([]);
 
   const resizeAndCompressImage = (file: File): Promise<File> => {
@@ -120,8 +120,9 @@ export default function TinyEditor({
   return (
     <div className="overflow-hidden rounded-xl border">
       <Editor
-        apiKey={process.env.NEXT_PUBLIC_TINYMCE_KEY}
+        tinymceScriptSrc="/tinymce/tinymce.min.js"
         value={value}
+        licenseKey="gpl"
         init={{
           height: 400,
           menubar: "file edit insert table format view tools",
