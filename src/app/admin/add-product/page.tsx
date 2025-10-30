@@ -104,7 +104,7 @@ function SortableImage({
       {...listeners}
     >
       <Image
-        src={url || "/placeholder.svg"}
+        src={url || "/images/placeholder.svg"}
         alt={`Ảnh ${index + 1}`}
         fill
         unoptimized
@@ -790,7 +790,7 @@ export default function AddProductPage() {
                     {activeImage ? (
                       <div className="relative h-[120px] w-[120px] overflow-hidden rounded-lg border border-gray-300 bg-white shadow-md">
                         <Image
-                          src={activeImage.url || "/placeholder.svg"}
+                          src={activeImage.url || "/images/placeholder.svg"}
                           alt="drag"
                           fill
                           className="object-cover"

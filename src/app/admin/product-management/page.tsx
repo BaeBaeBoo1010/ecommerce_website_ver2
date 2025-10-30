@@ -366,7 +366,7 @@ export default function ProductManagementPage() {
                           <TableCell className="w-16">
                             <div className="border-border/50 bg-muted/30 relative h-16 w-16 overflow-hidden rounded-lg border shadow-sm transition-all group-hover:shadow-md">
                               <Image
-                                src={p.imageUrls[0] || "/placeholder.svg"}
+                                src={p.imageUrls[0] || "/images/placeholder.svg"}
                                 alt={p.name}
                                 fill
                                 unoptimized

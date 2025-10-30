@@ -178,7 +178,7 @@ export default function ProductDetail({ product }: { product: Product }) {
                             priority={index === 0}
                             loading={index === 0 ? "eager" : "lazy"}
                             placeholder="blur"
-                            blurDataURL="/images/placeholder-image.jpg"
+                            blurDataURL="/images/placeholder.svg"
                             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 600px"
                           />
                         </div>

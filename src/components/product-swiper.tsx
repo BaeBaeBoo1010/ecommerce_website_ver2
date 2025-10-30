@@ -96,7 +96,7 @@ export default function ProductSwiper({
                 >
                   <div className="relative w-full overflow-hidden rounded-lg bg-white pb-[100%]">
                     <Image
-                      src={p.imageUrls?.[0] || "/images/placeholder.png"}
+                      src={p.imageUrls?.[0] || "/images/placeholder.svg"}
                       alt={p.name}
                       fill
                       loading="lazy"

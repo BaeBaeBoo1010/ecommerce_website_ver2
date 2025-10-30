@@ -35,7 +35,7 @@ const ProductCard = ({
         )}
 
         <Image
-          src={product.imageUrls[0] || "/images/placeholder.png"}
+          src={product.imageUrls[0] || "/images/placeholder.svg"}
           alt={product.name}
           fill
           sizes={imageProps.sizes ?? "(max-width:1024px) 50vw, 25vw"}

@@ -114,7 +114,7 @@ function SortableImage({
       {...listeners}
     >
       <Image
-        src={url || "/placeholder.svg"}
+        src={url || "/images/placeholder.svg"}
         alt={`Ảnh ${index + 1}`}
         fill
         unoptimized
@@ -462,13 +462,6 @@ export default function EditProductPage() {
     e.preventDefault();
     if (!product) return;
 
-    const confirmUpdate = window.confirm(
-      "Bạn có chắc chắn muốn cập nhật sản phẩm này không?",
-    );
-    if (!confirmUpdate) return;
-
-    setLoading(true);
-
     const isNameValid = validateField("name", productData.name);
     const isCodeValid = validateField("code", productData.code);
     const isDescValid = validateField("desc", productData.desc);
@@ -483,7 +476,6 @@ export default function EditProductPage() {
       !isCategoryValid
     ) {
       toast.error("Vui lòng nhập đầy đủ thông tin sản phẩm");
-      setLoading(false);
       return;
     }
 
@@ -493,7 +485,6 @@ export default function EditProductPage() {
         images: "Vui lòng thêm ít nhất 1 ảnh",
       }));
       toast.error("Vui lòng thêm ít nhất 1 ảnh sản phẩm");
-      setLoading(false);
       return;
     } else {
       setFieldError((prev) => ({ ...prev, images: "" }));
@@ -501,9 +492,15 @@ export default function EditProductPage() {
 
     if (hasArticle && isHtmlEmpty(articleContent)) {
       toast.error("Vui lòng nhập nội dung bài viết chi tiết hoặc tắt tính năng này");
-      setLoading(false);
       return;
     }
+
+    const confirmUpdate = window.confirm(
+      "Bạn có chắc chắn muốn cập nhật sản phẩm này không?",
+    );
+    if (!confirmUpdate) return;
+
+    setLoading(true);
 
     const formData = new FormData(e.currentTarget);
     formData.set("category", selectedCategory);
@@ -1017,7 +1014,7 @@ export default function EditProductPage() {
                   {activeImage ? (
                     <div className="relative h-[120px] w-[120px] overflow-hidden rounded-lg border border-gray-300 bg-white shadow-md">
                       <Image
-                        src={activeImage.url || "/placeholder.svg"}
+                        src={activeImage.url || "/images/placeholder.svg"}
                         alt="drag"
                         fill
                         className="object-cover"

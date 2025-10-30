@@ -211,7 +211,7 @@ export default function Carousel({ products, isLoading }: Props) {
                   <SwiperSlide key={idx}>
                     <div className="relative h-[250px] sm:h-[300px] md:h-[400px]">
                       <Image
-                        src={item.image || "/placeholder.svg"}
+                        src={item.image || "/images/placeholder.svg"}
                         alt={`Image ${idx}`}
                         fill
                         sizes="(min-width: 768px) 50vw, 100vw"
@@ -240,7 +240,7 @@ export default function Carousel({ products, isLoading }: Props) {
                     <SwiperSlide key={idx} className="group !w-auto">
                       <div className="relative h-[30px] w-[30px] cursor-pointer overflow-hidden rounded-xl border-2 border-gray-300 opacity-50 transition-all duration-300 ease-in-out group-[.swiper-slide-thumb-active]:scale-110 group-[.swiper-slide-thumb-active]:border-gray-600 group-[.swiper-slide-thumb-active]:opacity-100 hover:opacity-100 lg:h-[70px] lg:w-[70px]">
                         <Image
-                          src={item.image || "/placeholder.svg"}
+                          src={item.image || "/images/placeholder.svg"}
                           alt={`Thumb ${idx}`}
                           fill
                           sizes="(min-width: 768px) 50vw, 100vw"
