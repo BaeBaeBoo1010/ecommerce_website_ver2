@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   CommandDialog,
   CommandGroup,
@@ -13,36 +13,73 @@ import { Button } from "@/components/ui/button";
 import { Search, Clock, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { Product } from "@/types/product";
+import Fuse from "fuse.js";
 
 const LS_KEY = "recent_searches";
+
+function removeVietnameseTones(str: string) {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
 
 export default function SearchCommand() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ id: string; name: string }[]>([]);
+  const [results, setResults] = useState<
+    { id: string; name: string; slug?: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
-  const [recent, setRecent] = useState<{ id: string; name: string }[]>([]);
+  const [recent, setRecent] = useState<
+    { id: string; name: string; slug?: string }[]
+  >([]);
   const router = useRouter();
   const { data: allProducts } = useSWR("/api/products");
-  const [hasSearched, setHasSearched] = useState(false);
   const [shortcutKey, setShortcutKey] = useState("⌘");
+
+  const searchCacheRef = useRef<
+    Map<string, { id: string; name: string; slug?: string }[]>
+  >(new Map());
 
   type Timer = ReturnType<typeof setTimeout>;
   const debounceRef = useRef<Timer | null>(null);
 
-  /* Hiển thị phím tắt ⌘ hoặc Ctrl */
+  const fuse = useMemo(() => {
+    if (!allProducts) return null;
+
+    const normalized = (allProducts as Product[]).map((p) => ({
+      ...p,
+      nameNoTone: removeVietnameseTones(p.name),
+      descriptionNoTone: p.description
+        ? removeVietnameseTones(p.description)
+        : "",
+      articleNoTone: p.articleHtml
+        ? removeVietnameseTones(p.articleHtml.replace(/<[^>]+>/g, ""))
+        : "",
+    }));
+
+    return new Fuse(normalized, {
+      keys: ["nameNoTone", "descriptionNoTone", "articleNoTone"],
+      threshold: 0.35,
+      includeScore: true,
+    });
+  }, [allProducts]);
+
+  const [hasSearched, setHasSearched] = useState(false);
+
   useEffect(() => {
     const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
     setShortcutKey(isMac ? "⌘" : "Ctrl");
   }, []);
 
-  /* Load lịch sử tìm kiếm một lần */
   useEffect(() => {
     const data = JSON.parse(localStorage.getItem(LS_KEY) || "[]");
     setRecent(data);
   }, []);
 
-  /* Phím tắt ⌘/Ctrl + K */
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -54,9 +91,9 @@ export default function SearchCommand() {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
-  /* Debounce query */
   useEffect(() => {
     setHasSearched(false);
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     if (!query) {
@@ -65,28 +102,34 @@ export default function SearchCommand() {
     }
 
     debounceRef.current = setTimeout(() => {
-      if (!allProducts) return;
+      if (!allProducts || !fuse) return;
 
       setLoading(true);
-      const keyword = query.trim().toLowerCase();
 
-      const filtered = (allProducts as Product[])
-        .filter((p) => {
-          const keywordLower = keyword.toLowerCase();
+      const keywordLower = removeVietnameseTones(query.trim().toLowerCase());
 
-          const nameMatch = p.name.toLowerCase().includes(keywordLower);
-          const descMatch =
-            p.description?.toLowerCase().includes(keywordLower) ?? false;
-          const articleMatch = p.articleHtml
-            ? p.articleHtml
-                .replace(/<[^>]+>/g, "")
-                .toLowerCase()
-                .includes(keywordLower)
-            : false;
+      if (searchCacheRef.current.has(keywordLower)) {
+        setResults(searchCacheRef.current.get(keywordLower) || []);
+        setHasSearched(true);
+        setLoading(false);
+        return;
+      }
 
-          return nameMatch || descMatch || articleMatch;
-        })
-        .map((p) => ({ id: p._id, name: p.name }));
+      const result = fuse.search(keywordLower);
+      const filtered = result.map((r) => ({
+        id: r.item._id,
+        name: r.item.name,
+        slug: r.item.slug,
+      }));
+
+      if (searchCacheRef.current.size > 20) {
+        const iterator = searchCacheRef.current.keys();
+        const firstKey = iterator.next().value;
+        if (firstKey !== undefined) {
+          searchCacheRef.current.delete(firstKey);
+        }
+      }
+      searchCacheRef.current.set(keywordLower, filtered);
 
       setResults(filtered);
       setHasSearched(true);
@@ -96,52 +139,110 @@ export default function SearchCommand() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, allProducts]);
+  }, [query, allProducts, fuse]);
 
-  /* Khi chọn gợi ý hoặc Enter */
-  const handleSelect = (item: { id: string; name: string }) => {
-    setOpen(false);
+  const handleSelect = useCallback(
+    (item: { id: string; name: string; slug?: string }) => {
+      setOpen(false);
 
-    const isProductId = /^[a-f\d]{24}$/i.test(item.id);
+      const next = [item, ...recent.filter((v) => v.id !== item.id)].slice(
+        0,
+        5,
+      );
+      setRecent(next);
+      localStorage.setItem(LS_KEY, JSON.stringify(next));
 
-    // Cập nhật lịch sử tìm kiếm
-    const next = [item, ...recent.filter((v) => v.id !== item.id)].slice(0, 5);
-    setRecent(next);
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
+      if (item.slug) {
+        router.push(`/products/${item.slug}`);
+        return;
+      }
 
-    if (isProductId) {
-      router.push(`/products/${item.id}`);
-    } else {
-      router.push(`/products?search=${encodeURIComponent(item.name)}`);
-    }
-  };
+      const keyword = removeVietnameseTones(item.name.trim().toLowerCase());
 
-  const handleSearchKeyword = (keyword: string) => {
-    const trimmed = keyword.trim();
-    if (!trimmed) return;
+      if (!allProducts || !fuse) {
+        router.push(`/products?search=${encodeURIComponent(keyword)}`);
+        return;
+      }
 
-    setOpen(false);
+      const result = fuse.search(keyword);
+      const filtered = result.map((r) => r.item);
 
-    const entry = { id: trimmed, name: trimmed };
-    const next = [entry, ...recent.filter((v) => v.id !== trimmed)].slice(0, 5);
-    setRecent(next);
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
+      if (filtered.length === 1 && filtered[0].slug) {
+        const product = filtered[0];
+        const updated = [
+          { id: product._id, name: product.name, slug: product.slug },
+          ...recent.filter((v) => v.id !== product._id),
+        ].slice(0, 5);
 
-    router.push(`/products?search=${encodeURIComponent(trimmed)}`);
-  };
+        setRecent(updated);
+        localStorage.setItem(LS_KEY, JSON.stringify(updated));
+
+        router.push(`/products/${product.slug}`);
+      } else {
+        router.push(`/products?search=${encodeURIComponent(keyword)}`);
+      }
+    },
+    [recent, allProducts, fuse, router],
+  );
+
+  const handleSearchKeyword = useCallback(
+    async (keyword: string) => {
+      const trimmed = keyword.trim();
+      if (!trimmed) return;
+
+      setLoading(true);
+      setHasSearched(false);
+
+      const entry = { id: trimmed, name: trimmed };
+      const next = [entry, ...recent.filter((v) => v.id !== trimmed)].slice(
+        0,
+        5,
+      );
+      setRecent(next);
+      localStorage.setItem(LS_KEY, JSON.stringify(next));
+
+      if (!allProducts || !fuse) {
+        setLoading(false);
+        router.push(`/products?search=${encodeURIComponent(trimmed)}`);
+        return;
+      }
+
+      const keywordLower = removeVietnameseTones(trimmed.toLowerCase());
+
+      const results = fuse.search(keywordLower);
+      const filtered = results.map((r) => r.item);
+
+      setLoading(false);
+      setHasSearched(true);
+      setOpen(false);
+
+      if (filtered.length === 1 && filtered[0].slug) {
+        const product = filtered[0];
+        const updated = [
+          { id: product._id, name: product.name, slug: product.slug },
+          ...recent.filter((v) => v.id !== product._id),
+        ].slice(0, 5);
+        setRecent(updated);
+        localStorage.setItem(LS_KEY, JSON.stringify(updated));
+
+        router.push(`/products/${product.slug}`);
+      } else {
+        router.push(`/products?search=${encodeURIComponent(trimmed)}`);
+      }
+    },
+    [recent, allProducts, fuse, router],
+  );
 
   return (
     <>
-      {/* Nút mở hộp thoại – hiển thị cả icon & label trên mọi kích cỡ */}
       <Button
         variant="outline"
         aria-label="Tìm kiếm"
-        className="flex h-10 items-center gap-2 rounded-md px-3 py-2 hover:bg-gray-100 active:bg-gray-200"
+        className="flex h-10 items-center gap-2 rounded-md bg-transparent px-3 py-2 hover:bg-gray-100 active:bg-gray-200"
         onClick={() => setOpen(true)}
       >
         <Search className="h-5 w-5" />
-        <span className="hidden sm:flex text-sm font-medium">Tìm kiếm</span>
-        {/* Phím tắt: ẩn trên mobile, hiện ≥ sm */}
+        <span className="hidden text-sm font-medium sm:flex">Tìm kiếm</span>
         <kbd
           className={`text-muted-foreground pointer-events-none ml-6 hidden sm:flex sm:items-center sm:gap-[2px] sm:rounded-sm sm:border sm:bg-gray-100 sm:px-1 sm:py-0 ${shortcutKey === "Ctrl" ? "text-sm" : "text-lg"}`}
         >
@@ -158,7 +259,6 @@ export default function SearchCommand() {
         </kbd>
       </Button>
 
-      {/* Hộp thoại tìm kiếm */}
       <CommandDialog
         open={open}
         onOpenChange={setOpen}
@@ -169,6 +269,7 @@ export default function SearchCommand() {
           <CommandInput
             placeholder="Tìm sản phẩm bạn cần"
             value={query}
+            disabled={loading}
             onValueChange={(value) => {
               if (value.length <= 50) {
                 setQuery(value);
@@ -203,7 +304,6 @@ export default function SearchCommand() {
         </div>
 
         <CommandList className="relative min-h-[280px] overflow-y-auto">
-          {/* Chỉ hiện khi đã nhập mà không có kết quả */}
           {!query && recent.length === 0 && (
             <div className="text-muted-foreground flex flex-col items-center justify-center py-10 text-center">
               <Search className="mb-2 h-8 w-8" />
@@ -211,7 +311,6 @@ export default function SearchCommand() {
             </div>
           )}
 
-          {/* Gần đây */}
           {!query && recent.length > 0 && (
             <CommandGroup heading="Gần đây">
               {recent.map((item) => (
@@ -226,13 +325,12 @@ export default function SearchCommand() {
                     {item.name}
                   </div>
 
-                  {/* Nút xóa riêng */}
                   <Button
                     variant="ghost"
                     size="icon"
                     className="text-muted-foreground h-6 w-6 hover:bg-gray-200"
                     onClick={(e) => {
-                      e.stopPropagation(); // tránh trigger chọn item
+                      e.stopPropagation();
                       const updated = recent.filter((v) => v.id !== item.id);
                       setRecent(updated);
                       localStorage.setItem(LS_KEY, JSON.stringify(updated));
@@ -246,7 +344,6 @@ export default function SearchCommand() {
             </CommandGroup>
           )}
 
-          {/* Kết quả realtime */}
           {results.length > 0 && (
             <CommandGroup heading="Kết quả">
               {results.map((item) => (
@@ -269,7 +366,6 @@ export default function SearchCommand() {
             </div>
           )}
 
-          {/* Không có kết quả */}
           {!loading && hasSearched && results.length === 0 && (
             <div className="text-muted-foreground flex flex-col items-center justify-center py-10 text-center">
               <Search className="mb-2 h-8 w-8" />

@@ -9,14 +9,14 @@ import type { Product } from "@/types/product";
 export default function ProductDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = use(params);
+  const { slug } = use(params);
 
   // Lấy danh sách sản phẩm từ SWR fallback đã set ở layout
   const { data: products } = useSWR<Product[]>("/api/products");
 
-  const product = products?.find((p) => p._id === id);
+  const product = products?.find((p) => p.slug === slug);
 
   // Update title
   useEffect(() => {

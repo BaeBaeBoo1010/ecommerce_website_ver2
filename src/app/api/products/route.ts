@@ -5,6 +5,7 @@ import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/product";
 import { Category } from "@/models/category";
 import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
+import { slugify } from "@/lib/slugify";
 
 if (!process.env.CLOUDINARY_URL) {
   console.error("⚠️ Missing CLOUDINARY_URL in environment");
@@ -108,6 +109,7 @@ export async function POST(req: Request) {
     // Lưu vào DB
     const newProduct = await Product.create({
       name,
+      slug: slugify(name),
       description,
       price,
       category,

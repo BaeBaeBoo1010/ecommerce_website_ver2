@@ -89,9 +89,9 @@ export default function ProductSwiper({
               </SwiperSlide>
             ))
           : limitedProducts.map((p) => (
-              <SwiperSlide key={p._id}>
+              <SwiperSlide key={p.slug}>
                 <Link
-                  href={`/products/${p._id}`}
+                  href={`/products/${p.slug}`}
                   className="group flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:shadow-lg"
                 >
                   <div className="relative w-full overflow-hidden rounded-lg bg-white pb-[100%]">

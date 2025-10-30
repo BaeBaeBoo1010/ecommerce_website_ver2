@@ -1,4 +1,4 @@
-// app/api/products/[id]/route.ts
+// app/api/products/[slug]/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import { connectMongoDB } from "@/lib/mongodb"
 import { Product } from "@/models/product"
@@ -55,41 +55,44 @@ const ERROR = {
   MISSING_FIELD: "MISSING_FIELD",
 }
 
-/* ───────── GET /api/products/[id] ───────── */
-export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const { id } = await context.params
+/* ───────── GET /api/products/[slug] ───────── */
+export async function GET(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
+  const { slug } = await context.params
   await connectMongoDB()
 
-  const product = await Product.findById(id).populate("category", "_id name slug")
+  const product = await Product.findOne({ slug }).populate("category", "_id name slug")
 
   if (!product) {
-    return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 })
+    return NextResponse.json(
+      { success: false, code: ERROR.NOT_FOUND, message: "Product not found" },
+      { status: 404 }
+    )
   }
 
   return NextResponse.json(product)
 }
 
 /* ───────── DELETE /api/products/[id] ───────── */
-export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
   try {
-    const { id } = await context.params
+    const { slug } = await context.params
     await connectMongoDB()
 
-    const product = await Product.findById(id)
+    const product = await Product.findOne({ slug })
     if (!product) {
       return NextResponse.json({ success: false, message: "Sản phẩm không tồn tại" }, { status: 404 })
     }
 
     const productCode = product.productCode
 
-    // Xóa ảnh trong folder (theo prefix productCode)
+    // Xóa ảnh trong Cloudinary theo prefix
     await cloudinary.api.delete_resources_by_prefix(`products/${productCode}`)
 
-    // Sau khi xóa ảnh, xóa luôn folder
+    // Xóa thư mục chứa ảnh
     await cloudinary.api.delete_folder(`products/${productCode}`)
 
     // Xóa sản phẩm trong MongoDB
-    await Product.findByIdAndDelete(id)
+    await Product.findOneAndDelete({ slug })
 
     return NextResponse.json({ success: true, message: "Đã xóa sản phẩm và ảnh" }, { status: 200 })
   } catch (err) {
@@ -99,14 +102,18 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
 }
 
 /* ───────── PUT /api/products/[id] ───────── */
-export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function PUT(req: NextRequest, context: { params: Promise<{ slug: string }> }) {
   try {
-    const { id } = await context.params
+    const { slug } = await context.params
     await connectMongoDB()
 
-    const product = await Product.findById(id)
+    // 🔹 Tìm product theo slug
+    const product = await Product.findOne({ slug })
     if (!product) {
-      return NextResponse.json({ success: false, code: ERROR.NOT_FOUND, message: "Product not found" }, { status: 404 })
+      return NextResponse.json(
+        { success: false, code: ERROR.NOT_FOUND, message: "Product not found" },
+        { status: 404 }
+      )
     }
 
     const formData = await req.formData()
@@ -121,16 +128,17 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     if (!name || !productCode || isNaN(price) || !category) {
       return NextResponse.json(
         { success: false, code: ERROR.MISSING_FIELD, message: "Missing required fields" },
-        { status: 400 },
+        { status: 400 }
       )
     }
 
+    // 🔹 Kiểm tra trùng name hoặc productCode ở sản phẩm khác (không trùng slug hiện tại)
     const existing = await Product.findOne(
       {
-        _id: { $ne: id },
+        slug: { $ne: slug },
         $or: [{ name }, { productCode }],
       },
-      { name: 1, productCode: 1 },
+      { name: 1, productCode: 1 }
     ).lean<{ name: string; productCode: string }>()
 
     if (existing) {
@@ -139,12 +147,12 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       return NextResponse.json({ success: false, code, field }, { status: 409 })
     }
 
+    // 🔹 Lấy ảnh giữ lại và ảnh mới
     const files = formData.getAll("images") as File[]
     const keptImageUrlsRaw = formData.getAll("keptImageUrls") as string[]
     const keptImageUrls = keptImageUrlsRaw.map((url) => url.trim()).filter(Boolean)
     const newImageUrls: string[] = []
 
-    // Upload new files song song
     if (files.length > 0) {
       const uploadPromises = files.map(async (file, i) => {
         const buffer = Buffer.from(await file.arrayBuffer())
@@ -157,7 +165,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
                 resource_type: "image",
                 overwrite: true,
               },
-              (err, res) => (err ? reject(err) : resolve(res as UploadApiResponse)),
+              (err, res) => (err ? reject(err) : resolve(res as UploadApiResponse))
             )
             .end(buffer)
         })
@@ -168,7 +176,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
     const finalImageUrls = [...keptImageUrls, ...newImageUrls]
 
-    // Collect images to delete
+    // 🔹 Xác định ảnh cần xóa (trong product cũ và article cũ)
     const oldImages = Array.isArray(product.imageUrls) ? product.imageUrls : []
     const removedImages = oldImages.filter((url: string) => !keptImageUrls.includes(url))
     const removedImagePublicIds = removedImages.map(extractPublicId)
@@ -181,7 +189,6 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
     const allPublicIdsToDelete = [...removedImagePublicIds, ...removedArticlePublicIds].filter(Boolean)
 
-    // ✅ Delete all unused images concurrently
     if (allPublicIdsToDelete.length > 0) {
       console.log("Deleting Cloudinary images:", allPublicIdsToDelete)
 
@@ -189,7 +196,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         allPublicIdsToDelete.map(async (publicId) => {
           const res = await cloudinary.uploader.destroy(publicId, { resource_type: "image" })
           return { publicId, result: res }
-        }),
+        })
       )
 
       deleteResults.forEach((r) => {
@@ -201,7 +208,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       })
     }
 
-    // ✅ Update MongoDB product
+    // 🔹 Cập nhật sản phẩm
     product.name = name
     product.productCode = productCode
     product.description = description

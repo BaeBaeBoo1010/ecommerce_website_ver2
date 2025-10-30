@@ -150,7 +150,7 @@ function SortableImage({
 /* ---------- Main Component ---------- */
 export default function EditProductPage() {
   const router = useRouter();
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const [selectedCategory, setSelectedCategory] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -245,10 +245,10 @@ export default function EditProductPage() {
   }, [activeImageId]);
 
   useEffect(() => {
-    if (!productsData || !id) return;
+    if (!productsData || !slug) return;
 
     // Find the product from cached list
-    const foundProduct = productsData.find((p: Product) => p._id === id);
+    const foundProduct = productsData.find((p: Product) => p.slug === slug);
 
     if (!foundProduct) {
       toast.error("Sản phẩm không tồn tại");
@@ -315,7 +315,7 @@ export default function EditProductPage() {
       hasArticle: articleEnabled,
       articleContent: normalizeHtml(articleHtml),
     });
-  }, [productsData, id, router]);
+  }, [productsData, slug, router]);
 
   const normalizeHtml = (html: string): string => {
     if (!html) return "";
@@ -543,7 +543,7 @@ export default function EditProductPage() {
     });
 
     try {
-      const res = await fetch(`/api/products/${id}`, {
+      const res = await fetch(`/api/products/${product.slug}`, {
         method: "PUT",
         body: formData,
       });

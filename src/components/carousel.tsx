@@ -31,23 +31,30 @@ export default function Carousel({ products, isLoading }: Props) {
     const key = "carousel_random_products";
     const cache = localStorage.getItem(key);
 
+    const newHash = JSON.stringify(products.map((p) => p._id)).slice(0, 1000); // hash đơn giản
+
     if (cache) {
       try {
         const parsed = JSON.parse(cache);
-        if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+        if (
+          Date.now() - parsed.timestamp < 5 * 60 * 1000 &&
+          parsed.hash === newHash
+        ) {
           setRandomProducts(parsed.products);
           return;
         }
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     }
 
     const random = [...products].sort(() => Math.random() - 0.5).slice(0, 5);
     setRandomProducts(random);
     localStorage.setItem(
       key,
-      JSON.stringify({ timestamp: Date.now(), products: random }),
+      JSON.stringify({
+        timestamp: Date.now(),
+        products: random,
+        hash: newHash,
+      }),
     );
   }, [products]);
 
@@ -65,7 +72,8 @@ export default function Carousel({ products, isLoading }: Props) {
       title: p.name,
       category: p.category?.name,
       categorySlug: p.category?.slug,
-      productId: p._id, // ✅ Đặt tên rõ hơn, tránh nhầm với slug danh mục
+      productId: p._id,
+      productSlug: p.slug,
       description: p.description,
       image: p.imageUrls?.[0],
     })),
@@ -124,8 +132,8 @@ export default function Carousel({ products, isLoading }: Props) {
                 </h1>
 
                 {slides[activeIndex].category && (
-                  <p className="mb-4 text-sm text-gray-500 flex justify-center sm:inline-block">
-                    <span className="hidden sm:inline">Danh mục:{" "}</span>
+                  <p className="mb-4 flex justify-center text-sm text-gray-500 sm:inline-block">
+                    <span className="hidden sm:inline">Danh mục: </span>
                     <Link
                       href={`/products?category=${slides[activeIndex].categorySlug}&page=1`}
                       className="cursor-pointer rounded-lg bg-gray-200 p-2 font-medium transition-all hover:text-blue-500"
@@ -157,7 +165,7 @@ export default function Carousel({ products, isLoading }: Props) {
                     </button>
 
                     <Link
-                      href={`/products/${(slides[activeIndex] as any).productId}`}
+                      href={`/products/${(slides[activeIndex] as any).productSlug}`}
                       className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm transition hover:scale-103 hover:bg-gray-200 active:scale-100 active:opacity-80 sm:text-base"
                     >
                       <Info size={18} /> Thông tin

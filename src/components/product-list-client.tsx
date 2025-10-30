@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Product, Category } from "@/types/product";
 import ProductCard from "@/components/product-card";
 import Link from "next/link";
+import { Package } from "lucide-react";
 
 type SortOption = "none" | "priceAsc" | "priceDesc";
 const PRODUCTS_PER_PAGE = 16;
@@ -36,6 +37,7 @@ const paginate = (products: Product[], page: number) => {
 export default function ProductListClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { fallback } = useSWRConfig();
 
   // Params
   const categorySlug = searchParams.get("category") ?? "all";
@@ -48,6 +50,7 @@ export default function ProductListClient() {
 
   // Lấy data từ SWR cache đã được inject ở layout
   const { data: productsData, isLoading } = useSWR<Product[]>("/api/products", {
+    fallbackData: fallback["/api/products"],
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
   });
@@ -216,9 +219,21 @@ export default function ProductListClient() {
             </div>
           ))
         ) : filteredProducts.length === 0 ? (
-          <p className="col-span-full text-center">Không có sản phẩm nào.</p>
+          <div className="col-span-full flex flex-col items-center justify-center gap-4 py-20">
+            <div className="bg-muted rounded-full p-6">
+              <Package className="text-muted-foreground h-12 w-12" />
+            </div>
+            <div className="text-center">
+              <p className="text-foreground text-lg font-medium">
+                Không tìm thấy sản phẩm
+              </p>
+              <p className="text-muted-foreground text-sm">
+                Thử thay đổi bộ lọc hoặc tìm kiếm sản phẩm khác
+              </p>
+            </div>
+          </div>
         ) : (
-          paginatedProducts.map((p) => <ProductCard key={p._id} product={p} />)
+          paginatedProducts.map((p) => <ProductCard key={p.slug} product={p} />)
         )}
       </div>
 

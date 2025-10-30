@@ -15,7 +15,7 @@ interface ProductCardProps {
 
 const ProductCard = ({
   product,
-  href = `/products/${product._id}`,
+  href = `/products/${product.slug}`,
   imageProps = {},
 }: ProductCardProps) => {
   const [loaded, setLoaded] = useState(false);
@@ -23,7 +23,7 @@ const ProductCard = ({
   return (
     <Link
       href={href}
-      className="group group flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-lg sm:h-90"
+      className="group flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-lg sm:h-90"
     >
       {/* Ảnh */}
       <div
@@ -61,10 +61,10 @@ const ProductCard = ({
   );
 };
 
-// ✅ Memo hóa để tránh re-render khi prop không đổi
+// ✅ Memo hóa để tránh re-render không cần thiết
 export default React.memo(ProductCard, (prev, next) => {
   return (
-    prev.product._id === next.product._id &&
+    prev.product.productCode === next.product.productCode && // so sánh theo slug/productCode
     prev.href === next.href &&
     prev.className === next.className &&
     prev.priceClassName === next.priceClassName

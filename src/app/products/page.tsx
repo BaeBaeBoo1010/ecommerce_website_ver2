@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import ProductListClient from "@/components/product-list-client";
+import Loading from "@/components/loading";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ProductsPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<Loading />}>
       <ProductListClient />
     </Suspense>
   );

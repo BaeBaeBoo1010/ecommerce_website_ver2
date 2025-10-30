@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import useSWR, { mutate } from "swr";
+import useSWR, { mutate, useSWRConfig } from "swr";
 import { Settings, Loader2, Search, Trash2, Plus, Package } from "lucide-react";
 import type { Product, Category } from "@/types/product";
 import Image from "next/image";
@@ -39,6 +39,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function ProductManagementPage() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { fallback } = useSWRConfig();
 
   /* swr */
   const {
@@ -46,6 +47,7 @@ export default function ProductManagementPage() {
     mutate: mutateProducts,
     isLoading,
   } = useSWR<Product[]>("/api/products", fetcher, {
+    fallbackData: fallback["/api/products"],
     revalidateOnMount: true,
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
@@ -54,6 +56,7 @@ export default function ProductManagementPage() {
     "/api/categories",
     fetcher,
     {
+      fallbackData: fallback["/api/categories"],
       revalidateOnMount: true,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
@@ -165,13 +168,13 @@ export default function ProductManagementPage() {
   };
 
   /* delete product */
-  const handleDeleteProduct = async (id: string) => {
+  const handleDeleteProduct = async (slug: string) => {
     if (!window.confirm("Bạn có chắc chắn muốn xoá sản phẩm này?")) return;
 
-    setDeletingId(id);
+    setDeletingId(slug);
 
     try {
-      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/products/${slug}`, { method: "DELETE" });
       const data = await res.json();
 
       if (!res.ok) {
@@ -181,7 +184,7 @@ export default function ProductManagementPage() {
 
       toast.success("Đã xoá sản phẩm");
       mutateProducts(
-        products.filter((p) => p._id !== id),
+        products.filter((p) => p.productCode !== slug), // hoặc p.slug
         false,
       );
     } catch {
@@ -388,13 +391,8 @@ export default function ProductManagementPage() {
                           </TableCell>
 
                           <TableCell className="w-32 break-words whitespace-normal">
-                            <div className="space-y-1">
-                              <div className="text-sm font-medium">
-                                {p.category?.name}
-                              </div>
-                              <div className="text-muted-foreground font-mono text-xs">
-                                {p.category?.slug}
-                              </div>
+                            <div className="text-sm font-medium">
+                              {p.category?.name}
                             </div>
                           </TableCell>
 
@@ -406,7 +404,7 @@ export default function ProductManagementPage() {
 
                           <TableCell>
                             <div className="flex items-center justify-center gap-2">
-                              <Link href={`/admin/edit-product/${p._id}`}>
+                              <Link href={`/admin/edit-product/${p.slug}`}>
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -421,7 +419,7 @@ export default function ProductManagementPage() {
                                 size="sm"
                                 variant="destructive"
                                 disabled={deletingId === p._id}
-                                onClick={() => handleDeleteProduct(p._id)}
+                                onClick={() => handleDeleteProduct(p.slug)}
                                 className="gap-1.5 shadow-sm transition-all hover:shadow-md"
                               >
                                 {deletingId === p._id ? (

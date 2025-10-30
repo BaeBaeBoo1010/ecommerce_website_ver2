@@ -3,6 +3,7 @@ import "./category";
 
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  slug: { type: String, required: true, unique: true },
   productCode: { type: String, required: true, unique: true },
   description: String,
   price: { type: Number, required: true },
