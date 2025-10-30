@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
+import Fuse from "fuse.js";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,15 @@ type SortOption = "none" | "priceAsc" | "priceDesc";
 const PRODUCTS_PER_PAGE = 16;
 
 /* ----------------- Helpers ----------------- */
+function removeVietnameseTones(str: string) {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
 const sortProducts = (products: Product[], sort: SortOption) => {
   const sorted = [...products];
   if (sort === "priceAsc") return sorted.sort((a, b) => a.price - b.price);
@@ -68,30 +78,52 @@ export default function ProductListClient() {
     return Array.from(seen.values());
   }, [products]);
 
-  /* ----------------- Derive data ----------------- */
+  // Create Fuse instance with normalized Vietnamese text for consistent search
+  const fuse = useMemo(() => {
+    if (!products.length) return null;
+
+    const normalized = (products as Product[]).map((p) => ({
+      ...p,
+      nameNoTone: removeVietnameseTones(p.name),
+      descriptionNoTone: p.description
+        ? removeVietnameseTones(p.description)
+        : "",
+      articleNoTone: p.articleHtml
+        ? removeVietnameseTones(p.articleHtml.replace(/<[^>]+>/g, ""))
+        : "",
+    }));
+
+    return new Fuse(normalized, {
+      keys: ["nameNoTone", "descriptionNoTone", "articleNoTone"],
+      threshold: 0.35,
+      includeScore: true,
+    });
+  }, [products]);
+
+  // Updated filter logic to use Fuse.js for fuzzy search matching search-command
   const filteredProducts = useMemo(() => {
     let list = products;
+
+    // Category filter
     if (categorySlug !== "all") {
       list = list.filter(
         (p) =>
           typeof p.category === "object" && p.category.slug === categorySlug,
       );
     }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter((p) => {
-        const nameMatch = p.name.toLowerCase().includes(q);
-        const descMatch = p.description?.toLowerCase().includes(q);
-        const catName = typeof p.category === "object" ? p.category.name : "";
-        const catSlug = typeof p.category === "object" ? p.category.slug : "";
-        const catMatch =
-          catName.toLowerCase().includes(q) ||
-          catSlug.toLowerCase().includes(q);
-        return nameMatch || descMatch || catMatch;
-      });
+
+    // Search filter using Fuse.js
+    if (searchQuery && fuse) {
+      const keywordLower = removeVietnameseTones(
+        searchQuery.trim().toLowerCase(),
+      );
+      const result = fuse.search(keywordLower);
+      const matchedIds = new Set(result.map((r) => r.item._id));
+      list = list.filter((p) => matchedIds.has(p._id));
     }
+
     return list;
-  }, [products, categorySlug, searchQuery]);
+  }, [products, categorySlug, searchQuery, fuse]);
 
   const sortedProducts = useMemo(
     () => sortProducts(filteredProducts, sortOption),
@@ -106,7 +138,6 @@ export default function ProductListClient() {
   const totalPages = Math.ceil(sortedProducts.length / PRODUCTS_PER_PAGE);
   const currentCategory = categories.find((cat) => cat.slug === categorySlug);
 
-  /* ----------------- Helpers ----------------- */
   const updateParam = useCallback(
     (key: string, value?: string) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -135,8 +166,6 @@ export default function ProductListClient() {
     }, 150);
   };
 
-
-  /* ----------------- Render ----------------- */
   return (
     <div className="mx-auto mt-10 mb-20 max-w-7xl px-4">
       {/* Header & Filter */}
