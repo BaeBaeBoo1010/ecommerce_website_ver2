@@ -3,19 +3,12 @@ import { getToken } from "next-auth/jwt"
 import { isbot } from "isbot"
 
 export const config = {
-  matcher: [
-    "/admin/:path*",
-    "/products/:path*",
-    "/api/categories/:path*",
-    "/api/products/:path*",
-    "/api/revalidate",
-  ],
+  matcher: ["/admin/:path*", "/products/:path*"],
 }
 
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   const ua = req.headers.get("user-agent") || ""
-  const method = req.method
 
   // ✅ 1. Bot detection + SSR rewrite cho trang sản phẩm
   if (pathname.startsWith("/products/")) {
@@ -85,19 +78,8 @@ export default async function middleware(req: NextRequest) {
   }
 
 
-  const isApiRoute = pathname.startsWith("/api/")
-  const isAdminSection = pathname.startsWith("/admin")
-  const isCategoryApi = pathname.startsWith("/api/categories")
-  const isProductApi = pathname.startsWith("/api/products")
-  const isRevalidateApi = pathname.startsWith("/api/revalidate")
-
-  const isSafeMethod = method === "GET" || method === "OPTIONS" || method === "HEAD"
-  const needsAdminRole =
-    isAdminSection ||
-    ((isCategoryApi || isProductApi) && !isSafeMethod) ||
-    isRevalidateApi
-
-  if (needsAdminRole || isRevalidateApi) {
+  // ✅ 2. Check đăng nhập cho admin
+  if (pathname.startsWith("/admin")) {
     try {
       const token =
         (await getToken({
@@ -111,44 +93,14 @@ export default async function middleware(req: NextRequest) {
         }))
 
       if (!token) {
-        if (isApiRoute) {
-          return NextResponse.json(
-            { success: false, error: "UNAUTHENTICATED" },
-            { status: 401 },
-          )
-        }
         return NextResponse.redirect(new URL("/auth/login", req.url))
       }
 
-      if (needsAdminRole && token.role !== "admin") {
-        if (isApiRoute) {
-          return NextResponse.json(
-            { success: false, error: "FORBIDDEN" },
-            { status: 403 },
-          )
-        }
+      if (token.role !== "admin") {
         return NextResponse.redirect(new URL("/", req.url))
-      }
-
-      if (isRevalidateApi) {
-        const secret = process.env.REVALIDATE_SECRET
-        const headerSecret = req.headers.get("x-revalidate-token")
-
-        if (!secret || headerSecret !== secret) {
-          return NextResponse.json(
-            { success: false, error: "INVALID_REVALIDATE_TOKEN" },
-            { status: 401 },
-          )
-        }
       }
     } catch (error) {
       console.error("[Middleware] Auth error:", error)
-      if (isApiRoute) {
-        return NextResponse.json(
-          { success: false, error: "UNAUTHENTICATED" },
-          { status: 401 },
-        )
-      }
       return NextResponse.redirect(new URL("/auth/login", req.url))
     }
   }
