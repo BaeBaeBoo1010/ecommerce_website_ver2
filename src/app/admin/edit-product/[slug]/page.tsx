@@ -35,6 +35,7 @@ import {
   X,
   ArrowLeft,
   RefreshCw,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -153,6 +154,8 @@ export default function EditProductPage() {
   const { slug } = useParams<{ slug: string }>();
   const [selectedCategory, setSelectedCategory] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [isAddingImageFromLink, setIsAddingImageFromLink] = useState(false);
   const [loading, setLoading] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
   const [initialState, setInitialState] = useState<any>(null);
@@ -215,6 +218,119 @@ export default function EditProductPage() {
   const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const activeImage = images.find((img) => img.id === activeImageId);
+
+  async function processImageFile(file: File): Promise<File> {
+    if (file.size <= MAX_IMAGE_SIZE) {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const img = document.createElement("img");
+      const objectUrl = URL.createObjectURL(file);
+      img.src = objectUrl;
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const canvas = document.createElement("canvas");
+        const targetWidth = Math.min(MAX_IMAGE_WIDTH, img.width);
+        const scale = targetWidth / img.width;
+        canvas.width = targetWidth;
+        canvas.height = img.height * scale;
+
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const compress = (quality: number) => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+
+              if (blob.size <= MAX_IMAGE_SIZE || quality <= 0.3) {
+                resolve(
+                  new File([blob], file.name, {
+                    type: "image/jpeg",
+                  }),
+                );
+              } else {
+                compress(quality - 0.1);
+              }
+            },
+            "image/jpeg",
+            quality,
+          );
+        };
+
+        compress(0.8);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+    });
+  }
+
+  async function handleAddImageFromLink() {
+    const rawUrl = imageUrlInput.trim();
+    if (!rawUrl) {
+      toast.error("Vui lòng nhập link ảnh");
+      return;
+    }
+
+    try {
+      void new URL(rawUrl);
+    } catch {
+      toast.error("Link ảnh không hợp lệ");
+      return;
+    }
+
+    setIsAddingImageFromLink(true);
+
+    try {
+      const response = await fetch(rawUrl);
+      if (!response.ok) {
+        throw new Error("FETCH_FAILED");
+      }
+
+      const blob = await response.blob();
+      const headerMime = response.headers.get("content-type") || "";
+      const detectedMime = blob.type || headerMime;
+
+      if (detectedMime && !detectedMime.startsWith("image/")) {
+        throw new Error("INVALID_TYPE");
+      }
+
+      const extension = detectedMime
+        ? detectedMime.split("/")[1]?.split("+")[0] || "jpg"
+        : "jpg";
+      const fileName = `image-link-${Date.now()}.${extension}`;
+      const file = new File([blob], fileName, {
+        type: detectedMime || "image/jpeg",
+      });
+
+      const processedFile = await processImageFile(file);
+
+      setImages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          file: processedFile,
+          url: URL.createObjectURL(processedFile),
+          isExisting: false,
+        },
+      ]);
+      setFieldError((prev) => ({ ...prev, images: "" }));
+      setImageUrlInput("");
+    } catch (error) {
+      console.error("Không thể tải ảnh từ link:", error);
+      toast.error("Không thể tải ảnh từ link đã nhập");
+    } finally {
+      setIsAddingImageFromLink(false);
+    }
+  }
 
   const { data: productsData = [] } = useSWR<Product[]>(
     "/api/products",
@@ -854,82 +970,7 @@ export default function EditProductPage() {
                   const newImages: ImageItem[] = [];
 
                   for (const file of files) {
-                    let finalFile = file;
-
-                    if (file.size > MAX_IMAGE_SIZE) {
-                      const img = document.createElement("img");
-                      img.src = URL.createObjectURL(file);
-
-                      await new Promise((resolve) => {
-                        img.onload = async () => {
-                          const canvas = document.createElement("canvas");
-                          const scale = MAX_IMAGE_WIDTH / img.width;
-                          canvas.width = MAX_IMAGE_WIDTH;
-                          canvas.height = img.height * scale;
-
-                          const ctx = canvas.getContext("2d");
-                          ctx?.drawImage(
-                            img,
-                            0,
-                            0,
-                            canvas.width,
-                            canvas.height,
-                          );
-
-                          canvas.toBlob(
-                            async function process(blob) {
-                              if (!blob) return resolve(true);
-
-                              if (blob.size <= 1024 * 1024) {
-                                finalFile = new File([blob], file.name, {
-                                  type: "image/jpeg",
-                                });
-                                return resolve(true);
-                              }
-
-                              let quality = 0.7;
-                              const tryCompress = () => {
-                                canvas.toBlob(
-                                  (compressedBlob) => {
-                                    if (
-                                      compressedBlob &&
-                                      compressedBlob.size <= 1024 * 1024
-                                    ) {
-                                      finalFile = new File(
-                                        [compressedBlob],
-                                        file.name,
-                                        {
-                                          type: "image/jpeg",
-                                        },
-                                      );
-                                      resolve(true);
-                                    } else if (quality > 0.3) {
-                                      quality -= 0.1;
-                                      tryCompress();
-                                    } else {
-                                      finalFile = new File(
-                                        [compressedBlob!],
-                                        file.name,
-                                        {
-                                          type: "image/jpeg",
-                                        },
-                                      );
-                                      resolve(true);
-                                    }
-                                  },
-                                  "image/jpeg",
-                                  quality,
-                                );
-                              };
-
-                              tryCompress();
-                            },
-                            "image/jpeg",
-                            0.8,
-                          );
-                        };
-                      });
-                    }
+                    const finalFile = await processImageFile(file);
 
                     newImages.push({
                       id: crypto.randomUUID(),
@@ -946,22 +987,55 @@ export default function EditProductPage() {
                 className="hidden"
               />
 
-              <div className="mb-4 flex items-center gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById("images")?.click()}
-                  className="flex items-center gap-2 rounded-full px-4 py-2"
-                >
-                  <ImageIcon className="h-4 w-4" />
-                  Thêm ảnh
-                </Button>
-                {fieldError.images && (
-                  <p className="text-sm text-red-500">{fieldError.images}</p>
-                )}
-                <span className="text-muted-foreground max-w-[200px] truncate text-sm">
-                  {images.length > 0 ? `${images.length} ảnh` : "Chưa có ảnh"}
-                </span>
+              <div className="mb-4 flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById("images")?.click()}
+                    className="flex items-center gap-2 rounded-full px-4 py-2"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                    Thêm ảnh
+                  </Button>
+                  {fieldError.images && (
+                    <p className="text-sm text-red-500">{fieldError.images}</p>
+                  )}
+                  <span className="text-muted-foreground max-w-[200px] truncate text-sm">
+                    {images.length > 0 ? `${images.length} ảnh` : "Chưa có ảnh"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <Input
+                    placeholder="Dán link ảnh (https://...)"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void handleAddImageFromLink();
+                      }
+                    }}
+                    className="max-w-md"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={isAddingImageFromLink}
+                    onClick={() => void handleAddImageFromLink()}
+                    className="flex items-center gap-2"
+                  >
+                    {isAddingImageFromLink ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Đang tải...
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="h-4 w-4" /> Thêm từ link
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               <DndContext
