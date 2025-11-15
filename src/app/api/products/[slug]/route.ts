@@ -58,9 +58,20 @@ const ERROR = {
 /* ───────── GET /api/products/[slug] ───────── */
 export async function GET(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params
+  
+  // ✅ Security: Sanitize slug to prevent NoSQL injection
+  const sanitizedSlug = slug.replace(/[^a-zA-Z0-9_-]/g, "")
+  if (!sanitizedSlug || sanitizedSlug.length > 200 || sanitizedSlug !== slug) {
+    return NextResponse.json(
+      { success: false, code: ERROR.NOT_FOUND, message: "Product not found" },
+      { status: 404 }
+    )
+  }
+
   await connectMongoDB()
 
-  const product = await Product.findOne({ slug }).populate("category", "_id name slug")
+  // ✅ Security: Use exact match, not regex to prevent injection
+  const product = await Product.findOne({ slug: sanitizedSlug }).populate("category", "_id name slug")
 
   if (!product) {
     return NextResponse.json(

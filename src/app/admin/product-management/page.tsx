@@ -184,9 +184,10 @@ export default function ProductManagementPage() {
 
       toast.success("Đã xoá sản phẩm");
       mutateProducts(
-        products.filter((p) => p.productCode !== slug), // hoặc p.slug
+        products.filter((p) => p.slug !== slug),
         false,
       );
+      mutate("/api/products");
     } catch {
       toast.error("Lỗi hệ thống khi xoá sản phẩm");
     } finally {

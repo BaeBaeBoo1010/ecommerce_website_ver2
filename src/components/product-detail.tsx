@@ -8,7 +8,7 @@ import "swiper/css/thumbs";
 import "swiper/css/navigation";
 import "swiper/css/free-mode";
 import "swiper/css/effect-fade";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { Product } from "@/types/product";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -22,6 +22,26 @@ import {
 import { StaticImport } from "next/dist/shared/lib/get-img-props";
 import { useInView } from "react-intersection-observer";
 import { Loader2 } from "lucide-react";
+import DOMPurify from "isomorphic-dompurify";
+
+/* ---------- Tiny blur data url (valid for next/image) ---------- */
+const TINY_SVG =
+  "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyBmaWxsPSIjZWVlIiB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnLz4=";
+
+/* ---------- SafeHtml ---------- */
+function SafeHtml({ html, className }: { html: string; className?: string }) {
+  const clean = useMemo(
+    () =>
+      DOMPurify.sanitize(html ?? "", {
+        ADD_TAGS: ["iframe"],
+        ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling"],
+      }),
+    [html],
+  );
+  return (
+    <div className={className} dangerouslySetInnerHTML={{ __html: clean }} />
+  );
+}
 
 function QuantitySelector({
   quantity,
@@ -44,22 +64,15 @@ function QuantitySelector({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-
-    // Nếu đang xóa để nhập lại, cho phép input trống
     if (val === "") {
-      setQuantity(NaN); // hoặc dùng state tạm thời nếu bạn không muốn số bị mờ
+      setQuantity(NaN);
       return;
     }
-
     const parsed = parseInt(val, 10);
     if (!isNaN(parsed)) {
-      if (parsed >= min && parsed <= max) {
-        setQuantity(parsed);
-      } else if (parsed < min) {
-        setQuantity(min);
-      } else if (parsed > max) {
-        setQuantity(max);
-      }
+      if (parsed >= min && parsed <= max) setQuantity(parsed);
+      else if (parsed < min) setQuantity(min);
+      else if (parsed > max) setQuantity(max);
     }
   };
 
@@ -107,7 +120,7 @@ export default function ProductDetail({ product }: { product: Product }) {
   const [showQuantitySelector, setShowQuantitySelector] = useState(false);
   const { ref: articleRef, inView: articleInView } = useInView({
     triggerOnce: true,
-    rootMargin: "200px", // bắt đầu load sớm khi người dùng gần tới
+    rootMargin: "200px",
   });
 
   useEffect(() => {
@@ -138,7 +151,6 @@ export default function ProductDetail({ product }: { product: Product }) {
       type === "add"
         ? `Đã thêm ${quantity} sản phẩm vào giỏ hàng`
         : `Mua ngay ${quantity} sản phẩm`;
-
     toast.success(msg);
     // TODO: thêm logic thêm vào giỏ/mua ngay
   };
@@ -147,9 +159,7 @@ export default function ProductDetail({ product }: { product: Product }) {
     <>
       <div className="min-h-screen bg-gray-100">
         <main className="mx-auto w-full max-w-7xl px-0 py-0 md:px-4 md:py-4">
-          {/* Card tổng */}
           <div className="rounded-lg bg-white">
-            {/* Thông tin sản phẩm */}
             <div className="flex flex-col lg:flex-row">
               {/* Ảnh sản phẩm */}
               <div className="flex items-center justify-center md:max-w-[600px] md:flex-1">
@@ -178,7 +188,7 @@ export default function ProductDetail({ product }: { product: Product }) {
                             priority={index === 0}
                             loading={index === 0 ? "eager" : "lazy"}
                             placeholder="blur"
-                            blurDataURL="/images/placeholder.svg"
+                            blurDataURL={TINY_SVG}
                             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 600px"
                           />
                         </div>
@@ -256,6 +266,7 @@ export default function ProductDetail({ product }: { product: Product }) {
                     {product.description ? (
                       <>
                         {/* Mobile: cắt mô tả nếu dài */}
+                        {/* ✅ Security: Text content is automatically escaped by React */}
                         <p className="block md:hidden">
                           {showFullDescription ||
                           product.description.length <= 250
@@ -323,9 +334,9 @@ export default function ProductDetail({ product }: { product: Product }) {
                 className="mt-2 min-h-[200px] rounded-lg bg-white p-6 shadow-sm"
               >
                 {articleInView ? (
-                  <article
-                    className="prose dark:prose-invert prose-headings:font-semibold prose-headings:text-gray-900 prose-a:text-blue-600 hover:prose-a:underline prose-strong:text-gray-800 prose-img:mx-auto prose-img:rounded-lg prose-img:shadow-md prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-table:overflow-hidden prose-table:rounded-lg prose-table:border prose-table:border-gray-200 prose-th:bg-gray-100 prose-th:text-gray-800 prose-td:border-gray-200 animate-fadeIn max-w-none [&_iframe]:mx-auto [&_iframe]:block [&_iframe]:rounded-lg [&_iframe]:shadow-md max-sm:[&_iframe]:max-h-70 max-sm:[&_iframe]:max-w-full sm:[&_iframe]:h-auto sm:[&_iframe]:max-w-full"
-                    dangerouslySetInnerHTML={{ __html: product.articleHtml }}
+                  <SafeHtml
+                    html={product.articleHtml}
+                    className="rich-article prose dark:prose-invert prose-headings:font-semibold prose-headings:text-gray-900 prose-a:text-blue-600 hover:prose-a:underline prose-strong:text-gray-800 prose-img:mx-auto prose-img:rounded-lg prose-img:shadow-md prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-table:overflow-hidden prose-table:rounded-lg prose-table:border prose-table:border-gray-200 prose-th:bg-gray-100 prose-th:text-gray-800 prose-td:border-gray-200 animate-fadeIn max-w-none [&_iframe]:mx-auto [&_iframe]:block [&_iframe]:rounded-lg [&_iframe]:shadow-md max-sm:[&_iframe]:max-h-70 max-sm:[&_iframe]:max-w-full sm:[&_iframe]:h-auto sm:[&_iframe]:max-w-full"
                   />
                 ) : (
                   <div className="flex h-40 items-center justify-center text-gray-400">
@@ -334,7 +345,7 @@ export default function ProductDetail({ product }: { product: Product }) {
                 )}
 
                 {/* Responsive media styles */}
-                <style jsx>{`
+                <style jsx global>{`
                   @keyframes fadeIn {
                     from {
                       opacity: 0;
@@ -345,26 +356,22 @@ export default function ProductDetail({ product }: { product: Product }) {
                       transform: translateY(0);
                     }
                   }
-
                   .animate-fadeIn {
                     animation: fadeIn 0.5s ease-in-out;
                   }
-
-                  article iframe {
+                  .rich-article iframe {
                     width: 100%;
                     height: 400px;
                     border-radius: 12px;
                     margin: 1.5rem 0;
                     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
                   }
-
                   @media (max-width: 768px) {
-                    article iframe {
+                    .rich-article iframe {
                       height: 240px;
                     }
                   }
-
-                  article img {
+                  .rich-article img {
                     display: block;
                     margin: 1.25rem auto;
                     max-width: 100%;
@@ -372,13 +379,11 @@ export default function ProductDetail({ product }: { product: Product }) {
                     border-radius: 12px;
                     object-fit: contain;
                   }
-
-                  article figure {
+                  .rich-article figure {
                     margin: 1.5rem 0;
                     text-align: center;
                   }
-
-                  article figcaption {
+                  .rich-article figcaption {
                     font-size: 0.9rem;
                     color: #6b7280;
                     margin-top: 0.5rem;
@@ -416,13 +421,12 @@ export default function ProductDetail({ product }: { product: Product }) {
       {/* Sheet chọn số lượng */}
       <Sheet open={openSheet} onOpenChange={setOpenSheet}>
         <SheetContent side="bottom" className="p-6 pb-4">
-          {/* Sheet Header */}
           <SheetHeader>
             <SheetTitle className="text-left text-xl">
               {pendingAction === "buy" ? "Mua ngay" : "Thêm vào giỏ"}
             </SheetTitle>
           </SheetHeader>
-          {/* Preview sản phẩm */}
+
           <div className="flex items-center gap-4">
             <div className="relative aspect-square w-20 overflow-hidden rounded border border-gray-200 bg-white">
               <Swiper slidesPerView={1} className="h-full w-full">
@@ -448,10 +452,8 @@ export default function ProductDetail({ product }: { product: Product }) {
             </div>
           </div>
 
-          {/* Divider */}
           <div className="my-1 border-t border-gray-200 dark:border-neutral-700" />
 
-          {/* Số lượng */}
           {showQuantitySelector && (
             <div className="flex items-center gap-4">
               <span className="text-gray-600">Số lượng:</span>
@@ -459,7 +461,6 @@ export default function ProductDetail({ product }: { product: Product }) {
             </div>
           )}
 
-          {/* Nút Xong */}
           <div className="mt-2 flex justify-end">
             <button
               className="rounded bg-blue-600 px-4 py-2 text-white"

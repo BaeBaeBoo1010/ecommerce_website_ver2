@@ -218,6 +218,174 @@ export default function AddProductPage() {
 
   const activeImage = images.find((img) => img.id === activeImageId);
 
+  // Helper function to process and compress image
+  async function processImageFile(file: File): Promise<File> {
+    let finalFile = file;
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      const img = document.createElement("img");
+      img.src = URL.createObjectURL(file);
+
+      await new Promise<void>((resolve) => {
+        img.onload = async () => {
+          const canvas = document.createElement("canvas");
+          const scale = MAX_IMAGE_WIDTH / img.width;
+          canvas.width = MAX_IMAGE_WIDTH;
+          canvas.height = img.height * scale;
+
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          canvas.toBlob(
+            async function process(blob) {
+              if (!blob) return resolve();
+
+              if (blob.size <= 1024 * 1024) {
+                finalFile = new File([blob], file.name, {
+                  type: "image/jpeg",
+                });
+                return resolve();
+              }
+
+              let quality = 0.7;
+              const tryCompress = () => {
+                canvas.toBlob(
+                  (compressedBlob) => {
+                    if (compressedBlob && compressedBlob.size <= 1024 * 1024) {
+                      finalFile = new File([compressedBlob], file.name, {
+                        type: "image/jpeg",
+                      });
+                      resolve();
+                    } else if (quality > 0.3) {
+                      quality -= 0.1;
+                      tryCompress();
+                    } else {
+                      finalFile = new File([compressedBlob!], file.name, {
+                        type: "image/jpeg",
+                      });
+                      resolve();
+                    }
+                  },
+                  "image/jpeg",
+                  quality,
+                );
+              };
+
+              tryCompress();
+            },
+            "image/jpeg",
+            0.8,
+          );
+        };
+      });
+    }
+
+    return finalFile;
+  }
+
+  // Helper function to add images to state
+  async function addImages(files: File[]) {
+    if (files.length === 0) return;
+
+    const newImages: ImageItem[] = [];
+
+    for (const file of files) {
+      const finalFile = await processImageFile(file);
+      newImages.push({
+        id: crypto.randomUUID(),
+        file: finalFile,
+        url: URL.createObjectURL(finalFile),
+      });
+    }
+
+    setImages((prev) => [...prev, ...newImages]);
+    setFieldError((prev) => ({ ...prev, images: "" }));
+  }
+
+  // Handle paste event
+  const pasteAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      // Only handle paste if no input/textarea/editor is focused
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement?.tagName === "INPUT" ||
+        activeElement?.tagName === "TEXTAREA" ||
+        activeElement?.getAttribute("contenteditable") === "true" ||
+        activeElement?.closest('[contenteditable="true"]') !== null;
+
+      if (isInputFocused) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files: File[] = [];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
+        // Handle image files from clipboard
+        if (item.type.indexOf("image") !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            files.push(file);
+          }
+        }
+      }
+
+      // Handle text (URL) from clipboard
+      if (files.length === 0) {
+        const text = e.clipboardData?.getData("text");
+        if (text) {
+          // Check if it's a URL
+          try {
+            const url = new URL(text);
+            // Check if it's an image URL
+            const imageExtensions =
+              /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i;
+            if (
+              imageExtensions.test(url.pathname) ||
+              text.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)/i)
+            ) {
+              try {
+                const response = await fetch(text, { mode: "cors" });
+                if (response.ok) {
+                  const blob = await response.blob();
+                  if (blob.type.startsWith("image/")) {
+                    const fileName =
+                      url.pathname.split("/").pop() || "pasted-image.jpg";
+                    const file = new File([blob], fileName, {
+                      type: blob.type,
+                    });
+                    files.push(file);
+                  }
+                }
+              } catch (err) {
+                console.error("Failed to fetch image from URL:", err);
+                toast.error("Không thể tải ảnh từ URL này");
+              }
+            }
+          } catch {
+            // Not a valid URL, ignore
+          }
+        }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        await addImages(files);
+        toast.success(`Đã thêm ${files.length} ảnh từ clipboard`);
+      }
+    };
+
+    document.addEventListener("paste", handlePaste);
+    return () => {
+      document.removeEventListener("paste", handlePaste);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function resetForm() {
     formRef.current?.reset();
     setImages([]);
@@ -622,122 +790,54 @@ export default function AddProductPage() {
                 onChange={async (e) => {
                   const files = Array.from(e.target.files || []);
                   if (files.length === 0) return;
-
-                  const newImages: ImageItem[] = [];
-
-                  for (const file of files) {
-                    let finalFile = file;
-
-                    if (file.size > MAX_IMAGE_SIZE) {
-                      const img = document.createElement("img");
-                      img.src = URL.createObjectURL(file);
-
-                      await new Promise((resolve) => {
-                        img.onload = async () => {
-                          const canvas = document.createElement("canvas");
-                          const scale = MAX_IMAGE_WIDTH / img.width;
-                          canvas.width = MAX_IMAGE_WIDTH;
-                          canvas.height = img.height * scale;
-
-                          const ctx = canvas.getContext("2d");
-                          ctx?.drawImage(
-                            img,
-                            0,
-                            0,
-                            canvas.width,
-                            canvas.height,
-                          );
-
-                          // Nén và kiểm tra kích thước
-                          canvas.toBlob(
-                            async function process(blob) {
-                              if (!blob) return resolve(true);
-
-                              if (blob.size <= 1024 * 1024) {
-                                finalFile = new File([blob], file.name, {
-                                  type: "image/jpeg",
-                                });
-                                return resolve(true);
-                              }
-
-                              // Nếu lớn hơn 1MB, giảm chất lượng
-                              let quality = 0.7;
-                              const tryCompress = () => {
-                                canvas.toBlob(
-                                  (compressedBlob) => {
-                                    if (
-                                      compressedBlob &&
-                                      compressedBlob.size <= 1024 * 1024
-                                    ) {
-                                      finalFile = new File(
-                                        [compressedBlob],
-                                        file.name,
-                                        {
-                                          type: "image/jpeg",
-                                        },
-                                      );
-                                      resolve(true);
-                                    } else if (quality > 0.3) {
-                                      quality -= 0.1;
-                                      tryCompress();
-                                    } else {
-                                      // Không giảm được nữa, dùng bản cuối
-                                      finalFile = new File(
-                                        [compressedBlob!],
-                                        file.name,
-                                        {
-                                          type: "image/jpeg",
-                                        },
-                                      );
-                                      resolve(true);
-                                    }
-                                  },
-                                  "image/jpeg",
-                                  quality,
-                                );
-                              };
-
-                              tryCompress();
-                            },
-                            "image/jpeg",
-                            0.8,
-                          );
-                        };
-                      });
-                    }
-
-                    newImages.push({
-                      id: crypto.randomUUID(),
-                      file: finalFile,
-                      url: URL.createObjectURL(finalFile),
-                    });
-                  }
-
-                  setImages((prev) => [...prev, ...newImages]);
-                  setFieldError((prev) => ({ ...prev, images: "" }));
+                  await addImages(files);
                   e.target.value = "";
                 }}
                 className="hidden"
               />
 
-              <div className="mb-4 flex items-center gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById("images")?.click()}
-                  className="flex items-center gap-2 rounded-full px-4 py-2"
+              <div className="mb-4 space-y-3">
+                <div className="flex items-center gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById("images")?.click()}
+                    className="flex items-center gap-2 rounded-full px-4 py-2"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                    Thêm ảnh
+                  </Button>
+                  {fieldError.images && (
+                    <p className="text-sm text-red-500">{fieldError.images}</p>
+                  )}
+                  <span className="text-muted-foreground max-w-[200px] truncate text-sm">
+                    {images.length > 0
+                      ? `${images.length} ảnh đã chọn`
+                      : "Chưa chọn ảnh"}
+                  </span>
+                </div>
+
+                {/* Paste area */}
+                <div
+                  ref={pasteAreaRef}
+                  tabIndex={0}
+                  className="flex min-h-[100px] w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center transition-colors hover:border-gray-400 hover:bg-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                  onFocus={(e) =>
+                    e.currentTarget.classList.add("ring-2", "ring-blue-500")
+                  }
+                  onBlur={(e) =>
+                    e.currentTarget.classList.remove("ring-2", "ring-blue-500")
+                  }
                 >
-                  <ImageIcon className="h-4 w-4" />
-                  Thêm ảnh
-                </Button>
-                {fieldError.images && (
-                  <p className="text-sm text-red-500">{fieldError.images}</p>
-                )}
-                <span className="text-muted-foreground max-w-[200px] truncate text-sm">
-                  {images.length > 0
-                    ? `${images.length} ảnh đã chọn`
-                    : "Chưa chọn ảnh"}
-                </span>
+                  <div className="text-sm text-gray-600">
+                    <p className="font-medium">
+                      Hoặc dán ảnh vào đây (Ctrl + V)
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Có thể paste ảnh từ clipboard hoặc URL ảnh
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {images.length > 0 && (

@@ -13,12 +13,37 @@ type LeanUser = {
   role: "admin" | "user";
 };
 
+// ✅ Security: Validate NEXTAUTH_SECRET
+if (!process.env.NEXTAUTH_SECRET) {
+  throw new Error("NEXTAUTH_SECRET environment variable is not set");
+}
+
+// ✅ Security: Validate minimum secret length
+if (process.env.NEXTAUTH_SECRET.length < 32) {
+  throw new Error("NEXTAUTH_SECRET must be at least 32 characters long");
+}
+
 const nextAuth = NextAuth({
   trustHost: true,
   adapter: MongoDBAdapter(clientPromise),
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
+  },
   secret: process.env.NEXTAUTH_SECRET,
   pages: { signIn: "/auth/login" },
+  cookies: {
+    sessionToken: {
+      name: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}authjs.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
 
   providers: [
     Credentials({
@@ -31,12 +56,22 @@ const nextAuth = NextAuth({
         const password =
           typeof credentials?.password === "string" ? credentials.password : "";
 
-        if (!email || !password) return null;
+        // ✅ Security: Validate input length to prevent DoS
+        if (!email || !password || email.length > 255 || password.length > 500) {
+          return null;
+        }
+
+        // ✅ Security: Basic email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return null;
+        }
 
         await connectMongoDB();
         const user = (await User.findOne({ email }).lean()) as LeanUser | null;
         if (!user || typeof user.password !== "string") return null;
 
+        // ✅ Security: Use constant-time comparison (bcryptjs compare is already safe)
         const ok = await compare(password, user.password);
         if (!ok) return null;
 

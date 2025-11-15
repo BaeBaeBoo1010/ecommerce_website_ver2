@@ -26,11 +26,22 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const categorySlug = searchParams.get("category");
 
+    // ✅ Security: Sanitize and validate categorySlug to prevent NoSQL injection
+    let sanitizedCategorySlug: string | null = null;
+    if (categorySlug && categorySlug !== "all") {
+      // Only allow alphanumeric, hyphens, and underscores
+      sanitizedCategorySlug = categorySlug.replace(/[^a-zA-Z0-9_-]/g, "");
+      if (!sanitizedCategorySlug || sanitizedCategorySlug.length > 100) {
+        return NextResponse.json([], { status: 200 });
+      }
+    }
+
     let filter = {};
 
-    if (categorySlug && categorySlug !== "all") {
-      const category = await Category.findOne({ slug: categorySlug });
-      if (!category) return NextResponse.json([]);
+    if (sanitizedCategorySlug) {
+      // ✅ Security: Use exact match instead of regex to prevent injection
+      const category = await Category.findOne({ slug: sanitizedCategorySlug }).lean<{ _id: string }>();
+      if (!category || !category._id) return NextResponse.json([]);
       filter = { category: category._id };
     }
 

@@ -3,12 +3,19 @@ import { getToken } from "next-auth/jwt"
 import { isbot } from "isbot"
 
 export const config = {
-  matcher: ["/admin/:path*", "/products/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/products/:path*",
+    "/api/categories/:path*",
+    "/api/products/:path*",
+    "/api/revalidate",
+  ],
 }
 
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   const ua = req.headers.get("user-agent") || ""
+  const method = req.method
 
   // ✅ 1. Bot detection + SSR rewrite cho trang sản phẩm
   if (pathname.startsWith("/products/")) {
@@ -45,7 +52,7 @@ export default async function middleware(req: NextRequest) {
             path: "/products",
             maxAge: 86400 * 7, // 7 days
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.NODE_ENV === "production" || req.nextUrl.protocol === "https:",
             sameSite: "lax",
           })
           return rewriteRes
@@ -55,7 +62,7 @@ export default async function middleware(req: NextRequest) {
             path: "/products",
             maxAge: 86400 * 7, // 7 days
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.NODE_ENV === "production" || req.nextUrl.protocol === "https:",
             sameSite: "lax",
           })
           return res
@@ -67,7 +74,7 @@ export default async function middleware(req: NextRequest) {
           path: "/products",
           maxAge: 3600,
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: process.env.NODE_ENV === "production" || req.nextUrl.protocol === "https:",
           sameSite: "lax",
         })
         return res
@@ -78,9 +85,32 @@ export default async function middleware(req: NextRequest) {
   }
 
 
-  // ✅ 2. Check đăng nhập cho admin
-  if (pathname.startsWith("/admin")) {
+  const isApiRoute = pathname.startsWith("/api/")
+  const isAdminSection = pathname.startsWith("/admin")
+  const isCategoryApi = pathname.startsWith("/api/categories")
+  const isProductApi = pathname.startsWith("/api/products")
+  const isRevalidateApi = pathname.startsWith("/api/revalidate")
+
+  const isSafeMethod = method === "GET" || method === "OPTIONS" || method === "HEAD"
+  const needsAdminRole =
+    isAdminSection ||
+    ((isCategoryApi || isProductApi) && !isSafeMethod) ||
+    isRevalidateApi
+
+  if (needsAdminRole || isRevalidateApi) {
     try {
+      // ✅ Security: Validate NEXTAUTH_SECRET is set
+      if (!process.env.NEXTAUTH_SECRET) {
+        console.error("[Middleware] NEXTAUTH_SECRET is not set");
+        if (isApiRoute) {
+          return NextResponse.json(
+            { success: false, error: "SERVER_ERROR" },
+            { status: 500 },
+          );
+        }
+        return NextResponse.redirect(new URL("/auth/login", req.url));
+      }
+
       const token =
         (await getToken({
           req,
@@ -93,14 +123,56 @@ export default async function middleware(req: NextRequest) {
         }))
 
       if (!token) {
+        if (isApiRoute) {
+          return NextResponse.json(
+            { success: false, error: "UNAUTHENTICATED" },
+            { status: 401 },
+          )
+        }
         return NextResponse.redirect(new URL("/auth/login", req.url))
       }
 
-      if (token.role !== "admin") {
+      if (needsAdminRole && token.role !== "admin") {
+        if (isApiRoute) {
+          return NextResponse.json(
+            { success: false, error: "FORBIDDEN" },
+            { status: 403 },
+          )
+        }
         return NextResponse.redirect(new URL("/", req.url))
+      }
+
+      if (isRevalidateApi) {
+        const secret = process.env.REVALIDATE_SECRET
+        const headerSecret = req.headers.get("x-revalidate-token")
+
+        // ✅ Security: Use constant-time comparison to prevent timing attacks
+        if (!secret || !headerSecret) {
+          return NextResponse.json(
+            { success: false, error: "INVALID_REVALIDATE_TOKEN" },
+            { status: 401 },
+          )
+        }
+
+        // ✅ Security: Constant-time string comparison
+        const isValid = secret.length === headerSecret.length && 
+          secret === headerSecret; // In production, use crypto.timingSafeEqual for Node.js
+        
+        if (!isValid) {
+          return NextResponse.json(
+            { success: false, error: "INVALID_REVALIDATE_TOKEN" },
+            { status: 401 },
+          )
+        }
       }
     } catch (error) {
       console.error("[Middleware] Auth error:", error)
+      if (isApiRoute) {
+        return NextResponse.json(
+          { success: false, error: "UNAUTHENTICATED" },
+          { status: 401 },
+        )
+      }
       return NextResponse.redirect(new URL("/auth/login", req.url))
     }
   }
