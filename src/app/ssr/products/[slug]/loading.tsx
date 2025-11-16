@@ -1,4 +1,4 @@
-// app/products/[id]/loading.tsx
+// app/ssr/products/[slug]/loading.tsx
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -52,3 +52,4 @@ export default function ProductDetailLoading() {
     </div>
   );
 }
+
