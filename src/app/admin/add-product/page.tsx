@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import type { Product } from "@/types/product";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -198,6 +199,15 @@ export default function AddProductPage() {
 
   const { data: categories = [] } = useSWR<Category[]>(
     "/api/categories",
+    fetcher,
+    {
+      revalidateOnMount: false,
+      revalidateOnFocus: false,
+    },
+  );
+
+  const { data: productsData = [] } = useSWR<Product[]>(
+    "/api/products",
     fetcher,
     {
       revalidateOnMount: false,
@@ -504,6 +514,28 @@ export default function AddProductPage() {
     if (hasArticle && isHtmlEmpty(articleContent)) {
       toast.error(
         "Vui lòng nhập nội dung bài viết chi tiết hoặc tắt tính năng này",
+      );
+      setLoading(false);
+      return;
+    }
+
+    // ✅ Kiểm tra trùng lặp tên sản phẩm và mã sản phẩm
+    const isDupName = productsData.some(
+      (p: Product) => p.name.toLowerCase() === productData.name.toLowerCase(),
+    );
+    const isDupCode = productsData.some(
+      (p: Product) =>
+        p.productCode?.toLowerCase() === productData.code.toLowerCase(),
+    );
+
+    if (isDupName || isDupCode) {
+      const errors: Record<string, string> = {};
+      if (isDupName) errors.name = "Tên sản phẩm đã tồn tại";
+      if (isDupCode) errors.code = "Mã sản phẩm đã tồn tại";
+
+      setFieldError((prev) => ({ ...prev, ...errors }));
+      toast.error(
+        `${isDupName ? "Tên " : ""}${isDupName && isDupCode ? "và " : ""}${isDupCode ? "mã " : ""}sản phẩm đã tồn tại`,
       );
       setLoading(false);
       return;

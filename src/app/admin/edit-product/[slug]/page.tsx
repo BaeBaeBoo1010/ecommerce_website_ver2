@@ -231,13 +231,7 @@ export default function EditProductPage() {
           canvas.height = img.height * scale;
 
           const ctx = canvas.getContext("2d");
-          ctx?.drawImage(
-            img,
-            0,
-            0,
-            canvas.width,
-            canvas.height,
-          );
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
 
           canvas.toBlob(
             async function process(blob) {
@@ -254,29 +248,18 @@ export default function EditProductPage() {
               const tryCompress = () => {
                 canvas.toBlob(
                   (compressedBlob) => {
-                    if (
-                      compressedBlob &&
-                      compressedBlob.size <= 1024 * 1024
-                    ) {
-                      finalFile = new File(
-                        [compressedBlob],
-                        file.name,
-                        {
-                          type: "image/jpeg",
-                        },
-                      );
+                    if (compressedBlob && compressedBlob.size <= 1024 * 1024) {
+                      finalFile = new File([compressedBlob], file.name, {
+                        type: "image/jpeg",
+                      });
                       resolve();
                     } else if (quality > 0.3) {
                       quality -= 0.1;
                       tryCompress();
                     } else {
-                      finalFile = new File(
-                        [compressedBlob!],
-                        file.name,
-                        {
-                          type: "image/jpeg",
-                        },
-                      );
+                      finalFile = new File([compressedBlob!], file.name, {
+                        type: "image/jpeg",
+                      });
                       resolve();
                     }
                   },
@@ -357,15 +340,22 @@ export default function EditProductPage() {
           try {
             const url = new URL(text);
             // Check if it's an image URL
-            const imageExtensions = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i;
-            if (imageExtensions.test(url.pathname) || text.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)/i)) {
+            const imageExtensions =
+              /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i;
+            if (
+              imageExtensions.test(url.pathname) ||
+              text.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)/i)
+            ) {
               try {
                 const response = await fetch(text, { mode: "cors" });
                 if (response.ok) {
                   const blob = await response.blob();
                   if (blob.type.startsWith("image/")) {
-                    const fileName = url.pathname.split("/").pop() || "pasted-image.jpg";
-                    const file = new File([blob], fileName, { type: blob.type });
+                    const fileName =
+                      url.pathname.split("/").pop() || "pasted-image.jpg";
+                    const file = new File([blob], fileName, {
+                      type: blob.type,
+                    });
                     files.push(file);
                   }
                 }
@@ -507,17 +497,17 @@ export default function EditProductPage() {
   };
 
   const isHtmlEmpty = (html: string): boolean => {
-    if (!html || !html.trim()) return true
+    if (!html || !html.trim()) return true;
 
     // Remove all HTML tags and decode HTML entities
     const text = html
       .replace(/<[^>]*>/g, "") // Remove HTML tags
       .replace(/&nbsp;/g, " ") // Replace &nbsp; with space
       .replace(/&[a-z]+;/gi, "") // Remove other HTML entities
-      .trim()
+      .trim();
 
-    return text.length === 0
-  }
+    return text.length === 0;
+  };
 
   useEffect(() => {
     if (
@@ -669,7 +659,33 @@ export default function EditProductPage() {
     }
 
     if (hasArticle && isHtmlEmpty(articleContent)) {
-      toast.error("Vui lòng nhập nội dung bài viết chi tiết hoặc tắt tính năng này");
+      toast.error(
+        "Vui lòng nhập nội dung bài viết chi tiết hoặc tắt tính năng này",
+      );
+      return;
+    }
+
+    // ✅ Kiểm tra trùng lặp tên sản phẩm và mã sản phẩm
+    const isDupName = productsData.some(
+      (p: Product) =>
+        p.slug !== product.slug &&
+        p.name.toLowerCase() === productData.name.toLowerCase(),
+    );
+    const isDupCode = productsData.some(
+      (p: Product) =>
+        p.slug !== product.slug &&
+        p.productCode?.toLowerCase() === productData.code.toLowerCase(),
+    );
+
+    if (isDupName || isDupCode) {
+      const errors: Record<string, string> = {};
+      if (isDupName) errors.name = "Tên sản phẩm đã tồn tại";
+      if (isDupCode) errors.code = "Mã sản phẩm đã tồn tại";
+
+      setFieldError((prev) => ({ ...prev, ...errors }));
+      toast.error(
+        `${isDupName ? "Tên " : ""}${isDupName && isDupCode ? "và " : ""}${isDupCode ? "mã " : ""}sản phẩm đã tồn tại`,
+      );
       return;
     }
 
@@ -1061,17 +1077,23 @@ export default function EditProductPage() {
                     {images.length > 0 ? `${images.length} ảnh` : "Chưa có ảnh"}
                   </span>
                 </div>
-                
+
                 {/* Paste area */}
                 <div
                   ref={pasteAreaRef}
                   tabIndex={0}
-                  className="flex min-h-[100px] w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center transition-colors hover:border-gray-400 hover:bg-gray-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  onFocus={(e) => e.currentTarget.classList.add("ring-2", "ring-blue-500")}
-                  onBlur={(e) => e.currentTarget.classList.remove("ring-2", "ring-blue-500")}
+                  className="flex min-h-[100px] w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-center transition-colors hover:border-gray-400 hover:bg-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                  onFocus={(e) =>
+                    e.currentTarget.classList.add("ring-2", "ring-blue-500")
+                  }
+                  onBlur={(e) =>
+                    e.currentTarget.classList.remove("ring-2", "ring-blue-500")
+                  }
                 >
                   <div className="text-sm text-gray-600">
-                    <p className="font-medium">Hoặc dán ảnh vào đây (Ctrl + V)</p>
+                    <p className="font-medium">
+                      Hoặc dán ảnh vào đây (Ctrl + V)
+                    </p>
                     <p className="mt-1 text-xs text-gray-500">
                       Có thể paste ảnh từ clipboard hoặc URL ảnh
                     </p>
@@ -1183,7 +1205,7 @@ export default function EditProductPage() {
           <CardFooter className="flex justify-end pt-4">
             <Button
               type="submit"
-              className="w-full sm:w-[300px] disabled:cursor-not-allowed"
+              className="w-full disabled:cursor-not-allowed sm:w-[300px]"
               disabled={loading || !hasChanges}
             >
               {loading ? (
