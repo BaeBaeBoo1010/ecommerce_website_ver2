@@ -30,7 +30,10 @@ export default function HomeClient({ initialData }: HomeClientProps) {
   }, [status, session]);
 
   // Dùng trực tiếp data từ server (đã group sẵn theo category)
-  const allCategories = useMemo(() => initialData.filter(cat => cat.products && cat.products.length > 0), [initialData]);
+  const allCategories = useMemo(
+    () => initialData.filter((cat) => cat.products && cat.products.length > 0),
+    [initialData],
+  );
 
   // Lấy tất cả products để dùng cho carousel
   const products = useMemo(() => {

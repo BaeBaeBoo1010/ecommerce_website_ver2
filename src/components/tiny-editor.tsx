@@ -11,8 +11,6 @@ const Editor = dynamic(
   { ssr: false },
 );
 
-
-
 const MAX_IMAGE_WIDTH = 1024;
 const MAX_IMAGE_SIZE = 1024 * 1024;
 
@@ -24,7 +22,7 @@ export default function TinyEditor({
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
-  }) {
+}) {
   const tempImagesRef = useRef<{ blobUrl: string; file: File }[]>([]);
 
   // Sử dụng browser-image-compression (dùng Web Worker, không block UI)
@@ -43,7 +41,6 @@ export default function TinyEditor({
       return file;
     }
   };
-
 
   useEffect(() => {
     return () => {
