@@ -28,8 +28,8 @@ export default function ProductSwiper({
   const limitedProducts = products?.slice(0, 12);
 
   const SkeletonCard = () => (
-    <div className="flex h-64 flex-col rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
-      <Skeleton className="relative aspect-square w-full rounded-lg" />
+    <div className="flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:h-90">
+      <Skeleton className="relative w-full rounded" style={{ height: 208 }} />
       <div className="mt-3 flex flex-grow flex-col gap-2">
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-3/4" />
@@ -80,7 +80,7 @@ export default function ProductSwiper({
           1024: { slidesPerView: 3.5, spaceBetween: 18 },
           1280: { slidesPerView: 4, spaceBetween: 20 },
         }}
-        className="!overflow-hidden pb-6"
+        className="!overflow-visible pb-6"
       >
         {showSkeleton
           ? Array.from({ length: skeletonCount }).map((_, i) => (
@@ -92,21 +92,24 @@ export default function ProductSwiper({
               <SwiperSlide key={p.slug}>
                 <Link
                   href={`/products/${p.slug}`}
-                  className="group flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:shadow-lg"
+                  className="group flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-lg sm:h-90"
                 >
-                  <div className="relative w-full overflow-hidden rounded-lg bg-white pb-[100%]">
+                  <div
+                    className="relative w-full rounded"
+                    style={{ height: 208 }}
+                  >
                     <Image
                       src={p.imageUrls?.[0] || "/images/placeholder.svg"}
                       alt={p.name}
                       fill
                       loading="lazy"
-                      sizes="(max-width:1024px) 50vw, 260px"
+                      sizes="(max-width:1024px) 50vw, 25vw"
                       className="object-contain transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
 
                   <div className="mt-3 flex flex-grow flex-col">
-                    <h3 className="line-clamp-3 h-[4.0rem] text-sm font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:h-[4.5rem] sm:text-lg md:h-[5.5rem]">
+                    <h3 className="line-clamp-3 text-sm font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:text-lg">
                       {p.name}
                     </h3>
                     <p className="mt-auto text-base font-bold text-[#ee4d2d] sm:text-lg">

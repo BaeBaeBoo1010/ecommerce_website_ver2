@@ -111,10 +111,10 @@ export default function Carousel({ products, isLoading }: Props) {
       <div
         onMouseEnter={() => swiperRef.current?.autoplay?.stop()}
         onMouseLeave={() => swiperRef.current?.autoplay?.start()}
-        className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-8 px-4 py-2 pb-10 sm:px-6 md:grid-cols-2"
+        className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-2 pb-10 sm:px-6 md:grid-cols-2 md:items-start"
       >
         {/* ---------- TEXT ---------- */}
-        <div className="order-2 flex justify-center md:order-1 md:items-center">
+        <div className="order-2 flex min-h-[300px] justify-center md:order-1 md:min-h-[450px] md:items-start md:pt-8">
           {loading ? (
             <SkeletonTextBlock />
           ) : (
