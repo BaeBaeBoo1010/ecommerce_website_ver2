@@ -7,28 +7,34 @@ export async function getHomeData(): Promise<CategoryWithProducts[]> {
   await connectMongoDB();
 
   return Category.aggregate<CategoryWithProducts>([
-    { $addFields: { _id: { $toString: "$_id" } } },        // ⬅️  _id → string
     {
       $lookup: {
         from: "products",
         let: { catId: "$_id" },
         pipeline: [
-          { $match: { $expr: { $eq: ["$category", { $toObjectId: "$$catId" }] } } },
+          { 
+            $match: { 
+              $expr: { $eq: ["$category", "$$catId"] } // So sánh trực tiếp ObjectId với ObjectId
+            } 
+          },
           { $sort: { createdAt: -1 } },
-          { $limit: 10 },
+          { $limit: 10 }, // Chỉ lấy 10 sản phẩm
           {
-            $project: {
-              _id: { $toString: "$_id" },                  // ⬅️  _id → string
+            $project: { // Chỉ lấy field cần thiết để giảm dung lượng mạng
               name: 1,
               price: 1,
-              imageUrls: 1,
+              imageUrls: { $slice: ["$imageUrls", 1] }, // Chỉ lấy ảnh đầu tiên (thumbnail)
+              slug: 1,
+              description: 1,
             },
           },
         ],
         as: "products",
       },
     },
-    { $project: { _id: 1, name: 1, slug: 1, products: 1 } },
+    // Chỉ giữ lại category nào CÓ sản phẩm (tùy chọn, giúp UI gọn hơn)
+    // { $match: { "products.0": { $exists: true } } },
+    { $project: { name: 1, slug: 1, products: 1 } },
   ]).exec();
 }
 

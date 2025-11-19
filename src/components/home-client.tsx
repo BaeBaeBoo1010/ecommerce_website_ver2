@@ -3,9 +3,8 @@
 import dynamic from "next/dynamic";
 import Carousel from "@/components/carousel";
 import { ProductSwiperSkeleton } from "@/components/product-swiper-skeleton";
-import type { Product, CategoryWithProducts } from "@/types/product";
+import type { CategoryWithProducts } from "@/types/product";
 import { useSession } from "next-auth/react";
-import useSWR from "swr";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -15,7 +14,11 @@ const ProductSwiper = dynamic(() => import("@/components/product-swiper"), {
   loading: () => <ProductSwiperSkeleton />,
 });
 
-export default function HomeClient() {
+type HomeClientProps = {
+  initialData: CategoryWithProducts[];
+};
+
+export default function HomeClient({ initialData }: HomeClientProps) {
   const { data: session, status } = useSession();
 
   useEffect(() => {
@@ -26,50 +29,18 @@ export default function HomeClient() {
     }
   }, [status, session]);
 
-  const { data: products } = useSWR<Product[]>("/api/products", {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    revalidateOnMount: true,
-  });
+  // Dùng trực tiếp data từ server (đã group sẵn theo category)
+  const allCategories = useMemo(() => initialData.filter(cat => cat.products && cat.products.length > 0), [initialData]);
 
-  // 🔹 Tách products ra theo category
-  const allCategories: CategoryWithProducts[] = useMemo(() => {
-    if (!products || !products.length) return [];
+  // Lấy tất cả products để dùng cho carousel
+  const products = useMemo(() => {
+    return allCategories.flatMap((cat) => cat.products);
+  }, [allCategories]);
 
-    const map = new Map<string, CategoryWithProducts>();
-
-    products.forEach((product) => {
-      const cat = product.category;
-      if (!cat) return;
-
-      if (!map.has(cat._id)) {
-        map.set(cat._id, {
-          _id: cat._id,
-          name: cat.name,
-          slug: cat.slug,
-          products: [],
-        });
-      }
-
-      map.get(cat._id)!.products.push(product);
-    });
-
-    // 🔹 Convert map -> array, lọc bỏ category trống
-    const categories = Array.from(map.values()).filter(
-      (cat) => cat.products.length > 0,
-    );
-
-    // 🔹 Sắp xếp theo số lượng sản phẩm (từ nhiều đến ít)
-    categories.sort((a, b) => b.products.length - a.products.length);
-
-    return categories;
-  }, [products]);
-
-
-  // 🔹 Pagination theo cụm 5 categories
+  // 🔹 Infinite scroll
   const PAGE_SIZE = 5;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [prevCount, setPrevCount] = useState(0); // để đánh dấu animate
+  const [prevCount, setPrevCount] = useState(0);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -85,17 +56,18 @@ export default function HomeClient() {
           }
         });
       },
-      { root: null, rootMargin: "200px", threshold: 0.1 },
+      { rootMargin: "200px", threshold: 0.1 },
     );
 
     observer.observe(loadMoreRef.current);
+
     return () => observer.disconnect();
   }, [allCategories.length, visibleCount]);
 
   if (!allCategories.length) {
     return (
       <main className="mx-auto max-w-7xl px-4">
-        <Carousel products={products || []} isLoading={!products} />
+        <Carousel products={products} isLoading={!products} />
         <p className="py-10 text-center text-gray-500">
           Không tìm thấy sản phẩm nào
         </p>
@@ -105,10 +77,11 @@ export default function HomeClient() {
 
   return (
     <main className="mx-auto mb-5 max-w-7xl space-y-10 px-4 sm:mb-20 sm:space-y-4">
-      <Carousel products={products || []} isLoading={!products} />
+      <Carousel products={products} isLoading={!products} />
+
       <div className="flex flex-col gap-4 sm:gap-12">
         {allCategories.slice(0, visibleCount).map((cat, idx) => {
-          const isNew = idx >= prevCount; // chỉ animate category mới
+          const isNew = idx >= prevCount;
           return (
             <AnimatePresence key={cat._id}>
               <motion.div
@@ -127,6 +100,7 @@ export default function HomeClient() {
           );
         })}
       </div>
+
       {visibleCount < allCategories.length && (
         <div ref={loadMoreRef} className="h-1"></div>
       )}

@@ -27,4 +27,7 @@ const ProductSchema = new mongoose.Schema({
   timestamps: true,
 });
 
+ProductSchema.index({ category: 1 });
+ProductSchema.index({ createdAt: -1 });
+
 export const Product = mongoose.models.Product || mongoose.model("Product", ProductSchema);

@@ -2,28 +2,28 @@ import HomeClient from "@/components/home-client";
 import type { Metadata } from "next";
 import Script from "next/script";
 import { connectMongoDB } from "@/lib/mongodb";
+import { getHomeData } from "@/lib/home-service";
 import { Product } from "@/models/product";
 
-export const revalidate = 300; // vẫn giữ ISR nếu muốn, nhưng client fetch từ cache SWR
+export const revalidate = 300;
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
 
 export async function generateMetadata(): Promise<Metadata> {
-  await connectMongoDB();
-  const products = await Product.find().lean();
+  const count = await Product.countDocuments();
 
   return {
     title: "Trang chủ",
     description:
       "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp. Hơn " +
-      products.length +
+      count +
       " sản phẩm chất lượng cao, giá tốt nhất thị trường.",
     openGraph: {
       title: "Thiết bị điện Quang Minh - Trang chủ",
       description:
         "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp. Hơn " +
-        products.length +
+        count +
         " sản phẩm chất lượng cao.",
       url: siteUrl,
       images: [
@@ -42,12 +42,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Page() {
-  // Lấy data để generate structured data
+  // Lấy data từ server
   await connectMongoDB();
-  const products = await Product.find()
-    .select("name slug price imageUrls")
-    .limit(10)
-    .lean();
+  const categoriesData = await getHomeData();
+
+  // Lấy tất cả products từ categories để tạo schema
+  const allProducts = categoriesData.flatMap((cat) => cat.products);
 
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
@@ -58,7 +58,7 @@ export default async function Page() {
     "@type": "ItemList",
     name: "Danh sách sản phẩm thiết bị điện",
     description: "Danh sách các sản phẩm thiết bị điện nổi bật",
-    itemListElement: products.map((product, index) => ({
+    itemListElement: allProducts.slice(0, 10).map((product, index) => ({
       "@type": "ListItem",
       position: index + 1,
       item: {
@@ -82,7 +82,7 @@ export default async function Page() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
       />
-      <HomeClient />
+      <HomeClient initialData={categoriesData} />
     </>
   );
 }
