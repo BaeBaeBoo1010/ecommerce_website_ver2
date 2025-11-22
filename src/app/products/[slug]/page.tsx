@@ -1,81 +1,58 @@
-import { Suspense } from "react";
-import type { Metadata } from "next";
-import { getAllProducts } from "@/lib/products";
-import type { Product } from "@/types/product";
+"use client";
+
+import { Suspense, useEffect } from "react";
 import ProductDetailClient from "./product-detail-client";
 import Loading from "@/components/loading";
+import useSWR, { useSWRConfig } from "swr";
+import { useParams } from "next/navigation";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
+export default function ProductDetailPage() {
+  const { slug } = useParams() as { slug: string };
+  const { cache } = useSWRConfig();
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  
-  // Reuse cached products from layout.tsx
-  const products = await getAllProducts();
-  const product = products.find((p: Product) => p.slug === slug);
+  // Lấy products từ SWR - với fallback từ layout, data sẽ có ngay lập tức
+  const { data: products } = useSWR("/api/products", {
+    fallbackData: cache.get("/api/products")?.data,
+  });
 
-  if (!product) {
-    return {
-      title: "Sản phẩm không tồn tại",
-      description: "Không tìm thấy sản phẩm",
-    };
-  }
+  // Set title ngay khi có products, không chờ useEffect
+  useEffect(() => {
+    if (!products) return;
 
-  const title = `${product.name}${product.category?.name ? ` - ${product.category.name}` : ""} | Thiết bị điện Quang Minh`;
-  const description =
-    product.description?.slice(0, 160) ||
-    `Mua ${product.name} với giá tốt nhất tại cửa hàng thiết bị điện Quang Minh.`;
-  const imageUrl = product.imageUrls?.[0];
+    const product = products.find((p: { slug: string }) => p.slug === slug);
 
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      url: `${siteUrl}/products/${slug}`,
-      type: "website",
-      locale: "vi_VN",
-      siteName: "Thiết bị điện Quang Minh",
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              width: 1200,
-              height: 630,
-              alt: product.name,
-            },
-          ]
-        : [],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: imageUrl ? [imageUrl] : [],
-    },
-    alternates: {
-      canonical: `${siteUrl}/products/${slug}`,
-    },
-    other: {
-      "product:price:amount": product.price.toString(),
-      "product:price:currency": "VND",
-    },
-  };
-}
+    if (!product) {
+      document.title = "Sản phẩm không tồn tại | Thiết bị điện Quang Minh";
 
-export default async function ProductDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {  
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute("content", "Không tìm thấy sản phẩm");
+
+      return;
+    }
+
+    const title = `${product.name}${
+      product.category?.name ? ` - ${product.category.name}` : ""
+    } | Thiết bị điện Quang Minh`;
+
+    const description =
+      product.description?.slice(0, 160) ||
+      `Mua ${product.name} với giá tốt nhất tại cửa hàng thiết bị điện Quang Minh.`;
+
+    document.title = title;
+
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute("content", description);
+
+    const imageUrl = product.imageUrls?.[0];
+    if (imageUrl) {
+      const ogImage = document.querySelector('meta[property="og:image"]');
+      if (ogImage) ogImage.setAttribute("content", imageUrl);
+    }
+  }, [products, slug]);
+
   return (
     <Suspense fallback={<Loading />}>
-      <ProductDetailClient params={params} />
+      <ProductDetailClient slug={slug} />
     </Suspense>
   );
 }

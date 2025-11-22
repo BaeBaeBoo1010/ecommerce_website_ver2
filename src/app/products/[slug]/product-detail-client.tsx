@@ -1,19 +1,12 @@
 "use client";
 
-import { use } from "react";
 import useSWR from "swr";
 import ProductDetail from "@/components/product-detail";
 import Loading from "@/components/loading";
 import type { Product } from "@/types/product";
 
-export default function ProductDetailClient({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = use(params);
-
-  // Lấy danh sách sản phẩm từ SWR fallback đã set ở layout
+export default function ProductDetailClient({ slug }: { slug: string }) {
+  // Products đã có trong SWR fallback → không gọi API
   const { data: products } = useSWR<Product[]>("/api/products");
 
   const product = products?.find((p) => p.slug === slug);
@@ -22,4 +15,3 @@ export default function ProductDetailClient({
 
   return <ProductDetail product={product} />;
 }
-
