@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { getProductBySlug } from "@/lib/products";
+import { getAllProducts } from "@/lib/products";
+import type { Product } from "@/types/product";
 import ProductDetailClient from "./product-detail-client";
 import Loading from "@/components/loading";
 
@@ -13,7 +14,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   
-  const product = await getProductBySlug(slug);
+  // Reuse cached products from layout.tsx
+  const products = await getAllProducts();
+  const product = products.find((p: Product) => p.slug === slug);
 
   if (!product) {
     return {
