@@ -27,35 +27,7 @@ export default function Carousel({ products, isLoading }: Props) {
   // Cache 5 phút trong localStorage
   useEffect(() => {
     if (!products || products.length === 0) return;
-
-    const key = "carousel_random_products";
-    const cache = localStorage.getItem(key);
-
-    const newHash = JSON.stringify(products.map((p) => p._id)).slice(0, 1000); // hash đơn giản
-
-    if (cache) {
-      try {
-        const parsed = JSON.parse(cache);
-        if (
-          Date.now() - parsed.timestamp < 5 * 60 * 1000 &&
-          parsed.hash === newHash
-        ) {
-          setRandomProducts(parsed.products);
-          return;
-        }
-      } catch {}
-    }
-
-    const random = [...products].sort(() => Math.random() - 0.5).slice(0, 5);
-    setRandomProducts(random);
-    localStorage.setItem(
-      key,
-      JSON.stringify({
-        timestamp: Date.now(),
-        products: random,
-        hash: newHash,
-      }),
-    );
+    setRandomProducts([...products].sort(() => Math.random() - 0.5).slice(0, 5));
   }, [products]);
 
   const slides = [

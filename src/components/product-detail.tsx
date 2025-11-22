@@ -336,7 +336,7 @@ export default function ProductDetail({ product }: { product: Product }) {
                 {articleInView ? (
                   <SafeHtml
                     html={product.articleHtml}
-                    className="rich-article prose dark:prose-invert prose-headings:font-semibold prose-headings:text-gray-900 prose-a:text-blue-600 hover:prose-a:underline prose-strong:text-gray-800 prose-img:mx-auto prose-img:rounded-lg prose-img:shadow-md prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-table:overflow-hidden prose-table:rounded-lg prose-table:border prose-table:border-gray-200 prose-th:bg-gray-100 prose-th:text-gray-800 prose-td:border-gray-200 animate-fadeIn max-w-none [&_iframe]:mx-auto [&_iframe]:block [&_iframe]:rounded-lg [&_iframe]:shadow-md max-sm:[&_iframe]:max-h-70 max-sm:[&_iframe]:max-w-full sm:[&_iframe]:h-auto sm:[&_iframe]:max-w-full"
+                    className="rich-article prose dark:prose-invert prose-headings:font-semibold prose-headings:text-gray-900 prose-a:text-blue-600 hover:prose-a:underline prose-strong:text-gray-800 prose-img:mx-auto prose-img:rounded-lg prose-img:shadow-md prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-table:overflow-hidden prose-table:rounded-sm prose-table:border prose-table:border-gray-200 prose-th:bg-gray-100 prose-th:text-gray-800 prose-td:border-gray-200 animate-fadeIn max-w-none [&_iframe]:mx-auto [&_iframe]:block [&_iframe]:rounded-lg [&_iframe]:shadow-md max-sm:[&_iframe]:max-h-70 max-sm:[&_iframe]:max-w-full sm:[&_iframe]:h-auto sm:[&_iframe]:max-w-full"
                   />
                 ) : (
                   <div className="flex h-40 items-center justify-center text-gray-400">
@@ -365,6 +365,25 @@ export default function ProductDetail({ product }: { product: Product }) {
                     border-radius: 12px;
                     margin: 1.5rem 0;
                     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                  }
+                  .rich-article table {
+                    margin: 0.5rem 0 !important;
+                    width: 100%;
+                    border-collapse: collapse;
+                    border-radius: 4px; /* rounded-sm */
+                    overflow: hidden;
+                  }
+                  .rich-article th,
+                  .rich-article td {
+                    padding: 0.5rem 0.75rem;
+                    border: 1px solid #e5e7eb;
+                  }
+                  .rich-article th {
+                    background-color: #f9fafb;
+                    font-weight: 600;
+                  }
+                  .rich-article tr:hover td {
+                    background-color: #f9fafb;
                   }
                   @media (max-width: 768px) {
                     .rich-article iframe {
