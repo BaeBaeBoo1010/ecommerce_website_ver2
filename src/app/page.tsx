@@ -5,7 +5,7 @@ import { connectMongoDB } from "@/lib/mongodb";
 import { getHomeData } from "@/lib/home-service";
 import { Product } from "@/models/product";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
