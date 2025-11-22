@@ -1,5 +1,6 @@
 // app/api/products/[slug]/route.ts
 import { type NextRequest, NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { connectMongoDB } from "@/lib/mongodb"
 import { Product } from "@/models/product"
 import { v2 as cloudinary } from "cloudinary"
@@ -58,7 +59,7 @@ const ERROR = {
 /* ───────── GET /api/products/[slug] ───────── */
 export async function GET(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params
-  
+
   // ✅ Security: Sanitize slug to prevent NoSQL injection
   const sanitizedSlug = slug.replace(/[^a-zA-Z0-9_-]/g, "")
   if (!sanitizedSlug || sanitizedSlug.length > 200 || sanitizedSlug !== slug) {
@@ -104,6 +105,10 @@ export async function DELETE(_req: NextRequest, context: { params: Promise<{ slu
 
     // Xóa sản phẩm trong MongoDB
     await Product.findOneAndDelete({ slug })
+
+    // Revalidate homepage and products page
+    revalidatePath("/");
+    revalidatePath("/products");
 
     return NextResponse.json({ success: true, message: "Đã xóa sản phẩm và ảnh" }, { status: 200 })
   } catch (err) {
@@ -230,6 +235,11 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ slug: s
     product.isArticleEnabled = isArticleEnabled
 
     await product.save()
+
+    // Revalidate homepage and products page
+    revalidatePath("/");
+    revalidatePath("/products");
+    revalidatePath(`/products/${slug}`);
 
     console.log("oldArticleImages:", oldArticleImages)
     console.log("newArticleImages:", newArticleImages)

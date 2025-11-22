@@ -1,6 +1,7 @@
 // app/api/products/route.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/product";
 import { Category } from "@/models/category";
@@ -129,6 +130,10 @@ export async function POST(req: Request) {
       articleHtml,
       isArticleEnabled,
     });
+
+    // Revalidate homepage and products page
+    revalidatePath("/");
+    revalidatePath("/products");
 
     return NextResponse.json(
       { success: true, product: newProduct },
