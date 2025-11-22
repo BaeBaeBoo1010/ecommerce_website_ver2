@@ -4,7 +4,6 @@
 import dynamic from "next/dynamic";
 
 import { useRef, useEffect } from "react";
-import imageCompression from "browser-image-compression";
 
 const Editor = dynamic(
   () => import("@tinymce/tinymce-react").then((mod) => mod.Editor),
@@ -34,6 +33,7 @@ export default function TinyEditor({
       initialQuality: 0.8,
     };
     try {
+      const imageCompression = (await import("browser-image-compression")).default;
       const compressedFile = await imageCompression(file, options);
       return compressedFile;
     } catch {

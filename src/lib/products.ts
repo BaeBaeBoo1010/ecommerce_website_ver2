@@ -17,3 +17,9 @@ export const getProductBySlug = cache(async (slug: string) => {
   if (!product) return null
   return JSON.parse(JSON.stringify(product))
 })
+
+export const getAllProducts = cache(async () => {
+  await connectMongoDB()
+  const products = await Product.find().populate("category", "_id name slug").lean()
+  return JSON.parse(JSON.stringify(products))
+})

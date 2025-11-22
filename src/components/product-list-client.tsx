@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import useSWR, { useSWRConfig } from "swr";
+import useSWR from "swr";
 import Fuse from "fuse.js";
 
 import { Button } from "@/components/ui/button";
@@ -44,10 +44,13 @@ const paginate = (products: Product[], page: number) => {
   return products.slice(start, start + PRODUCTS_PER_PAGE);
 };
 
-export default function ProductListClient() {
+type ProductListClientProps = {
+  initialData: Product[];
+};
+
+export default function ProductListClient({ initialData }: ProductListClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { fallback } = useSWRConfig();
 
   // Params
   const categorySlug = searchParams.get("category") ?? "all";
@@ -60,7 +63,7 @@ export default function ProductListClient() {
 
   // Lấy data từ SWR cache đã được inject ở layout
   const { data: productsData, isLoading } = useSWR<Product[]>("/api/products", {
-    fallbackData: fallback["/api/products"],
+    fallbackData: initialData,
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
   });
