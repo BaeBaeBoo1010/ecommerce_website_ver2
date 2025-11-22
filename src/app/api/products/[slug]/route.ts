@@ -240,6 +240,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ slug: s
     revalidatePath("/");
     revalidatePath("/products");
     revalidatePath(`/products/${slug}`);
+    revalidatePath(`/ssr/products/${slug}`);
 
     console.log("oldArticleImages:", oldArticleImages)
     console.log("newArticleImages:", newArticleImages)

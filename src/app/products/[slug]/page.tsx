@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getProductBySlug } from "@/lib/products";
 import ProductDetailClient from "./product-detail-client";
 import Loading from "@/components/loading";
+import Script from "next/script";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
 
@@ -70,9 +71,37 @@ export default async function ProductDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
+
+  const jsonLd = product
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.name,
+        description: product.description,
+        image: product.imageUrls?.[0],
+        offers: {
+          "@type": "Offer",
+          price: product.price,
+          priceCurrency: "VND",
+          availability: "https://schema.org/InStock",
+        },
+      }
+    : null;
+
   return (
-    <Suspense fallback={<Loading />}>
-      <ProductDetailClient params={params} />
-    </Suspense>
+    <>
+      {jsonLd && (
+        <Script
+          id="product-schema"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      <Suspense fallback={<Loading />}>
+        <ProductDetailClient params={params} />
+      </Suspense>
+    </>
   );
 }
