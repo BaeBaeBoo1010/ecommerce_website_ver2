@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/product";
+import { Category } from "@/models/category";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
 
@@ -11,6 +12,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const products = await Product.find()
     .select("slug updatedAt")
     .lean();
+
+  // Lấy tất cả categories
+  const categories = await Category.find()
+    .select("slug")
+    .lean() as unknown as { slug: string }[];
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
@@ -40,6 +46,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // Category pages
+  const categoryPages: MetadataRoute.Sitemap = categories.map((category: { slug: string }) => ({
+    url: `${siteUrl}/products?category=${category.slug}&page=1`,
+    lastModified: new Date(),
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
   // Dynamic product pages
   const productPages: MetadataRoute.Sitemap = products.map((product) => ({
     url: `${siteUrl}/products/${product.slug}`,
@@ -48,6 +62,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...productPages];
+  return [...staticPages, ...categoryPages, ...productPages];
 }
 
