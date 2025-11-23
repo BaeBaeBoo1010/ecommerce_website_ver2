@@ -1,11 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
-import { isbot } from "isbot"
+
 
 export const config = {
   matcher: [
     "/admin/:path*",
-    "/products/:path*",
     "/api/categories/:path*",
     "/api/products/:path*",
     "/api/revalidate",
@@ -14,76 +13,7 @@ export const config = {
 
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const ua = req.headers.get("user-agent") || ""
   const method = req.method
-
-  // ✅ 1. Bot detection + SSR rewrite cho trang sản phẩm
-  if (pathname.startsWith("/products/")) {
-    const botCache = req.cookies.get("botCache")?.value ?? null
-
-    // Nếu đã cache là bot
-    if (botCache === "bot") {
-      const url = req.nextUrl.clone()
-      url.pathname = "/ssr" + pathname
-      return NextResponse.rewrite(url)
-    }
-
-    // Nếu chưa cache, detect user-agent
-    if (!botCache) {
-      try {
-        const acceptHeader = req.headers.get("accept") || ""
-        const isHtmlRequest = acceptHeader.includes("text/html")
-        const isGetRequest = req.method === "GET"
-
-        const isBotRequest =
-          isGetRequest &&
-          isHtmlRequest &&
-          (isbot(ua) ||
-            ua.toLowerCase().includes("bot") ||
-            ua.toLowerCase().includes("crawler") ||
-            ua.toLowerCase().includes("spider"))
-
-        if (isBotRequest) {
-          const url = req.nextUrl.clone()
-          url.pathname = "/ssr" + pathname
-          const rewriteRes = NextResponse.rewrite(url)
-
-          rewriteRes.cookies.set("botCache", "bot", {
-            path: "/products",
-            maxAge: 86400 * 7, // 7 days
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production" || req.nextUrl.protocol === "https:",
-            sameSite: "lax",
-          })
-          return rewriteRes
-        } else {
-          const res = NextResponse.next()
-          res.cookies.set("botCache", "user", {
-            path: "/products",
-            maxAge: 86400 * 7, // 7 days
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production" || req.nextUrl.protocol === "https:",
-            sameSite: "lax",
-          })
-          return res
-        }
-      } catch (error) {
-        console.error("[Middleware] Bot detection error:", error)
-        const res = NextResponse.next()
-        res.cookies.set("botCache", "user", {
-          path: "/products",
-          maxAge: 3600,
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production" || req.nextUrl.protocol === "https:",
-          sameSite: "lax",
-        })
-        return res
-      }
-    }
-
-    return NextResponse.next()
-  }
-
 
   const isApiRoute = pathname.startsWith("/api/")
   const isAdminSection = pathname.startsWith("/admin")
