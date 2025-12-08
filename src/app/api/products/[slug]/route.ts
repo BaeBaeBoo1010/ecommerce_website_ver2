@@ -214,6 +214,15 @@ export async function PUT(
       );
     }
 
+    // Revalidate pages to show updated product
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+    revalidatePath("/products", "page");
+    revalidatePath(`/products/${slug}`, "page");
+    if (updates.slug && updates.slug !== slug) {
+      revalidatePath(`/products/${updates.slug}`, "page");
+    }
+
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {
     console.error("PUT /api/products/[slug] error:", err);
@@ -377,6 +386,11 @@ export async function DELETE(
         // Don't fail the request - product is already deleted
       }
     }
+
+    // Revalidate pages after deletion
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+    revalidatePath("/products", "page");
 
     return NextResponse.json({ success: true });
   } catch (err) {

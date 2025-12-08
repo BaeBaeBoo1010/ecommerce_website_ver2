@@ -87,6 +87,11 @@ export async function PATCH(
         );
       }
 
+      // Revalidate pages after category update
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+      revalidatePath("/products", "page");
+
       return NextResponse.json({ success: true, category: updated });
     }
 
@@ -129,6 +134,11 @@ export async function DELETE(
         { status: 500 }
       );
     }
+
+    // Revalidate pages after category deletion
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+    revalidatePath("/products", "page");
 
     return NextResponse.json({ success: true });
   } catch (err) {

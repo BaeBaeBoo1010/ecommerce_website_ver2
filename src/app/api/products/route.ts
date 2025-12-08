@@ -168,6 +168,11 @@ export async function POST(req: Request) {
       );
     }
 
+    // Revalidate pages to show new product
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+    revalidatePath("/products", "page");
+
     return NextResponse.json({ success: true, product: created }, { status: 201 });
   } catch (err) {
     console.error("POST /api/products error:", err);
