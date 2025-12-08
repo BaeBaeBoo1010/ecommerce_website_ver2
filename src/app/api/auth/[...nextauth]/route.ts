@@ -112,7 +112,8 @@ const nextAuth = NextAuth({
   },
 });
 
-const { handlers } = nextAuth;
+const { handlers, auth } = nextAuth;
 
 export const GET = handlers.GET;
 export const POST = handlers.POST;
+export { auth };

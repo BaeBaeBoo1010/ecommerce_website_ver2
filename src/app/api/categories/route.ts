@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
 import { snakeToCamel } from "@/lib/case";
+import { requireAdmin } from "@/lib/auth-helpers";
 
 const ERROR = {
   MISSING_NAME: "MISSING_NAME",
@@ -40,6 +41,10 @@ export async function GET() {
 
 /* ───────── POST /api/categories ───────── */
 export async function POST(req: Request) {
+  // 🔒 Security: Require admin authentication
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { name } = await req.json();
     const cleaned = (name as string | undefined)?.trim();

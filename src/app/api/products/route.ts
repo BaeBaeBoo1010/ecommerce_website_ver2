@@ -3,6 +3,7 @@ import { getAllProducts } from "@/lib/product-service";
 import { supabase } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
+import { requireAdmin } from "@/lib/auth-helpers";
 
 if (!process.env.CLOUDINARY_URL) {
   console.error("⚠️ Missing CLOUDINARY_URL in environment");
@@ -55,6 +56,10 @@ async function uploadToCloudinary(file: File, productCode: string): Promise<stri
 }
 
 export async function POST(req: Request) {
+  // 🔒 Security: Require admin authentication
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const formData = await req.formData();
 

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth-helpers";
 
 export async function POST(req: NextRequest) {
+  // 🔒 Security: Require admin authentication
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     // Optional: get specific slug to revalidate
     let slug: string | null = null;

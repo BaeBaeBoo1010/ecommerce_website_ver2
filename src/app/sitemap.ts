@@ -1,22 +1,18 @@
 import { MetadataRoute } from "next";
-import { connectMongoDB } from "@/lib/mongodb";
-import { Product } from "@/models/product";
-import { Category } from "@/models/category";
+import { supabase } from "@/lib/supabase";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  await connectMongoDB();
+  // Fetch products from Supabase
+  const { data: products } = await supabase
+    .from("products")
+    .select("slug, updated_at");
 
-  // Lấy tất cả products
-  const products = await Product.find()
-    .select("slug updatedAt")
-    .lean();
-
-  // Lấy tất cả categories
-  const categories = await Category.find()
-    .select("slug")
-    .lean() as unknown as { slug: string }[];
+  // Fetch categories from Supabase
+  const { data: categories } = await supabase
+    .from("categories")
+    .select("slug");
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
@@ -47,7 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // Category pages
-  const categoryPages: MetadataRoute.Sitemap = categories.map((category: { slug: string }) => ({
+  const categoryPages: MetadataRoute.Sitemap = (categories || []).map((category) => ({
     url: `${siteUrl}/products?category=${category.slug}&page=1`,
     lastModified: new Date(),
     changeFrequency: "weekly",
@@ -55,13 +51,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Dynamic product pages
-  const productPages: MetadataRoute.Sitemap = products.map((product) => ({
+  const productPages: MetadataRoute.Sitemap = (products || []).map((product) => ({
     url: `${siteUrl}/products/${product.slug}`,
-    lastModified: product.updatedAt ? new Date(product.updatedAt) : new Date(),
+    lastModified: product.updated_at ? new Date(product.updated_at) : new Date(),
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));
 
   return [...staticPages, ...categoryPages, ...productPages];
 }
-

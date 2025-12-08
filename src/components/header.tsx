@@ -48,8 +48,7 @@ export default function Header() {
     async function loadCategories() {
       try {
         const res = await fetch("/api/categories", {
-          cache: "no-store",
-          next: { revalidate: 0 },
+          next: { revalidate: 300 }, // Cache 5 minutes
         });
 
         if (!res.ok) {

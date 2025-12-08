@@ -2,25 +2,23 @@
 export const revalidate = 300; // ISR: cache 5 phút
 
 import type { Metadata } from "next";
-import { Roboto, Inter } from "next/font/google";
+import dynamic from "next/dynamic";
+import { Inter } from "next/font/google";
 import Header from "@/components/header";
-import Footer from "@/components/footer";
 import AppToaster from "@/components/app-toaster";
 import Providers from "./providers";
 import "./globals.css";
 import Script from "next/script";
 import { SessionProvider } from "next-auth/react";
 
-const roboto = Roboto({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-  variable: "--font-roboto",
+// Dynamic import Footer for better initial load
+const Footer = dynamic(() => import("@/components/footer"), {
+  ssr: true,
 });
 
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
   variable: "--font-inter",
 });
@@ -94,13 +92,15 @@ export default async function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${inter.variable} ${roboto.variable}`}
+      className={inter.variable}
       style={{
-        fontFamily: "var(--font-inter), var(--font-roboto), sans-serif",
+        fontFamily: "var(--font-inter), sans-serif",
       }}
     >
       <head>
         <link rel="icon" href="/favicon.png" />
+        <link rel="preconnect" href="https://res.cloudinary.com" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
       <body>
         <Script

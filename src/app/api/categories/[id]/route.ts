@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
+import { requireAdmin } from "@/lib/auth-helpers";
 
 const ERROR = {
   NOT_FOUND: "NOT_FOUND",
@@ -37,6 +38,10 @@ export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  // 🔒 Security: Require admin authentication
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { id } = await context.params;
 
@@ -107,6 +112,10 @@ export async function DELETE(
   _req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  // 🔒 Security: Require admin authentication
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { id } = await context.params;
 

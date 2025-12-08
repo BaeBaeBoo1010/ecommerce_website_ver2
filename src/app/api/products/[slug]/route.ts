@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
+import { requireAdmin } from "@/lib/auth-helpers";
 
 if (!process.env.CLOUDINARY_URL) {
   console.error("⚠️ Missing CLOUDINARY_URL in environment");
@@ -100,6 +101,10 @@ export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ slug: string }> }
 ) {
+  // 🔒 Security: Require admin authentication
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { slug } = await context.params;
 
@@ -238,6 +243,10 @@ export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ slug: string }> }
 ) {
+  // 🔒 Security: Require admin authentication
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { slug } = await context.params;
 
@@ -349,6 +358,10 @@ export async function DELETE(
   _req: NextRequest,
   context: { params: Promise<{ slug: string }> }
 ) {
+  // 🔒 Security: Require admin authentication
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { slug } = await context.params;
 
