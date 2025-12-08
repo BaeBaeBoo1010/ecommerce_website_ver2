@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import useSWR, { useSWRConfig } from "swr";
 import Fuse from "fuse.js";
 
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import type { Product, Category } from "@/types/product";
 import ProductCard from "@/components/product-card";
 import Link from "next/link";
@@ -44,10 +43,13 @@ const paginate = (products: Product[], page: number) => {
   return products.slice(start, start + PRODUCTS_PER_PAGE);
 };
 
-export default function ProductListClient() {
+interface ProductListClientProps {
+  initialProducts: Product[];
+}
+
+export default function ProductListClient({ initialProducts }: ProductListClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { fallback } = useSWRConfig();
 
   // Params
   const categorySlug = searchParams.get("category") ?? "all";
@@ -58,21 +60,15 @@ export default function ProductListClient() {
   // State
   const [sortOption, setSortOption] = useState<SortOption>("none");
 
-  // Lấy data từ SWR cache đã được inject ở layout
-  const { data: productsData, isLoading } = useSWR<Product[]>("/api/products", {
-    fallbackData: fallback["/api/products"],
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-  });
-
-  const products = useMemo(() => productsData || [], [productsData]);
+  // Use products passed from server
+  const products = useMemo(() => initialProducts || [], [initialProducts]);
 
   // Lấy categories từ products
   const categories: Category[] = useMemo(() => {
     const seen = new Map<string, Category>();
     products.forEach((p) => {
       if (p.category && typeof p.category === "object") {
-        seen.set(p.category._id, p.category);
+        seen.set(p.category.id, p.category);
       }
     });
     return Array.from(seen.values());
@@ -118,8 +114,8 @@ export default function ProductListClient() {
         searchQuery.trim().toLowerCase(),
       );
       const result = fuse.search(keywordLower);
-      const matchedIds = new Set(result.map((r) => r.item._id));
-      list = list.filter((p) => matchedIds.has(p._id));
+      const matchedIds = new Set(result.map((r) => r.item.id));
+      list = list.filter((p) => matchedIds.has(p.id));
     }
 
     return list;
@@ -213,7 +209,7 @@ export default function ProductListClient() {
             <SelectContent>
               <SelectItem value="all">-- Tất cả danh mục --</SelectItem>
               {categories.map((cat) => (
-                <SelectItem key={cat._id} value={cat.slug}>
+                <SelectItem key={cat.id} value={cat.slug}>
                   {cat.name}
                 </SelectItem>
               ))}
@@ -239,15 +235,7 @@ export default function ProductListClient() {
 
       {/* Grid sản phẩm */}
       <div className="grid min-h-[200px] grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {isLoading ? (
-          Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-3">
-              <Skeleton className="h-48 w-full rounded-lg" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-            </div>
-          ))
-        ) : filteredProducts.length === 0 ? (
+        {filteredProducts.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center gap-4 py-20">
             <div className="bg-muted rounded-full p-6">
               <Package className="text-muted-foreground h-12 w-12" />
@@ -267,7 +255,7 @@ export default function ProductListClient() {
       </div>
 
       {/* Pagination */}
-      {!isLoading && totalPages > 1 && (
+      {totalPages > 1 && (
         <div className="flex flex-col items-center gap-4 pt-10 sm:flex-row sm:justify-between">
           <p className="text-muted-foreground text-sm">
             Trang {currentPage} / {totalPages} • Hiển thị{" "}

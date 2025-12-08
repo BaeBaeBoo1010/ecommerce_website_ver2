@@ -1,256 +1,389 @@
-// app/api/products/[slug]/route.ts
-import { type NextRequest, NextResponse } from "next/server"
-import { revalidatePath } from "next/cache"
-import { connectMongoDB } from "@/lib/mongodb"
-import { Product } from "@/models/product"
-import { v2 as cloudinary } from "cloudinary"
-import type { UploadApiResponse } from "cloudinary"
+import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
+import { slugify } from "@/lib/slugify";
+import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
 
 if (!process.env.CLOUDINARY_URL) {
-  console.error("⚠️ Missing CLOUDINARY_URL in environment")
+  console.error("⚠️ Missing CLOUDINARY_URL in environment");
 }
-cloudinary.config({ secure: true })
-
-function extractPublicId(url: string) {
-  const parts = url.split("/");
-  const uploadIndex = parts.findIndex((p) => p === "upload");
-  if (uploadIndex === -1) return "";
-
-  // Lấy tất cả phần sau "upload" → loại bỏ version (nếu có)
-  let publicIdWithVersion = parts.slice(uploadIndex + 1).join("/"); // v1760200033/products/test5/file.jpg
-
-  // Bỏ version nếu có (bắt đầu bằng "v" + số)
-  publicIdWithVersion = publicIdWithVersion.replace(/^v\d+\//, "");
-
-  // Loại bỏ đuôi file
-  const publicId = publicIdWithVersion.replace(/\.[^/.]+$/, "");
-
-  return publicId; // products/test5/cl8efctihpby7ch5whjm
-}
-
-
-
-function extractCloudinaryUrls(html: string): string[] {
-  if (!html) return []
-
-  // Match img tags with Cloudinary URLs
-  const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi
-  const urls: string[] = []
-  let match
-
-  while ((match = imgRegex.exec(html)) !== null) {
-    const url = match[1]
-    // Only include Cloudinary URLs
-    if (url.includes("cloudinary.com")) {
-      urls.push(url)
-    }
-  }
-
-  return urls
-}
+cloudinary.config({ secure: true });
 
 const ERROR = {
-  DUP_NAME: "DUP_NAME",
-  DUP_CODE: "DUP_CODE",
   NOT_FOUND: "NOT_FOUND",
-  MISSING_FIELD: "MISSING_FIELD",
+  DUP_SLUG: "DUP_SLUG",
+  DUP_CODE: "DUP_CODE",
+  UPDATE_FAILED: "UPDATE_FAILED",
+  DELETE_FAILED: "DELETE_FAILED",
+  UPLOAD_FAILED: "UPLOAD_FAILED",
+} as const;
+
+// Helper function to upload image to Cloudinary
+async function uploadToCloudinary(file: File, productCode: string): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const publicId = `${Date.now()}-${file.name.replace(/\.[^/.]+$/, "")}`;
+
+  const result = await new Promise<UploadApiResponse>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: `products/${productCode}`,
+        public_id: publicId,
+        resource_type: "image",
+        overwrite: false,
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result as UploadApiResponse);
+      }
+    );
+    stream.end(buffer);
+  });
+
+  return result.secure_url;
 }
 
 /* ───────── GET /api/products/[slug] ───────── */
-export async function GET(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
-  const { slug } = await context.params
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await context.params;
 
-  // ✅ Security: Sanitize slug to prevent NoSQL injection
-  const sanitizedSlug = slug.replace(/[^a-zA-Z0-9_-]/g, "")
-  if (!sanitizedSlug || sanitizedSlug.length > 200 || sanitizedSlug !== slug) {
-    return NextResponse.json(
-      { success: false, code: ERROR.NOT_FOUND, message: "Product not found" },
-      { status: 404 }
-    )
+  const { data, error } = await supabase
+    .from("products")
+    .select(`
+      id,
+      name,
+      slug,
+      product_code,
+      price,
+      description,
+      image_urls,
+      article_html,
+      is_article_enabled,
+      category:categories (
+        id,
+        name,
+        slug
+      )
+    `)
+    .eq("slug", slug)
+    .single();
+
+  if (error || !data) {
+    return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 });
   }
 
-  await connectMongoDB()
+  // Transform to camelCase
+  const product = {
+    id: data.id,
+    name: data.name,
+    slug: data.slug,
+    productCode: data.product_code,
+    price: data.price,
+    description: data.description,
+    imageUrls: data.image_urls || [],
+    articleHtml: data.article_html,
+    isArticleEnabled: data.is_article_enabled,
+    category: data.category ? {
+      id: (data.category as any).id,
+      name: (data.category as any).name,
+      slug: (data.category as any).slug,
+    } : null,
+  };
 
-  // ✅ Security: Use exact match, not regex to prevent injection
-  const product = await Product.findOne({ slug: sanitizedSlug }).populate("category", "_id name slug")
-
-  if (!product) {
-    return NextResponse.json(
-      { success: false, code: ERROR.NOT_FOUND, message: "Product not found" },
-      { status: 404 }
-    )
-  }
-
-  return NextResponse.json(product)
+  return NextResponse.json({ success: true, product });
 }
 
-/* ───────── DELETE /api/products/[id] ───────── */
-export async function DELETE(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
+/* ───────── PUT /api/products/[slug] (FormData) ───────── */
+export async function PUT(
+  req: NextRequest,
+  context: { params: Promise<{ slug: string }> }
+) {
   try {
-    const { slug } = await context.params
-    await connectMongoDB()
+    const { slug } = await context.params;
 
-    const product = await Product.findOne({ slug })
-    if (!product) {
-      return NextResponse.json({ success: false, message: "Sản phẩm không tồn tại" }, { status: 404 })
+    // Find existing product
+    const { data: existing, error: findError } = await supabase
+      .from("products")
+      .select("id, slug, product_code")
+      .eq("slug", slug)
+      .single();
+
+    if (findError || !existing) {
+      return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 });
     }
 
-    const productCode = product.productCode
+    const formData = await req.formData();
 
-    // Xóa ảnh trong Cloudinary theo prefix
-    await cloudinary.api.delete_resources_by_prefix(`products/${productCode}`)
+    // Extract fields from FormData
+    const name = (formData.get("name") as string)?.trim();
+    const productCode = (formData.get("productCode") as string)?.trim();
+    const price = formData.get("price") as string;
+    const categoryId = formData.get("category") as string;
+    const description = (formData.get("description") as string)?.trim();
+    const articleHtml = formData.get("articleHtml") as string;
+    const isArticleEnabled = formData.get("isArticleEnabled") === "true";
+    const keptImageUrls = formData.getAll("keptImageUrls") as string[];
+    const newImages = formData.getAll("images") as File[];
 
-    // Xóa thư mục chứa ảnh
-    await cloudinary.api.delete_folder(`products/${productCode}`)
+    // Build update object
+    const updates: Record<string, any> = {};
 
-    // Xóa sản phẩm trong MongoDB
-    await Product.findOneAndDelete({ slug })
+    if (name) {
+      const newSlug = slugify(name);
 
-    // Revalidate homepage and products page
-    revalidatePath("/");
-    revalidatePath("/products");
+      // Check for duplicate slug if changed
+      if (newSlug !== existing.slug) {
+        const { data: dupSlug } = await supabase
+          .from("products")
+          .select("id")
+          .eq("slug", newSlug)
+          .neq("id", existing.id)
+          .single();
 
-    return NextResponse.json({ success: true, message: "Đã xóa sản phẩm và ảnh" }, { status: 200 })
-  } catch (err) {
-    console.error("DELETE product error:", err)
-    return NextResponse.json({ success: false, message: "Không thể xóa sản phẩm" }, { status: 500 })
-  }
-}
-
-/* ───────── PUT /api/products/[id] ───────── */
-export async function PUT(req: NextRequest, context: { params: Promise<{ slug: string }> }) {
-  try {
-    const { slug } = await context.params
-    await connectMongoDB()
-
-    // 🔹 Tìm product theo slug
-    const product = await Product.findOne({ slug })
-    if (!product) {
-      return NextResponse.json(
-        { success: false, code: ERROR.NOT_FOUND, message: "Product not found" },
-        { status: 404 }
-      )
-    }
-
-    const formData = await req.formData()
-    const name = formData.get("name")?.toString().trim()
-    const productCode = formData.get("productCode")?.toString().trim()
-    const description = formData.get("description")?.toString()
-    const price = Number.parseFloat(formData.get("price") as string)
-    const category = formData.get("category")?.toString()
-    const articleHtml = (formData.get("articleHtml") as string)?.trim() || ""
-    const isArticleEnabled = formData.get("isArticleEnabled") === "true"
-
-    if (!name || !productCode || isNaN(price) || !category) {
-      return NextResponse.json(
-        { success: false, code: ERROR.MISSING_FIELD, message: "Missing required fields" },
-        { status: 400 }
-      )
-    }
-
-    // 🔹 Kiểm tra trùng name hoặc productCode ở sản phẩm khác (không trùng slug hiện tại)
-    const existing = await Product.findOne(
-      {
-        slug: { $ne: slug },
-        $or: [{ name }, { productCode }],
-      },
-      { name: 1, productCode: 1 }
-    ).lean<{ name: string; productCode: string }>()
-
-    if (existing) {
-      const field = existing.name === name ? "name" : "productCode"
-      const code = field === "name" ? ERROR.DUP_NAME : ERROR.DUP_CODE
-      return NextResponse.json({ success: false, code, field }, { status: 409 })
-    }
-
-    // 🔹 Lấy ảnh giữ lại và ảnh mới
-    const files = formData.getAll("images") as File[]
-    const keptImageUrlsRaw = formData.getAll("keptImageUrls") as string[]
-    const keptImageUrls = keptImageUrlsRaw.map((url) => url.trim()).filter(Boolean)
-    const newImageUrls: string[] = []
-
-    if (files.length > 0) {
-      const uploadPromises = files.map(async (file, i) => {
-        const buffer = Buffer.from(await file.arrayBuffer())
-        const result = await new Promise<UploadApiResponse>((resolve, reject) => {
-          cloudinary.uploader
-            .upload_stream(
-              {
-                folder: `products/${productCode}`,
-                public_id: `${Date.now()}-${i}`,
-                resource_type: "image",
-                overwrite: true,
-              },
-              (err, res) => (err ? reject(err) : resolve(res as UploadApiResponse))
-            )
-            .end(buffer)
-        })
-        return result.secure_url
-      })
-      newImageUrls.push(...(await Promise.all(uploadPromises)))
-    }
-
-    const finalImageUrls = [...keptImageUrls, ...newImageUrls]
-
-    // 🔹 Xác định ảnh cần xóa (trong product cũ và article cũ)
-    const oldImages = Array.isArray(product.imageUrls) ? product.imageUrls : []
-    const removedImages = oldImages.filter((url: string) => !keptImageUrls.includes(url))
-    const removedImagePublicIds = removedImages.map(extractPublicId)
-
-    const oldArticleHtml = product.articleHtml || ""
-    const oldArticleImages = extractCloudinaryUrls(oldArticleHtml)
-    const newArticleImages = extractCloudinaryUrls(articleHtml)
-    const removedArticleImages = oldArticleImages.filter((url) => !newArticleImages.includes(url))
-    const removedArticlePublicIds = removedArticleImages.map(extractPublicId)
-
-    const allPublicIdsToDelete = [...removedImagePublicIds, ...removedArticlePublicIds].filter(Boolean)
-
-    if (allPublicIdsToDelete.length > 0) {
-      console.log("Deleting Cloudinary images:", allPublicIdsToDelete)
-
-      const deleteResults = await Promise.allSettled(
-        allPublicIdsToDelete.map(async (publicId) => {
-          const res = await cloudinary.uploader.destroy(publicId, { resource_type: "image" })
-          return { publicId, result: res }
-        })
-      )
-
-      deleteResults.forEach((r) => {
-        if (r.status === "fulfilled") {
-          console.log(`[destroy] Deleted: ${r.value.publicId}`, r.value.result)
-        } else {
-          console.error("[destroy] Failed:", r.reason)
+        if (dupSlug) {
+          return NextResponse.json(
+            { success: false, code: ERROR.DUP_SLUG, field: "name" },
+            { status: 409 }
+          );
         }
-      })
+      }
+
+      updates.name = name;
+      updates.slug = newSlug;
     }
 
-    // 🔹 Cập nhật sản phẩm
-    product.name = name
-    product.productCode = productCode
-    product.description = description
-    product.price = price
-    product.category = category
-    product.imageUrls = finalImageUrls
-    product.articleHtml = articleHtml
-    product.isArticleEnabled = isArticleEnabled
+    if (productCode && productCode !== existing.product_code) {
+      const { data: dupCode } = await supabase
+        .from("products")
+        .select("id")
+        .eq("product_code", productCode)
+        .neq("id", existing.id)
+        .single();
 
-    await product.save()
+      if (dupCode) {
+        return NextResponse.json(
+          { success: false, code: ERROR.DUP_CODE, field: "productCode" },
+          { status: 409 }
+        );
+      }
+      updates.product_code = productCode;
+    }
 
-    // Revalidate homepage and products page
-    revalidatePath("/");
-    revalidatePath("/products");
-    revalidatePath(`/products/${slug}`);
-    revalidatePath(`/ssr/products/${slug}`);
+    if (price) updates.price = Number(price);
+    if (categoryId) updates.category_id = categoryId;
+    if (description !== undefined) updates.description = description || null;
+    if (articleHtml !== undefined) updates.article_html = articleHtml || null;
+    updates.is_article_enabled = isArticleEnabled;
 
-    console.log("oldArticleImages:", oldArticleImages)
-    console.log("newArticleImages:", newArticleImages)
-    console.log("removedArticleImages:", removedArticleImages)
+    // Handle images: kept + new uploads
+    const finalImageUrls: string[] = [...keptImageUrls];
+    const uploadProductCode = productCode || existing.product_code;
 
-    return NextResponse.json({ success: true, product })
-  } catch (error) {
-    console.error("PUT Error:", error)
-    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 })
+    for (const image of newImages) {
+      if (image && image.size > 0) {
+        try {
+          const url = await uploadToCloudinary(image, uploadProductCode);
+          finalImageUrls.push(url);
+        } catch (err) {
+          console.error("❌ Image upload failed:", err);
+          return NextResponse.json(
+            { success: false, code: ERROR.UPLOAD_FAILED },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    updates.image_urls = finalImageUrls;
+
+    // Update in Supabase
+    const { data: updated, error: updateError } = await supabase
+      .from("products")
+      .update(updates)
+      .eq("id", existing.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("❌ Supabase update error:", updateError);
+      return NextResponse.json(
+        { success: false, code: ERROR.UPDATE_FAILED },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, product: updated });
+  } catch (err) {
+    console.error("PUT /api/products/[slug] error:", err);
+    return NextResponse.json(
+      { success: false, code: ERROR.UPDATE_FAILED },
+      { status: 500 }
+    );
   }
 }
 
+/* ───────── PATCH /api/products/[slug] (JSON) ───────── */
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const { slug } = await context.params;
 
+    // Find existing product
+    const { data: existing, error: findError } = await supabase
+      .from("products")
+      .select("id, slug, product_code")
+      .eq("slug", slug)
+      .single();
+
+    if (findError || !existing) {
+      return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 });
+    }
+
+    const body = await req.json();
+    const {
+      name,
+      productCode,
+      price,
+      categoryId,
+      description,
+      imageUrls,
+      articleHtml,
+      isArticleEnabled,
+    } = body;
+
+    // Build update object
+    const updates: Record<string, any> = {};
+
+    if (name !== undefined) {
+      const newSlug = slugify(name.trim());
+
+      // Check for duplicate slug if changed
+      if (newSlug !== existing.slug) {
+        const { data: dupSlug } = await supabase
+          .from("products")
+          .select("id")
+          .eq("slug", newSlug)
+          .neq("id", existing.id)
+          .single();
+
+        if (dupSlug) {
+          return NextResponse.json(
+            { success: false, code: ERROR.DUP_SLUG, field: "name" },
+            { status: 409 }
+          );
+        }
+      }
+
+      updates.name = name.trim();
+      updates.slug = newSlug;
+    }
+
+    if (productCode !== undefined) {
+      // Check for duplicate product code if changed
+      if (productCode.trim() !== existing.product_code) {
+        const { data: dupCode } = await supabase
+          .from("products")
+          .select("id")
+          .eq("product_code", productCode.trim())
+          .neq("id", existing.id)
+          .single();
+
+        if (dupCode) {
+          return NextResponse.json(
+            { success: false, code: ERROR.DUP_CODE, field: "productCode" },
+            { status: 409 }
+          );
+        }
+      }
+      updates.product_code = productCode.trim();
+    }
+
+    if (price !== undefined) updates.price = Number(price);
+    if (categoryId !== undefined) updates.category_id = categoryId;
+    if (description !== undefined) updates.description = description?.trim() || null;
+    if (imageUrls !== undefined) updates.image_urls = imageUrls;
+    if (articleHtml !== undefined) updates.article_html = articleHtml;
+    if (isArticleEnabled !== undefined) updates.is_article_enabled = isArticleEnabled;
+
+    // Update
+    const { data: updated, error: updateError } = await supabase
+      .from("products")
+      .update(updates)
+      .eq("id", existing.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("❌ Supabase update error:", updateError);
+      return NextResponse.json(
+        { success: false, code: ERROR.UPDATE_FAILED },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, product: updated });
+  } catch (err) {
+    console.error("PATCH /api/products/[slug] error:", err);
+    return NextResponse.json(
+      { success: false, code: ERROR.UPDATE_FAILED },
+      { status: 500 }
+    );
+  }
+}
+
+/* ───────── DELETE /api/products/[slug] ───────── */
+export async function DELETE(
+  _req: NextRequest,
+  context: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const { slug } = await context.params;
+
+    // Find product to delete (need image_urls and product_code for Cloudinary cleanup)
+    const { data: product, error: findError } = await supabase
+      .from("products")
+      .select("id, image_urls, product_code")
+      .eq("slug", slug)
+      .single();
+
+    if (findError || !product) {
+      return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 });
+    }
+
+    // Delete from Supabase first
+    const { error: deleteError } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", product.id);
+
+    if (deleteError) {
+      console.error("❌ Supabase delete error:", deleteError);
+      return NextResponse.json(
+        { success: false, code: ERROR.DELETE_FAILED },
+        { status: 500 }
+      );
+    }
+
+    // Clean up Cloudinary images (fire and forget)
+    if (product.product_code) {
+      try {
+        await cloudinary.api.delete_resources_by_prefix(`products/${product.product_code}/`);
+      } catch (cloudErr) {
+        console.warn("⚠️ Cloudinary cleanup failed:", cloudErr);
+        // Don't fail the request - product is already deleted
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("DELETE /api/products/[slug] error:", err);
+    return NextResponse.json(
+      { success: false, code: ERROR.DELETE_FAILED },
+      { status: 500 }
+    );
+  }
+}

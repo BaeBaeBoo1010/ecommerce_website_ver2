@@ -74,8 +74,10 @@ export default function RegisterPage() {
     MISSING_FIELDS: "Thiếu thông tin bắt buộc",
     INVALID_EMAIL: "Email không hợp lệ",
     INVALID_NAME: "Họ tên không hợp lệ",
+    INVALID_INPUT: "Dữ liệu không hợp lệ",
     EMAIL_EXISTS: "Email đã tồn tại",
     WEAK_PASSWORD: "Mật khẩu phải tối thiểu 6 ký tự",
+    SERVER_ERROR: "Lỗi máy chủ, vui lòng thử lại sau",
   };
 
   const emailError = state?.error === "EMAIL_EXISTS";

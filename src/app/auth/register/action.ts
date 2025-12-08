@@ -1,8 +1,7 @@
 "use server";
 
 import { hash } from "bcryptjs";
-import { connectMongoDB } from "@/lib/mongodb";
-import { User } from "@/models/user";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // ✅ Security: Input length limits
 const MAX_FIELD_LENGTHS = {
@@ -47,19 +46,43 @@ export async function register(_: any, form: FormData) {
     return { error: "INVALID_NAME", name, email };
   }
 
-  await connectMongoDB();
+  // Check if supabaseAdmin is available
+  if (!supabaseAdmin) {
+    console.error("supabaseAdmin is not configured. SUPABASE_SERVICE_ROLE_KEY may be missing.");
+    return { error: "SERVER_ERROR", name, email };
+  }
 
-  const existing = await User.findOne({ email });
+  // Check if email already exists
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from("users")
+    .select("id")
+    .eq("email", email)
+    .single();
+
+  if (selectError && selectError.code !== "PGRST116") {
+    // PGRST116 = no rows found (which is good - email doesn't exist)
+    console.error("Error checking existing user:", selectError);
+    return { error: "SERVER_ERROR", name, email };
+  }
+
   if (existing) {
     return { error: "EMAIL_EXISTS", name, email };
   }
 
-  await User.create({
-    name,
-    email,
-    password: await hash(password, 10),
-    role: "user",
-  });
+  // Create new user
+  const { error: insertError } = await supabaseAdmin
+    .from("users")
+    .insert({
+      name,
+      email,
+      password: await hash(password, 10),
+      role: "user",
+    });
+
+  if (insertError) {
+    console.error("Error creating user:", insertError);
+    return { error: "SERVER_ERROR", name, email };
+  }
 
   // ✅ Không trả password
   return { success: true, email };

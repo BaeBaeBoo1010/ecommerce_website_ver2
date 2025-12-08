@@ -1,19 +1,19 @@
-import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 export async function POST() {
   try {
-    // Liệt kê tất cả các path ISR cần revalidate
-    const paths = [
-      "/",
-      "/products",
-    ];
+    // Revalidate main pages
+    revalidatePath("/", "layout");
+    revalidatePath("/products", "page");
+    revalidatePath("/admin/product-management", "page");
 
-    for (const path of paths) {
-      await revalidatePath(path);
-    }
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, revalidated: true });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) });
+    console.error("❌ Revalidate error:", error);
+    return NextResponse.json(
+      { success: false, error: "Revalidation failed" },
+      { status: 500 }
+    );
   }
 }

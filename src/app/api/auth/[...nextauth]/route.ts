@@ -1,17 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { MongoDBAdapter } from "@auth/mongodb-adapter";
-import clientPromise, { connectMongoDB } from "@/lib/mongodb";
-import { User } from "@/models/user";
 import { compare } from "bcryptjs";
-
-type LeanUser = {
-  _id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: "admin" | "user";
-};
+import { supabaseAdmin } from "@/lib/supabase";
 
 // ✅ Security: Validate NEXTAUTH_SECRET
 if (!process.env.NEXTAUTH_SECRET) {
@@ -25,8 +15,10 @@ if (process.env.NEXTAUTH_SECRET.length < 32) {
 
 const nextAuth = NextAuth({
   trustHost: true,
-  adapter: MongoDBAdapter(clientPromise),
-  session: { 
+  // Adapter removed in favor of manual Credentials handling for this migration step
+  // or until a Supabase adapter is properly set up if desired. 
+  // For now, we just authenticate against the 'users' table.
+  session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
     updateAge: 24 * 60 * 60, // 24 hours
@@ -67,16 +59,32 @@ const nextAuth = NextAuth({
           return null;
         }
 
-        await connectMongoDB();
-        const user = (await User.findOne({ email }).lean()) as LeanUser | null;
-        if (!user || typeof user.password !== "string") return null;
+        // Check if supabaseAdmin is available
+        if (!supabaseAdmin) {
+          console.error("supabaseAdmin is not configured. SUPABASE_SERVICE_ROLE_KEY may be missing.");
+          return null;
+        }
+
+        // Fetch user from Supabase
+        const { data: user, error } = await supabaseAdmin
+          .from('users')
+          .select('*')
+          .eq('email', email)
+          .single();
+
+        if (error || !user) {
+          console.error("Error fetching user or user not found:", error);
+          return null;
+        }
+
+        if (!user.password) return null;
 
         // ✅ Security: Use constant-time comparison (bcryptjs compare is already safe)
         const ok = await compare(password, user.password);
         if (!ok) return null;
 
         return {
-          id: user._id.toString(),
+          id: user._id || user.id, // Support both _id (migrated from Mongo) and id
           name: user.name,
           email: user.email,
           role: user.role,
@@ -87,14 +95,17 @@ const nextAuth = NextAuth({
 
   callbacks: {
     async jwt({ token, user }) {
-      if (user?.role) {
-        token.role = user.role;
+      if (user) {
+        // cast user to have role, as NextAuth default types might not show it extended yet
+        token.role = (user as any).role;
+        token.id = user.id;
       }
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token.role) {
-        session.user.role = token.role as "admin" | "user";
+      if (session.user) {
+        (session.user as any).role = token.role as "admin" | "user";
+        (session.user as any).id = token.id as string;
       }
       return session;
     },

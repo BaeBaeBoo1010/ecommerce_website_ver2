@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, ShoppingCart, User, Loader2 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
-import useSWR from "swr";
 
 import {
   DropdownMenu,
@@ -19,10 +18,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import type { Product, Category } from "@/types/product";
+import type { Category } from "@/types/product";
 
 import SearchCommand from "./search-command";
 import MobileSidebar from "./sidebar";
+import { slugify } from "@/lib/slugify";
 
 export default function Header() {
   const { data: session, status } = useSession();
@@ -39,22 +39,44 @@ export default function Header() {
     router.prefetch("/contact");
   }, [router]);
 
-  // Lấy products (trong đó đã có category)
-  const { data: productsData, isLoading } = useSWR<Product[]>("/api/products", {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-  });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const categories = useMemo(() => {
-    const products = productsData || [];
-    const seen = new Map<string, Category>();
-    products.forEach((p) => {
-      if (p.category && typeof p.category === "object") {
-        seen.set(p.category._id, p.category);
+  useEffect(() => {
+    let isMounted = true; // tránh setState khi component đã unmount
+
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/categories", {
+          cache: "no-store",
+          next: { revalidate: 0 },
+        });
+
+        if (!res.ok) {
+          console.error("❌ Failed to load categories:", res.status);
+          return;
+        }
+
+        const data: Category[] = await res.json();
+
+        if (isMounted) {
+          setCategories(data);
+        }
+      } catch (error) {
+        console.error("❌ Error loading categories:", error);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
-    });
-    return Array.from(seen.values());
-  }, [productsData]);
+    }
+
+    loadCategories();
+
+    return () => {
+      isMounted = false; // tránh warning React
+    };
+  }, []);
+
+
 
   return (
     <header
@@ -108,12 +130,14 @@ export default function Header() {
                 <DropdownMenuItem disabled className="flex items-center gap-2">
                   <Loader2 className="animate-spin" size={16} /> Đang tải…
                 </DropdownMenuItem>
-              ) : categories.length === 0 ? (
+              ) : categories.filter((c: any) => c.productCount > 0).length === 0 ? (
                 <DropdownMenuItem disabled>Không có danh mục</DropdownMenuItem>
               ) : (
-                categories.map((cat) => (
-                  <DropdownMenuItem key={cat.slug} asChild>
-                    <Link href={`/products?category=${cat.slug}&page=1`}>
+                categories
+                  .filter((c: any) => c.productCount > 0)
+                  .map((cat) => (
+                  <DropdownMenuItem key={slugify(cat.name)} asChild>
+                    <Link href={`/products?category=${slugify(cat.name)}&page=1`}>
                       {cat.name}
                     </Link>
                   </DropdownMenuItem>

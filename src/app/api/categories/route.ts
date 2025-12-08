@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { connectMongoDB } from "@/lib/mongodb";
-import { Category } from "@/models/category";
+import { supabase } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
+import { snakeToCamel } from "@/lib/case";
 
 const ERROR = {
   MISSING_NAME: "MISSING_NAME",
@@ -11,50 +11,96 @@ const ERROR = {
 
 /* ───────── GET /api/categories ───────── */
 export async function GET() {
-  await connectMongoDB();
-  const categories = await Category.find().sort({ name: 1 });
-  return NextResponse.json(categories);
+  try {
+    const { data, error } = await supabase
+      .from("categories")
+      .select(`
+        id,
+        name,
+        slug,
+        products:products(id)
+      `)
+      .order("name");
+
+    if (error) {
+      console.error("❌ Supabase error:", error);
+      return NextResponse.json({ error: "Api error" }, { status: 500 });
+    }
+
+    const normalized = data.map(cat => ({
+      ...snakeToCamel(cat),
+      productCount: cat.products?.length || 0,
+    }));
+    return NextResponse.json(normalized, { status: 200 });
+  } catch (err) {
+    console.error("❌ Api error:", err);
+    return NextResponse.json({ error: "Api error" }, { status: 500 });
+  }
 }
 
-/* ───────── POST /api/categories ─────────
-   Body JSON: { name: string }
-────────────────────────────────────────── */
+/* ───────── POST /api/categories ───────── */
 export async function POST(req: Request) {
   try {
     const { name } = await req.json();
     const cleaned = (name as string | undefined)?.trim();
 
-    /* validate */
     if (!cleaned) {
       return NextResponse.json(
         { success: false, code: ERROR.MISSING_NAME, field: "name" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
-    await connectMongoDB();
+    // Duplicate check – case-insensitive
+    const { data: allCats, error: dupError } = await supabase
+      .from("categories")
+      .select("id, name");
 
-    /* duplicate check (case‑insensitive) */
-    const dup = await Category.findOne(
-      { name: { $regex: new RegExp(`^${cleaned}$`, "i") } },
-      { _id: 1 },
-    ).lean();
+    if (dupError) {
+      console.error("❌ Supabase duplicate-check error:", dupError);
+      return NextResponse.json(
+        { success: false, code: ERROR.CREATE_FAILED },
+        { status: 500 }
+      );
+    }
+
+    const dup = allCats?.find(
+      (c) => c.name.trim().toLowerCase() === cleaned.toLowerCase()
+    );
 
     if (dup) {
       return NextResponse.json(
         { success: false, code: ERROR.DUP_NAME, field: "name" },
-        { status: 409 },
+        { status: 409 }
       );
     }
 
-    /* create */
-    const category = await Category.create({ name: cleaned, slug: slugify(cleaned) });
-    return NextResponse.json({ success: true, category }, { status: 201 });
+    // Create
+    const slug = slugify(cleaned);
+
+    const { data: created, error: createError } = await supabase
+      .from("categories")
+      .insert([{ name: cleaned, slug }])
+      .select()
+      .single();
+
+    if (createError) {
+      console.error("❌ Supabase create error:", createError);
+      return NextResponse.json(
+        { success: false, code: ERROR.CREATE_FAILED },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      { success: true, category: created },
+      { status: 201 }
+    );
   } catch (err) {
-    console.error("POST category error:", err);
+    console.error("POST /categories error:", err);
     return NextResponse.json(
       { success: false, code: ERROR.CREATE_FAILED },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

@@ -44,7 +44,7 @@ export default function Carousel({ products, isLoading }: Props) {
       title: p.name,
       category: p.category?.name,
       categorySlug: p.category?.slug,
-      productId: p._id,
+      productId: p.id,
       productSlug: p.slug,
       description: p.description,
       image: p.imageUrls?.[0],

@@ -8,12 +8,8 @@ import Footer from "@/components/footer";
 import AppToaster from "@/components/app-toaster";
 import Providers from "./providers";
 import "./globals.css";
-import { cache } from "react";
-import { connectMongoDB } from "@/lib/mongodb";
-import { Product } from "@/models/product";
-import { Category } from "@/models/category";
-import { SWRConfig } from "swr";
 import Script from "next/script";
+import { SessionProvider } from "next-auth/react";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -27,22 +23,6 @@ const inter = Inter({
   weight: ["400", "700"],
   display: "swap",
   variable: "--font-inter",
-});
-
-// Cached + ISR cho products
-const getProducts = cache(async () => {
-  await connectMongoDB();
-  const products = await Product.find()
-    .populate("category", "name slug")
-    .lean();
-  return JSON.parse(JSON.stringify(products));
-});
-
-// Cached + ISR cho categories
-const getCategories = cache(async () => {
-  await connectMongoDB();
-  const categories = await Category.find().lean();
-  return JSON.parse(JSON.stringify(categories));
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
@@ -111,12 +91,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Fetch song song để tối ưu
-  const [products, categories] = await Promise.all([
-    getProducts(),
-    getCategories(),
-  ]);
-
   return (
     <html
       lang="vi"
@@ -165,23 +139,10 @@ export default async function RootLayout({
           }}
         />
         <Providers>
-          <SWRConfig
-            value={{
-              fallback: {
-                "/api/products": products,
-                "/api/categories": categories,
-              },
-              revalidateOnFocus: false,
-              revalidateOnReconnect: false,
-              revalidateIfStale: false,
-              revalidateOnMount: false,
-            }}
-          >
-            <Header />
-            <AppToaster />
-            <main>{children}</main>
-            <Footer />
-          </SWRConfig>
+          <Header />
+          <AppToaster />
+          <SessionProvider>{children}</SessionProvider>
+          <Footer />
         </Providers>
       </body>
     </html>

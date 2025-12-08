@@ -59,7 +59,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 /* ---------- Types ---------- */
 interface Category {
-  _id: string;
+  id: string;
   name: string;
 }
 
@@ -627,7 +627,7 @@ export default function AddProductPage() {
         (cats: Category[] = []) => [...cats, newCat],
         false,
       );
-      setSelectedCategory(newCat._id);
+      setSelectedCategory(newCat.id);
       setNewCategoryName("");
       setCategoryError(false);
       toast.success("Đã thêm danh mục mới");
@@ -782,7 +782,7 @@ export default function AddProductPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((c) => (
-                    <SelectItem key={c._id} value={c._id}>
+                    <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>
                   ))}

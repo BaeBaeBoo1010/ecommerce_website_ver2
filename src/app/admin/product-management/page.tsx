@@ -104,7 +104,7 @@ export default function ProductManagementPage() {
     return [...products]
       .filter(
         (p) =>
-          selectedCategory === "all" || p.category._id === selectedCategory,
+          selectedCategory === "all" || p.category.id === selectedCategory,
       )
       .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
       .sort((a, b) => {
@@ -134,11 +134,11 @@ export default function ProductManagementPage() {
     if (selectedCategory === "all")
       return toast("Chọn một danh mục cụ thể để xoá");
 
-    const sel = categories.find((c) => c._id === selectedCategory);
+    const sel = categories.find((c) => c.id === selectedCategory);
     if (!sel) return;
 
     // --- KIỂM TRA CATEGORY IN USE TRÊN CLIENT ---
-    const inUse = products.some((p) => p.category._id === selectedCategory);
+    const inUse = products.some((p) => p.category.id === selectedCategory);
     if (inUse) {
       toast.error(MSG["CATEGORY_IN_USE"]);
       return;
@@ -245,7 +245,7 @@ export default function ProductManagementPage() {
                   <SelectContent>
                     <SelectItem value="all">-- Tất cả danh mục --</SelectItem>
                     {categories.map((c) => (
-                      <SelectItem key={c._id} value={c._id}>
+                      <SelectItem key={c.id} value={c.id}>
                         {c.name}
                       </SelectItem>
                     ))}
@@ -361,7 +361,7 @@ export default function ProductManagementPage() {
                     <TableBody>
                       {paginatedProducts.map((p) => (
                         <TableRow
-                          key={p._id}
+                          key={p.id}
                           className="group hover:bg-muted/30 transition-colors"
                         >
                           <TableCell className="w-16">
@@ -419,11 +419,11 @@ export default function ProductManagementPage() {
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                disabled={deletingId === p._id}
+                                disabled={deletingId === p.slug}
                                 onClick={() => handleDeleteProduct(p.slug)}
                                 className="gap-1.5 shadow-sm transition-all hover:shadow-md"
                               >
-                                {deletingId === p._id ? (
+                                {deletingId === p.id ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                 ) : (
                                   <Trash2 className="h-3.5 w-3.5" />

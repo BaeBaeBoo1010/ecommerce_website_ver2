@@ -31,8 +31,8 @@ export default function MobileSidebar() {
   const categories: Category[] = useMemo(() => {
     const map = new Map<string, Category>();
     products.forEach((p) => {
-      if (p.category?._id && !map.has(p.category._id)) {
-        map.set(p.category._id, p.category);
+      if (p.category?.id && !map.has(p.category.id)) {
+        map.set(p.category.id, p.category);
       }
     });
     return Array.from(map.values());
@@ -93,7 +93,7 @@ export default function MobileSidebar() {
             </span>
           ) : (
             categories.map((cat) => (
-              <SheetClose asChild key={cat._id}>
+              <SheetClose asChild key={cat.id}>
                 <Link
                   href={`/products?category=${cat.slug}`}
                   className="mb-1 flex items-center rounded-md px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-100 active:bg-gray-200 dark:text-gray-300 dark:hover:bg-neutral-800"

@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import mongoose from "mongoose";
-import { connectMongoDB } from "@/lib/mongodb";
-import { Category } from "@/models/category";
-import { Product } from "@/models/product";
+import { supabase } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
 
 const ERROR = {
-  INVALID_ID: "INVALID_ID",
   NOT_FOUND: "NOT_FOUND",
   DUP_NAME: "DUP_NAME",
   IN_USE: "CATEGORY_IN_USE",
@@ -21,14 +17,13 @@ export async function GET(
 ) {
   const { id } = await context.params;
 
-  await connectMongoDB();
+  const { data: category, error } = await supabase
+    .from("categories")
+    .select("id, name, slug")
+    .eq("id", id)
+    .single();
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return NextResponse.json({ success: false, code: ERROR.INVALID_ID }, { status: 400 });
-  }
-
-  const category = await Category.findById(id);
-  if (!category) {
+  if (error || !category) {
     return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 });
   }
 
@@ -45,38 +40,54 @@ export async function PATCH(
   try {
     const { id } = await context.params;
 
-    await connectMongoDB();
+    // Find existing category
+    const { data: category, error: findError } = await supabase
+      .from("categories")
+      .select("id, name, slug")
+      .eq("id", id)
+      .single();
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ success: false, code: ERROR.INVALID_ID }, { status: 400 });
-    }
-
-    const category = await Category.findById(id);
-    if (!category) {
+    if (findError || !category) {
       return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 });
     }
 
     const { name } = await req.json();
 
     if (name && name.trim() && name !== category.name) {
-      const dup = await Category.findOne(
-        {
-          name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
-          _id: { $ne: id },
-        },
-        { _id: 1 },
-      ).lean();
+      // Check for duplicate name
+      const { data: allCats } = await supabase
+        .from("categories")
+        .select("id, name")
+        .neq("id", id);
+
+      const dup = allCats?.find(
+        (c) => c.name.trim().toLowerCase() === name.trim().toLowerCase()
+      );
 
       if (dup) {
         return NextResponse.json(
           { success: false, code: ERROR.DUP_NAME, field: "name" },
-          { status: 409 },
+          { status: 409 }
         );
       }
 
-      category.name = name.trim();
-      category.slug = slugify(name.trim());
-      await category.save();
+      // Update
+      const { data: updated, error: updateError } = await supabase
+        .from("categories")
+        .update({ name: name.trim(), slug: slugify(name.trim()) })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("❌ Supabase update error:", updateError);
+        return NextResponse.json(
+          { success: false, code: ERROR.UPDATE_FAILED },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true, category: updated });
     }
 
     return NextResponse.json({ success: true, category });
@@ -94,21 +105,29 @@ export async function DELETE(
   try {
     const { id } = await context.params;
 
-    await connectMongoDB();
+    // Check if any products use this category
+    const { data: products } = await supabase
+      .from("products")
+      .select("id")
+      .eq("category_id", id)
+      .limit(1);
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ success: false, code: ERROR.INVALID_ID }, { status: 400 });
-    }
-
-    // còn sản phẩm đang dùng?
-    const inUse = await Product.exists({ category: id });
-    if (inUse) {
+    if (products && products.length > 0) {
       return NextResponse.json({ success: false, code: ERROR.IN_USE }, { status: 409 });
     }
 
-    const deleted = await Category.findByIdAndDelete(id);
-    if (!deleted) {
-      return NextResponse.json({ success: false, code: ERROR.NOT_FOUND }, { status: 404 });
+    // Delete category
+    const { error: deleteError } = await supabase
+      .from("categories")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      console.error("❌ Supabase delete error:", deleteError);
+      return NextResponse.json(
+        { success: false, code: ERROR.DELETE_FAILED },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true });
@@ -117,3 +136,4 @@ export async function DELETE(
     return NextResponse.json({ success: false, code: ERROR.DELETE_FAILED }, { status: 500 });
   }
 }
+

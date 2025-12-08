@@ -86,14 +86,14 @@ export default function HomeClient({ initialData }: HomeClientProps) {
         {allCategories.slice(0, visibleCount).map((cat, idx) => {
           const isNew = idx >= prevCount;
           return (
-            <AnimatePresence key={cat._id}>
+            <AnimatePresence key={cat.id}>
               <motion.div
                 initial={isNew ? { opacity: 0, y: 40 } : false}
                 animate={isNew ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.5 }}
               >
                 <ProductSwiper
-                  key={cat._id}
+                  key={cat.id}
                   title={cat.name}
                   slug={cat.slug}
                   products={cat.products}

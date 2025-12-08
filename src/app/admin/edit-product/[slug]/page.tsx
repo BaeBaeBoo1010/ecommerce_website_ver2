@@ -429,7 +429,7 @@ export default function EditProductPage() {
     setDescLength(pData.description?.length ?? 0);
 
     const categoryId =
-      typeof pData.category === "object" ? pData.category._id : pData.category;
+      typeof pData.category === "object" ? pData.category.id : pData.category;
 
     setSelectedCategory(categoryId);
 
@@ -760,6 +760,7 @@ export default function EditProductPage() {
       } catch (err) {
         console.error("⚠️ Lỗi khi gọi API revalidate:", err);
       }
+      setHasChanges(false); // Reset to prevent browser "save" prompt
       router.push("/admin/product-management");
     } catch {
       toast.error("Lỗi hệ thống, vui lòng thử lại sau.");
@@ -796,7 +797,7 @@ export default function EditProductPage() {
         (cats: Category[] = []) => [...cats, newCat],
         false,
       );
-      setSelectedCategory(newCat._id);
+      setSelectedCategory(newCat.id);
       setNewCategoryName("");
       setCategoryError(false);
       toast.success("Đã thêm danh mục mới");
@@ -1011,7 +1012,7 @@ export default function EditProductPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((c) => (
-                    <SelectItem key={c._id} value={c._id}>
+                    <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>
                   ))}

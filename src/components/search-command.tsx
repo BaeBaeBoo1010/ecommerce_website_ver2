@@ -1,7 +1,6 @@
 "use client";
 
-import useSWR from "swr";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   CommandDialog,
   CommandGroup,
@@ -12,63 +11,33 @@ import {
 import { Button } from "@/components/ui/button";
 import { Search, Clock, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { Product } from "@/types/product";
-import Fuse from "fuse.js";
 
 const LS_KEY = "recent_searches";
 
-function removeVietnameseTones(str: string) {
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D")
-    .toLowerCase();
+interface SearchResult {
+  id: string;
+  name: string;
+  slug: string;
+  price?: number;
+  imageUrls?: string[];
+  category?: { id: string; name: string; slug: string } | null;
 }
 
 export default function SearchCommand() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<
-    { id: string; name: string; slug?: string }[]
-  >([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [recent, setRecent] = useState<
     { id: string; name: string; slug?: string }[]
   >([]);
   const router = useRouter();
-  const { data: allProducts } = useSWR("/api/products");
   const [shortcutKey, setShortcutKey] = useState("⌘");
-
-  const searchCacheRef = useRef<
-    Map<string, { id: string; name: string; slug?: string }[]>
-  >(new Map());
+  const [hasSearched, setHasSearched] = useState(false);
 
   type Timer = ReturnType<typeof setTimeout>;
   const debounceRef = useRef<Timer | null>(null);
-
-  const fuse = useMemo(() => {
-    if (!allProducts) return null;
-
-    const normalized = (allProducts as Product[]).map((p) => ({
-      ...p,
-      nameNoTone: removeVietnameseTones(p.name),
-      descriptionNoTone: p.description
-        ? removeVietnameseTones(p.description)
-        : "",
-      articleNoTone: p.articleHtml
-        ? removeVietnameseTones(p.articleHtml.replace(/<[^>]+>/g, ""))
-        : "",
-    }));
-
-    return new Fuse(normalized, {
-      keys: ["nameNoTone", "descriptionNoTone", "articleNoTone"],
-      threshold: 0.35,
-      includeScore: true,
-    });
-  }, [allProducts]);
-
-  const [hasSearched, setHasSearched] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
@@ -91,55 +60,53 @@ export default function SearchCommand() {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
+  // Server-side search with debouncing
   useEffect(() => {
     setHasSearched(false);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (!query) {
+    if (!query.trim()) {
       setResults([]);
       return;
     }
 
-    debounceRef.current = setTimeout(() => {
-      if (!allProducts || !fuse) return;
+    debounceRef.current = setTimeout(async () => {
+      // Cancel previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
 
       setLoading(true);
 
-      const keywordLower = removeVietnameseTones(query.trim().toLowerCase());
+      try {
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(query.trim())}&limit=10`,
+          { signal: abortControllerRef.current.signal }
+        );
 
-      if (searchCacheRef.current.has(keywordLower)) {
-        setResults(searchCacheRef.current.get(keywordLower) || []);
-        setHasSearched(true);
-        setLoading(false);
-        return;
-      }
-
-      const result = fuse.search(keywordLower);
-      const filtered = result.map((r) => ({
-        id: r.item._id,
-        name: r.item.name,
-        slug: r.item.slug,
-      }));
-
-      if (searchCacheRef.current.size > 20) {
-        const iterator = searchCacheRef.current.keys();
-        const firstKey = iterator.next().value;
-        if (firstKey !== undefined) {
-          searchCacheRef.current.delete(firstKey);
+        if (!response.ok) {
+          throw new Error("Search failed");
         }
-      }
-      searchCacheRef.current.set(keywordLower, filtered);
 
-      setResults(filtered);
-      setHasSearched(true);
-      setLoading(false);
-    }, 200) as Timer;
+        const data = await response.json();
+        setResults(Array.isArray(data) ? data : []);
+        setHasSearched(true);
+      } catch (error: any) {
+        if (error.name !== "AbortError") {
+          console.error("Search error:", error);
+          setResults([]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }, 300) as Timer;
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, allProducts, fuse]);
+  }, [query]);
 
   const handleSelect = useCallback(
     (item: { id: string; name: string; slug?: string }) => {
@@ -154,45 +121,19 @@ export default function SearchCommand() {
 
       if (item.slug) {
         router.push(`/products/${item.slug}`);
-        return;
-      }
-
-      const keyword = removeVietnameseTones(item.name.trim().toLowerCase());
-
-      if (!allProducts || !fuse) {
-        router.push(`/products?search=${encodeURIComponent(keyword)}`);
-        return;
-      }
-
-      const result = fuse.search(keyword);
-      const filtered = result.map((r) => r.item);
-
-      if (filtered.length === 1 && filtered[0].slug) {
-        const product = filtered[0];
-        const updated = [
-          { id: product._id, name: product.name, slug: product.slug },
-          ...recent.filter((v) => v.id !== product._id),
-        ].slice(0, 5);
-
-        setRecent(updated);
-        localStorage.setItem(LS_KEY, JSON.stringify(updated));
-
-        router.push(`/products/${product.slug}`);
       } else {
-        router.push(`/products?search=${encodeURIComponent(keyword)}`);
+        router.push(`/products?search=${encodeURIComponent(item.name.trim())}`);
       }
     },
-    [recent, allProducts, fuse, router],
+    [recent, router],
   );
 
   const handleSearchKeyword = useCallback(
-    async (keyword: string) => {
+    (keyword: string) => {
       const trimmed = keyword.trim();
       if (!trimmed) return;
 
-      setLoading(true);
-      setHasSearched(false);
-
+      // Save to recent searches
       const entry = { id: trimmed, name: trimmed };
       const next = [entry, ...recent.filter((v) => v.id !== trimmed)].slice(
         0,
@@ -201,36 +142,11 @@ export default function SearchCommand() {
       setRecent(next);
       localStorage.setItem(LS_KEY, JSON.stringify(next));
 
-      if (!allProducts || !fuse) {
-        setLoading(false);
-        router.push(`/products?search=${encodeURIComponent(trimmed)}`);
-        return;
-      }
-
-      const keywordLower = removeVietnameseTones(trimmed.toLowerCase());
-
-      const results = fuse.search(keywordLower);
-      const filtered = results.map((r) => r.item);
-
-      setLoading(false);
-      setHasSearched(true);
+      // Close dialog and navigate
       setOpen(false);
-
-      if (filtered.length === 1 && filtered[0].slug) {
-        const product = filtered[0];
-        const updated = [
-          { id: product._id, name: product.name, slug: product.slug },
-          ...recent.filter((v) => v.id !== product._id),
-        ].slice(0, 5);
-        setRecent(updated);
-        localStorage.setItem(LS_KEY, JSON.stringify(updated));
-
-        router.push(`/products/${product.slug}`);
-      } else {
-        router.push(`/products?search=${encodeURIComponent(trimmed)}`);
-      }
+      router.push(`/products?search=${encodeURIComponent(trimmed)}`);
     },
-    [recent, allProducts, fuse, router],
+    [recent, router],
   );
 
   return (
@@ -269,7 +185,6 @@ export default function SearchCommand() {
           <CommandInput
             placeholder="Tìm sản phẩm bạn cần"
             value={query}
-            disabled={loading}
             onValueChange={(value) => {
               if (value.length <= 50) {
                 setQuery(value);
@@ -278,12 +193,20 @@ export default function SearchCommand() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && query.trim()) {
                 e.preventDefault();
+                e.stopPropagation();
 
                 if (loading) return;
 
+                // Close dialog immediately
+                setOpen(false);
+
                 if (results.length === 1) {
                   handleSelect(results[0]);
+                } else if (results.length > 1) {
+                  // Multiple results - go to search page
+                  router.push(`/products?search=${encodeURIComponent(query.trim())}`);
                 } else {
+                  // No results yet or empty - still navigate to search
                   handleSearchKeyword(query.trim());
                 }
               }

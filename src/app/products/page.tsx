@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import ProductListClient from "@/components/product-list-client";
 import Loading from "@/components/loading";
 import type { Metadata } from "next";
+import { getAllProducts } from "@/lib/product-service";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
 
@@ -35,9 +36,12 @@ export const metadata: Metadata = {
 };
 
 export default async function ProductsPage() {
+  const products = await getAllProducts();
+
   return (
     <Suspense fallback={<Loading />}>
-      <ProductListClient  />
+      <ProductListClient initialProducts={products} />
     </Suspense>
   );
 }
+
