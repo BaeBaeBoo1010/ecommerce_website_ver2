@@ -385,7 +385,7 @@ export default function EditProductPage() {
   }, []);
 
   const { data: productsData = [] } = useSWR<Product[]>(
-    "/api/products",
+    "/api/admin/products",
     fetcher,
     {
       revalidateOnMount: false,

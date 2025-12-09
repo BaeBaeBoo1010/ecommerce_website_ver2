@@ -46,8 +46,8 @@ export default function ProductManagementPage() {
     data: products = [],
     mutate: mutateProducts,
     isLoading,
-  } = useSWR<Product[]>("/api/products", fetcher, {
-    fallbackData: fallback["/api/products"],
+  } = useSWR<Product[]>("/api/admin/products", fetcher, {
+    fallbackData: fallback["/api/admin/products"],
     revalidateOnMount: true,
     revalidateOnFocus: false,
     revalidateOnReconnect: false,

@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "./product-detail-client";
 import Script from "next/script";
+
+// ISR: Revalidate every 60 seconds
+export const revalidate = 60;
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
@@ -11,8 +15,8 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
-// Fetch product data
-async function getProduct(slug: string) {
+// Fetch product data from database
+async function fetchProduct(slug: string) {
   const { data, error } = await supabase
     .from("products")
     .select(`
@@ -50,9 +54,28 @@ async function getProduct(slug: string) {
       id: (data.category as any).id,
       name: (data.category as any).name,
       slug: (data.category as any).slug,
-    } : null,
+    } : { id: "", name: "", slug: "" },
   };
 }
+
+// Cached version of getProduct - revalidates every 60 seconds
+const getProduct = unstable_cache(
+  async (slug: string) => fetchProduct(slug),
+  ["product-detail"],
+  { revalidate: 60, tags: ["products"] }
+);
+
+// Pre-generate all product pages at build time
+export async function generateStaticParams() {
+  const { data: products } = await supabase
+    .from("products")
+    .select("slug");
+
+  return (products || []).map((product) => ({
+    slug: product.slug,
+  }));
+}
+
 
 // Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -199,7 +222,7 @@ export default async function ProductDetailPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <ProductDetailClient slug={slug} />
+      <ProductDetailClient product={product} />
     </>
   );
 }
