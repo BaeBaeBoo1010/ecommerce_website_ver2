@@ -6,7 +6,7 @@ import Script from "next/script";
 import Link from "next/link";
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 
 const contactInfo = {
   name: "Thiết bị điện Quang Minh",

@@ -109,10 +109,10 @@ export async function PUT(
   try {
     const { slug } = await context.params;
 
-    // Find existing product
+    // Find existing product (include image_urls for cleanup)
     const { data: existing, error: findError } = await supabase
       .from("products")
-      .select("id, slug, product_code")
+      .select("id, slug, product_code, image_urls")
       .eq("slug", slug)
       .single();
 
@@ -218,6 +218,36 @@ export async function PUT(
         { success: false, code: ERROR.UPDATE_FAILED },
         { status: 500 }
       );
+    }
+
+    // Clean up removed images from Cloudinary (fire and forget)
+    const existingImageUrls = (existing.image_urls as string[]) || [];
+    const removedImageUrls = existingImageUrls.filter(
+      (url) => !keptImageUrls.includes(url)
+    );
+
+    if (removedImageUrls.length > 0) {
+      // Extract public_ids from Cloudinary URLs and delete them
+      const deletePromises = removedImageUrls.map(async (url) => {
+        try {
+          // Extract public_id from Cloudinary URL
+          // URL format: https://res.cloudinary.com/{cloud}/image/upload/v{version}/{folder}/{public_id}.{ext}
+          const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/);
+          if (match && match[1]) {
+            const publicId = match[1];
+            await cloudinary.uploader.destroy(publicId);
+            console.log(`✅ Deleted image from Cloudinary: ${publicId}`);
+          }
+        } catch (err) {
+          console.warn(`⚠️ Failed to delete image from Cloudinary: ${url}`, err);
+          // Don't fail the request - image cleanup is best-effort
+        }
+      });
+
+      // Run deletions in parallel (fire and forget)
+      Promise.all(deletePromises).catch((err) => {
+        console.warn("⚠️ Cloudinary cleanup batch error:", err);
+      });
     }
 
     // Revalidate pages to show updated product
@@ -347,6 +377,18 @@ export async function PATCH(
       );
     }
 
+    // Revalidate pages to show updated product
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+    revalidatePath("/products", "page");
+    revalidatePath(`/products/${slug}`, "page");
+    if (updates.slug && updates.slug !== slug) {
+      revalidatePath(`/products/${updates.slug}`, "page");
+    }
+
+    // Trigger production revalidation (when running on localhost)
+    await revalidateProduction(updates.slug || slug);
+
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {
     console.error("PATCH /api/products/[slug] error:", err);
@@ -394,10 +436,13 @@ export async function DELETE(
       );
     }
 
-    // Clean up Cloudinary images (fire and forget)
+    // Clean up Cloudinary images and folder (fire and forget)
     if (product.product_code) {
       try {
+        // First, delete all images in the folder
         await cloudinary.api.delete_resources_by_prefix(`products/${product.product_code}/`);
+        // Then, delete the empty folder
+        await cloudinary.api.delete_folder(`products/${product.product_code}`);
       } catch (cloudErr) {
         console.warn("⚠️ Cloudinary cleanup failed:", cloudErr);
         // Don't fail the request - product is already deleted
@@ -408,6 +453,7 @@ export async function DELETE(
     const { revalidatePath } = await import("next/cache");
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
+    revalidatePath(`/products/${slug}`, "page");
 
     // Trigger production revalidation (when running on localhost)
     await revalidateProduction();

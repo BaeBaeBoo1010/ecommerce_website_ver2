@@ -4,7 +4,7 @@ import Loading from "@/components/loading";
 import type { Metadata } from "next";
 import { getAllProducts } from "@/lib/product-service";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 
 export const metadata: Metadata = {
   title: "Sản phẩm",

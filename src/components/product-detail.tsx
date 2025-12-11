@@ -8,7 +8,7 @@ import "swiper/css/thumbs";
 import "swiper/css/navigation";
 import "swiper/css/free-mode";
 import "swiper/css/effect-fade";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import type { Product } from "@/types/product";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { StaticImport } from "next/dist/shared/lib/get-img-props";
 import { useInView } from "react-intersection-observer";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
 
 /* ---------- Tiny blur data url (valid for next/image) ---------- */
@@ -146,6 +146,46 @@ export default function ProductDetail({ product }: { product: Product }) {
   );
   const [showFullDescription, setShowFullDescription] = useState(false);
 
+  // Lightbox state
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  const openLightbox = useCallback((src: string) => {
+    setLightboxSrc(src);
+    document.body.style.overflow = "hidden";
+  }, []);
+
+  const closeLightbox = useCallback(() => {
+    setLightboxSrc(null);
+    document.body.style.overflow = "";
+  }, []);
+
+  // Handle click on article images and Escape key
+  useEffect(() => {
+    const handleArticleImageClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "IMG" && target.closest(".rich-article")) {
+        const imgSrc = (target as HTMLImageElement).src;
+        if (imgSrc) {
+          openLightbox(imgSrc);
+        }
+      }
+    };
+
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && lightboxSrc) {
+        closeLightbox();
+      }
+    };
+
+    document.addEventListener("click", handleArticleImageClick);
+    document.addEventListener("keydown", handleEscapeKey);
+
+    return () => {
+      document.removeEventListener("click", handleArticleImageClick);
+      document.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [lightboxSrc, openLightbox, closeLightbox]);
+
   const handleAction = (type: "add" | "buy") => {
     const msg =
       type === "add"
@@ -175,16 +215,19 @@ export default function ProductDetail({ product }: { product: Product }) {
                     }
                     thumbs={{ swiper: thumbsSwiper }}
                     modules={[Thumbs, EffectFade]}
-                    className="rounded-sm"
+                    className="product-swiper rounded-sm"
                   >
                     {product.imageUrls.map((url, index) => (
                       <SwiperSlide key={index}>
-                        <div className="relative h-[250px] w-full bg-white sm:h-[300px] md:h-[400px]">
+                        <div
+                          className="product-image-container relative h-[250px] w-full cursor-pointer bg-white sm:h-[300px] md:h-[400px]"
+                          onClick={() => openLightbox(product.imageUrls[activeThumbIndex])}
+                        >
                           <Image
                             src={url}
                             alt={`${product.name} ${index + 1}`}
                             fill
-                            className="object-contain"
+                            className="product-image object-contain"
                             priority={index === 0}
                             loading={index === 0 ? "eager" : "lazy"}
                             placeholder="blur"
@@ -359,6 +402,21 @@ export default function ProductDetail({ product }: { product: Product }) {
                   .animate-fadeIn {
                     animation: fadeIn 0.5s ease-in-out;
                   }
+                  /* Product image hover effect - only active slide */
+                  .product-swiper .swiper-slide {
+                    pointer-events: none;
+                    z-index: 1;
+                  }
+                  .product-swiper .swiper-slide-active {
+                    pointer-events: auto;
+                    z-index: 10;
+                  }
+                  .product-swiper .product-image {
+                    transition: transform 0.3s ease;
+                  }
+                  .product-swiper .swiper-slide-active .product-image-container:hover .product-image {
+                    transform: scale(1.05);
+                  }
                   .rich-article iframe {
                     width: 100%;
                     height: 400px;
@@ -406,6 +464,235 @@ export default function ProductDetail({ product }: { product: Product }) {
                     font-size: 0.9rem;
                     color: #6b7280;
                     margin-top: 0.5rem;
+                  }
+                  /* Fix layout for lists */
+                  .rich-article ul,
+                  .rich-article ol {
+                    margin: 0.75rem 0;
+                    padding-left: 1.5rem;
+                    list-style-position: outside;
+                  }
+                  .rich-article ul {
+                    list-style-type: disc;
+                  }
+                  .rich-article ol {
+                    list-style-type: decimal;
+                  }
+                  .rich-article li {
+                    margin: 0.25rem 0;
+                    padding-left: 0.25rem;
+                  }
+                  .rich-article li > p {
+                    margin: 0;
+                    display: inline;
+                  }
+                  .rich-article li::marker {
+                    color: #4b5563;
+                  }
+                  /* Fix spacing between ul and following images */
+                  .rich-article ul + p,
+                  .rich-article ol + p {
+                    margin-top: 0.75rem;
+                  }
+                  .rich-article p + ul,
+                  .rich-article p + ol {
+                    margin-top: 0.75rem;
+                  }
+                  /* Tighter paragraphs */
+                  .rich-article p {
+                    margin: 0.75rem 0;
+                    line-height: 1.75;
+                    color: #374151;
+                  }
+                  /* Headings styling */
+                  .rich-article h1 {
+                    font-size: 1.875rem;
+                    font-weight: 700;
+                    color: #111827;
+                    margin-top: 2rem;
+                    margin-bottom: 1rem;
+                    border-bottom: 2px solid #e5e7eb;
+                    padding-bottom: 0.5rem;
+                  }
+                  .rich-article h2 {
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                    color: #1f2937;
+                    margin-top: 1.75rem;
+                    margin-bottom: 0.75rem;
+                    padding-left: 0.75rem;
+                    border-left: 4px solid #3b82f6;
+                  }
+                  .rich-article h3 {
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    color: #374151;
+                    margin-top: 1.5rem;
+                    margin-bottom: 0.5rem;
+                  }
+                  .rich-article h4 {
+                    font-size: 1.125rem;
+                    font-weight: 600;
+                    color: #4b5563;
+                    margin-top: 1.25rem;
+                    margin-bottom: 0.5rem;
+                  }
+                  /* Strong & emphasis */
+                  .rich-article strong {
+                    font-weight: 600;
+                    color: #1f2937;
+                  }
+                  .rich-article em {
+                    font-style: italic;
+                    color: #4b5563;
+                  }
+                  /* Links */
+                  .rich-article a {
+                    color: #2563eb;
+                    text-decoration: none;
+                    border-bottom: 1px solid transparent;
+                    transition: all 0.2s ease;
+                  }
+                  .rich-article a:hover {
+                    color: #1d4ed8;
+                    border-bottom-color: #1d4ed8;
+                  }
+                  /* Code inline */
+                  .rich-article code {
+                    background-color: #f3f4f6;
+                    color: #dc2626;
+                    padding: 0.125rem 0.375rem;
+                    border-radius: 0.25rem;
+                    font-size: 0.875em;
+                    font-family: ui-monospace, monospace;
+                  }
+                  /* Code block */
+                  .rich-article pre {
+                    background-color: #1f2937;
+                    color: #f9fafb;
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                    overflow-x: auto;
+                    margin: 1rem 0;
+                  }
+                  .rich-article pre code {
+                    background: none;
+                    color: inherit;
+                    padding: 0;
+                  }
+                  /* Blockquote */
+                  .rich-article blockquote {
+                    border-left: 4px solid #3b82f6;
+                    background: linear-gradient(to right, #eff6ff, transparent);
+                    padding: 1rem 1.25rem;
+                    margin: 1rem 0;
+                    border-radius: 0 0.5rem 0.5rem 0;
+                    font-style: italic;
+                    color: #4b5563;
+                  }
+                  .rich-article blockquote p {
+                    margin: 0;
+                  }
+                  /* Horizontal rule */
+                  .rich-article hr {
+                    border: none;
+                    height: 1px;
+                    background: linear-gradient(to right, transparent, #d1d5db, transparent);
+                    margin: 2rem 0;
+                  }
+                  /* Mark/highlight */
+                  .rich-article mark {
+                    background-color: #fef08a;
+                    padding: 0.125rem 0.25rem;
+                    border-radius: 0.125rem;
+                  }
+                  /* Subscript & superscript */
+                  .rich-article sub,
+                  .rich-article sup {
+                    font-size: 0.75em;
+                  }
+                  /* Nested div containers */
+                  .rich-article div {
+                    margin: 0;
+                  }
+                  /* Better figure styling */
+                  .rich-article figure.image {
+                    margin: 1.5rem auto;
+                    text-align: center;
+                    max-width: 100%;
+                  }
+                  .rich-article figure.image img {
+                    margin: 0 auto;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                  }
+                  .rich-article figure figcaption,
+                  .rich-article figcaption {
+                    font-size: 0.875rem;
+                    color: #6b7280;
+                    margin-top: 0.75rem;
+                    font-style: italic;
+                    text-align: center;
+                  }
+                  /* Nested figcaption inside figcaption - remove extra styling */
+                  .rich-article figcaption figure,
+                  .rich-article figcaption figcaption {
+                    margin: 0;
+                    font-size: inherit;
+                  }
+                  /* List with better bullets */
+                  .rich-article ul li::marker {
+                    color: #3b82f6;
+                    font-size: 1.2em;
+                  }
+                  .rich-article ol li::marker {
+                    color: #3b82f6;
+                    font-weight: 600;
+                  }
+                  /* Better spacing for list items with strong */
+                  .rich-article li strong {
+                    color: #1e40af;
+                  }
+                  /* Video iframe container */
+                  .rich-article p:has(iframe) {
+                    text-align: center;
+                    margin: 1.5rem 0;
+                  }
+                  /* WordPress caption classes */
+                  .rich-article .wp-caption {
+                    max-width: 100%;
+                    margin: 0;
+                  }
+                  .rich-article .wp-caption-text {
+                    font-size: 0.875rem;
+                    color: #6b7280;
+                    font-style: italic;
+                    margin-top: 0.5rem;
+                  }
+                  /* Override Tailwind flex classes that may reverse order */
+                  .rich-article .flex-col-reverse {
+                    flex-direction: column !important;
+                  }
+                  .rich-article .flex-row-reverse {
+                    flex-direction: row !important;
+                  }
+                  .rich-article [class*="flex"] {
+                    display: block !important;
+                  }
+                  /* Reset any problematic Tailwind classes */
+                  .rich-article .w-fit {
+                    width: 100% !important;
+                  }
+                  .rich-article .group {
+                    display: block !important;
+                  }
+                  /* Image hover effect for lightbox */
+                  .rich-article img {
+                    cursor: pointer;
+                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                  }
+                  .rich-article img:hover {
+                    transform: scale(1.03);
+                    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
                   }
                 `}</style>
               </section>
@@ -495,6 +782,38 @@ export default function ProductDetail({ product }: { product: Product }) {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Lightbox Modal */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={closeLightbox}
+        >
+          {/* Close button */}
+          <button
+            className="absolute top-4 right-4 z-10 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+            onClick={closeLightbox}
+            aria-label="Đóng"
+          >
+            <X className="h-6 w-6" />
+          </button>
+
+          {/* Image container */}
+          <div className="relative max-h-[90vh] max-w-[90vw] animate-in zoom-in-95 duration-300">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxSrc}
+              alt="Phóng to ảnh"
+              className="max-h-[90vh] max-w-[90vw] cursor-pointer rounded-lg object-contain shadow-2xl"
+            />
+          </div>
+
+          {/* Click anywhere hint */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-sm text-white/60">
+            Nhấn vào bất kỳ đâu hoặc phím ESC để đóng
+          </div>
+        </div>
+      )}
     </>
   );
 }

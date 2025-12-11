@@ -23,7 +23,7 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 const siteName = "Thiết bị điện Quang Minh";
 
 export const metadata: Metadata = {

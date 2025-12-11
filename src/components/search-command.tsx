@@ -122,14 +122,19 @@ export default function SearchCommand() {
       if (item.slug) {
         router.push(`/products/${item.slug}`);
       } else {
+        // Save search results to sessionStorage before navigating
+        sessionStorage.setItem(
+          "search_cache",
+          JSON.stringify({ query: item.name.trim(), results, timestamp: Date.now() })
+        );
         router.push(`/products?search=${encodeURIComponent(item.name.trim())}`);
       }
     },
-    [recent, router],
+    [recent, router, results],
   );
 
   const handleSearchKeyword = useCallback(
-    (keyword: string) => {
+    (keyword: string, searchResults: SearchResult[] = []) => {
       const trimmed = keyword.trim();
       if (!trimmed) return;
 
@@ -141,6 +146,12 @@ export default function SearchCommand() {
       );
       setRecent(next);
       localStorage.setItem(LS_KEY, JSON.stringify(next));
+
+      // Save search results to sessionStorage before navigating
+      sessionStorage.setItem(
+        "search_cache",
+        JSON.stringify({ query: trimmed, results: searchResults, timestamp: Date.now() })
+      );
 
       // Close dialog and navigate
       setOpen(false);
@@ -195,19 +206,24 @@ export default function SearchCommand() {
                 e.preventDefault();
                 e.stopPropagation();
 
-                if (loading) return;
+                // Wait until search is complete before allowing Enter
+                if (loading || !hasSearched) return;
 
                 // Close dialog immediately
                 setOpen(false);
 
                 if (results.length === 1) {
                   handleSelect(results[0]);
-                } else if (results.length > 1) {
-                  // Multiple results - go to search page
+                } else if (results.length > 0) {
+                  // Has results - save to cache and go to search page
+                  sessionStorage.setItem(
+                    "search_cache",
+                    JSON.stringify({ query: query.trim(), results, timestamp: Date.now() })
+                  );
                   router.push(`/products?search=${encodeURIComponent(query.trim())}`);
                 } else {
-                  // No results yet or empty - still navigate to search
-                  handleSearchKeyword(query.trim());
+                  // No results - save empty to cache and navigate
+                  handleSearchKeyword(query.trim(), results);
                 }
               }
             }}

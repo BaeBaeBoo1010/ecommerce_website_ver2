@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Fuse from "fuse.js";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,16 +19,6 @@ import { Package } from "lucide-react";
 
 type SortOption = "none" | "priceAsc" | "priceDesc";
 const PRODUCTS_PER_PAGE = 16;
-
-/* ----------------- Helpers ----------------- */
-function removeVietnameseTones(str: string) {
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D")
-    .toLowerCase();
-}
 
 const sortProducts = (products: Product[], sort: SortOption) => {
   const sorted = [...products];
@@ -53,12 +42,14 @@ export default function ProductListClient({ initialProducts }: ProductListClient
 
   // Params
   const categorySlug = searchParams.get("category") ?? "all";
-  const searchQuery = searchParams.get("search")?.toLowerCase().trim() || "";
+  const searchQuery = searchParams.get("search")?.trim() || "";
   const pageParam = Number(searchParams.get("page"));
   const currentPage = Number.isNaN(pageParam) ? 1 : Math.max(1, pageParam);
 
   // State
   const [sortOption, setSortOption] = useState<SortOption>("none");
+  const [searchResults, setSearchResults] = useState<Product[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Use products passed from server
   const products = useMemo(() => initialProducts || [], [initialProducts]);
@@ -74,30 +65,75 @@ export default function ProductListClient({ initialProducts }: ProductListClient
     return Array.from(seen.values());
   }, [products]);
 
-  // Create Fuse instance with normalized Vietnamese text for consistent search
-  const fuse = useMemo(() => {
-    if (!products.length) return null;
+  // Load search results from sessionStorage cache or fallback to empty
+  useEffect(() => {
+    if (!searchQuery) {
+      setSearchResults(null);
+      return;
+    }
 
-    const normalized = (products as Product[]).map((p) => ({
-      ...p,
-      nameNoTone: removeVietnameseTones(p.name),
-      descriptionNoTone: p.description
-        ? removeVietnameseTones(p.description)
-        : "",
-      articleNoTone: p.articleHtml
-        ? removeVietnameseTones(p.articleHtml.replace(/<[^>]+>/g, ""))
-        : "",
-    }));
+    // Try to get cached results from search-command
+    try {
+      const cached = sessionStorage.getItem("search_cache");
+      if (cached) {
+        const { query, results, timestamp } = JSON.parse(cached);
+        const isExpired = Date.now() - timestamp > 60000; // 1 minute expiry
+        
+        if (query === searchQuery && !isExpired && Array.isArray(results)) {
+          setSearchResults(results);
+          setIsSearching(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to read search cache:", e);
+    }
 
-    return new Fuse(normalized, {
-      keys: ["nameNoTone", "descriptionNoTone", "articleNoTone"],
-      threshold: 0.35,
-      includeScore: true,
-    });
-  }, [products]);
+    // No valid cache - fetch from API
+    const controller = new AbortController();
+    setIsSearching(true);
 
-  // Updated filter logic to use Fuse.js for fuzzy search matching search-command
+    fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=100`, {
+      signal: controller.signal,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setSearchResults(data);
+        } else {
+          setSearchResults([]);
+        }
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          console.error("Search error:", err);
+          setSearchResults([]);
+        }
+      })
+      .finally(() => {
+        setIsSearching(false);
+      });
+
+    return () => controller.abort();
+  }, [searchQuery]);
+
+  // Filter products based on search results or category
   const filteredProducts = useMemo(() => {
+    // If searching, use server results
+    if (searchQuery && searchResults !== null) {
+      let list = searchResults;
+      
+      // Apply category filter to search results
+      if (categorySlug !== "all") {
+        list = list.filter(
+          (p) =>
+            typeof p.category === "object" && p.category.slug === categorySlug,
+        );
+      }
+      return list;
+    }
+
+    // No search - filter from initialProducts
     let list = products;
 
     // Category filter
@@ -108,18 +144,8 @@ export default function ProductListClient({ initialProducts }: ProductListClient
       );
     }
 
-    // Search filter using Fuse.js
-    if (searchQuery && fuse) {
-      const keywordLower = removeVietnameseTones(
-        searchQuery.trim().toLowerCase(),
-      );
-      const result = fuse.search(keywordLower);
-      const matchedIds = new Set(result.map((r) => r.item.id));
-      list = list.filter((p) => matchedIds.has(p.id));
-    }
-
     return list;
-  }, [products, categorySlug, searchQuery, fuse]);
+  }, [products, categorySlug, searchQuery, searchResults]);
 
   const sortedProducts = useMemo(
     () => sortProducts(filteredProducts, sortOption),
