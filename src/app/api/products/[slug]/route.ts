@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { revalidateProduction } from "@/lib/revalidate-production";
 
 if (!process.env.CLOUDINARY_URL) {
   console.error("⚠️ Missing CLOUDINARY_URL in environment");
@@ -228,6 +229,9 @@ export async function PUT(
       revalidatePath(`/products/${updates.slug}`, "page");
     }
 
+    // Trigger production revalidation (when running on localhost)
+    await revalidateProduction(updates.slug || slug);
+
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {
     console.error("PUT /api/products/[slug] error:", err);
@@ -404,6 +408,9 @@ export async function DELETE(
     const { revalidatePath } = await import("next/cache");
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
+
+    // Trigger production revalidation (when running on localhost)
+    await revalidateProduction();
 
     return NextResponse.json({ success: true });
   } catch (err) {

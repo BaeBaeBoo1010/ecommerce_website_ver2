@@ -8,8 +8,11 @@ import Script from "next/script";
 // ISR: Revalidate every 60 seconds
 export const revalidate = 60;
 
+// Allow dynamic page generation for new products not pre-generated at build time
+export const dynamicParams = true;
+
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 
 type Props = {
   params: Promise<{ slug: string }>;

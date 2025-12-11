@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-helpers";
 
+const REVALIDATION_SECRET = process.env.REVALIDATION_SECRET;
+
 export async function POST(req: NextRequest) {
-  // 🔒 Security: Require admin authentication
-  const authError = await requireAdmin();
-  if (authError) return authError;
+  // 🔒 Security: Check for secret token (for cross-origin calls from localhost)
+  //    OR require admin session (for same-origin authenticated calls)
+  const secretHeader = req.headers.get("x-revalidation-secret");
+
+  if (secretHeader && REVALIDATION_SECRET && secretHeader === REVALIDATION_SECRET) {
+    // Valid secret token - allow revalidation
+    console.log("✅ Revalidation authorized via secret token");
+  } else {
+    // Fall back to session-based admin auth
+    const authError = await requireAdmin();
+    if (authError) return authError;
+  }
 
   try {
     // Optional: get specific slug to revalidate
