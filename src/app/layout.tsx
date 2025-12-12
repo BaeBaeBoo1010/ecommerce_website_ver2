@@ -9,7 +9,6 @@ import AppToaster from "@/components/app-toaster";
 import Providers from "./providers";
 import "./globals.css";
 import Script from "next/script";
-import { SessionProvider } from "next-auth/react";
 
 // Dynamic import Footer for better initial load
 const Footer = dynamic(() => import("@/components/footer"), {
@@ -141,7 +140,7 @@ export default async function RootLayout({
         <Providers>
           <Header />
           <AppToaster />
-          <SessionProvider>{children}</SessionProvider>
+          {children}
           <Footer />
         </Providers>
       </body>

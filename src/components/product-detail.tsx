@@ -47,7 +47,7 @@ function QuantitySelector({
   quantity,
   setQuantity,
   min = 1,
-  max = 100,
+  max = 1000,
 }: {
   quantity: number;
   setQuantity: (value: number) => void;
@@ -68,6 +68,9 @@ function QuantitySelector({
       setQuantity(NaN);
       return;
     }
+    // Only allow digits
+    if (!/^\d*$/.test(val)) return;
+
     const parsed = parseInt(val, 10);
     if (!isNaN(parsed)) {
       if (parsed >= min && parsed <= max) setQuantity(parsed);
@@ -88,6 +91,9 @@ function QuantitySelector({
       </button>
 
       <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
         autoFocus={false}
         className="h-10 w-16 border border-gray-300 text-center text-lg font-semibold outline-none focus:z-10 focus:ring-2 focus:ring-blue-500"
         min={min}
@@ -112,8 +118,16 @@ function QuantitySelector({
   );
 }
 
+import { useCart } from "@/context/cart-context";
+import { useRouter } from "next/navigation";
+
+// ... (existing imports)
+
 export default function ProductDetail({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1);
+  const { addToCart } = useCart();
+  const router = useRouter();
+
   const [openSheet, setOpenSheet] = useState(false);
   const [thumbsSwiper, setThumbsSwiper] = useState<any>(null);
   const [activeThumbIndex, setActiveThumbIndex] = useState(0);
@@ -187,12 +201,11 @@ export default function ProductDetail({ product }: { product: Product }) {
   }, [lightboxSrc, openLightbox, closeLightbox]);
 
   const handleAction = (type: "add" | "buy") => {
-    const msg =
-      type === "add"
-        ? `Đã thêm ${quantity} sản phẩm vào giỏ hàng`
-        : `Mua ngay ${quantity} sản phẩm`;
-    toast.success(msg);
-    // TODO: thêm logic thêm vào giỏ/mua ngay
+    addToCart(product, quantity);
+    
+    if (type === "buy") {
+      router.push("/cart");
+    }
   };
 
   return (

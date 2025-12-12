@@ -22,6 +22,7 @@ import type { Category } from "@/types/product";
 
 import SearchCommand from "./search-command";
 import MobileSidebar from "./sidebar";
+import { useCart } from "@/context/cart-context";
 import { slugify } from "@/lib/slugify";
 
 export default function Header() {
@@ -29,8 +30,7 @@ export default function Header() {
   const isAdmin = session?.user?.role === "admin";
   const router = useRouter();
 
-  // Giữ cartCount tạm thời
-  const cartCount = 3;
+  const { totalItems: cartCount } = useCart();
 
   // Prefetch routes
   useEffect(() => {
@@ -185,8 +185,8 @@ export default function Header() {
               Giỏ hàng
             </span>
             {cartCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-[10px] font-semibold">
-                {cartCount}
+              <Badge className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 py-0 text-[10px] font-semibold">
+                {cartCount > 999 ? "999+" : cartCount}
               </Badge>
             )}
           </Link>

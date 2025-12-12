@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://thietbicamung.vercel.app/sitemap.xml
+Sitemap: https://thietbicamung.me/sitemap.xml

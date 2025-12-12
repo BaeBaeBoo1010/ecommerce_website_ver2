@@ -187,6 +187,7 @@ export default function SearchCommand() {
       </Button>
 
       <CommandDialog
+        shouldFilter={false}
         open={open}
         onOpenChange={setOpen}
         showCloseButton={false}
@@ -243,6 +244,7 @@ export default function SearchCommand() {
         </div>
 
         <CommandList className="relative min-h-[280px] overflow-y-auto">
+          {/* Empty state - no query and no history */}
           {!query && recent.length === 0 && (
             <div className="text-muted-foreground flex flex-col items-center justify-center py-10 text-center">
               <Search className="mb-2 h-8 w-8" />
@@ -250,7 +252,8 @@ export default function SearchCommand() {
             </div>
           )}
 
-          {!query && recent.length > 0 && (
+          {/* Recent searches - only when no query */}
+          {!query && !loading && recent.length > 0 && (
             <CommandGroup heading="Gần đây">
               {recent.map((item) => (
                 <CommandItem
@@ -283,12 +286,13 @@ export default function SearchCommand() {
             </CommandGroup>
           )}
 
-          {results.length > 0 && (
+          {/* Search results - only when has query and results */}
+          {query && !loading && results.length > 0 && (
             <CommandGroup heading="Kết quả">
               {results.map((item) => (
                 <CommandItem
                   key={item.id}
-                  value={item.name + query}
+                  value={item.name}
                   onSelect={() => handleSelect(item)}
                   className="hover:bg-accent hover:text-accent-foreground cursor-pointer"
                 >

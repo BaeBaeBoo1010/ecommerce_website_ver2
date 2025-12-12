@@ -92,7 +92,7 @@ export default function ProductSwiper({
               <SwiperSlide key={p.slug}>
                 <Link
                   href={`/products/${p.slug}`}
-                  className="group flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-lg sm:h-90"
+                  className="group flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 sm:h-90"
                 >
                   <div
                     className="relative w-full rounded"

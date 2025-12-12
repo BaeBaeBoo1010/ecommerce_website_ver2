@@ -1,26 +1,73 @@
 -- Run this SQL in Supabase SQL Editor to create the fuzzy search function
--- Optimized for Vietnamese language with typo tolerance
+-- Optimized for Vietnamese language with typo tolerance and performance
 
--- 0. Drop existing function (if return type changed)
-DROP FUNCTION IF EXISTS search_products_fuzzy(TEXT, INT);
-
--- 1. Make sure extensions are enabled
+-- ============================================
+-- STEP 1: SETUP EXTENSIONS
+-- ============================================
 CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
--- 2. Set lower similarity threshold for better fuzzy matching (default is 0.3)
--- This allows matching with more typos
+-- Set lower similarity threshold for better fuzzy matching (default is 0.3)
 SELECT set_limit(0.1);
 
--- 3. Create a helper function to normalize Vietnamese text (remove accents + lowercase)
+-- ============================================
+-- STEP 2: CREATE HELPER FUNCTION
+-- ============================================
+-- Drop and recreate to ensure it's up to date
+DROP FUNCTION IF EXISTS normalize_vietnamese(TEXT);
+
 CREATE OR REPLACE FUNCTION normalize_vietnamese(input_text TEXT)
 RETURNS TEXT AS $$
 BEGIN
   RETURN LOWER(unaccent(COALESCE(input_text, '')));
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
--- 4. Create the search function with fuzzy matching support
+-- ============================================
+-- STEP 3: ADD NORMALIZED COLUMNS FOR PERFORMANCE
+-- ============================================
+-- Add columns to store pre-normalized text (faster searches)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS name_normalized TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS description_normalized TEXT;
+
+-- Update existing products with normalized values
+UPDATE products SET 
+  name_normalized = normalize_vietnamese(name),
+  description_normalized = normalize_vietnamese(description);
+
+-- ============================================
+-- STEP 4: CREATE TRIGGER TO AUTO-UPDATE NORMALIZED COLUMNS
+-- ============================================
+CREATE OR REPLACE FUNCTION update_normalized_columns()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.name_normalized := normalize_vietnamese(NEW.name);
+  NEW.description_normalized := normalize_vietnamese(NEW.description);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_update_normalized ON products;
+CREATE TRIGGER trg_update_normalized
+  BEFORE INSERT OR UPDATE ON products
+  FOR EACH ROW
+  EXECUTE FUNCTION update_normalized_columns();
+
+-- ============================================
+-- STEP 5: CREATE GIN INDEXES FOR FAST SEARCH
+-- ============================================
+-- These indexes dramatically speed up pg_trgm searches
+CREATE INDEX IF NOT EXISTS idx_products_name_trgm 
+  ON products USING gin (name_normalized gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_products_desc_trgm 
+  ON products USING gin (description_normalized gin_trgm_ops);
+
+-- ============================================
+-- STEP 6: CREATE OPTIMIZED SEARCH FUNCTION
+-- ============================================
+DROP FUNCTION IF EXISTS search_products_fuzzy(TEXT, INT);
+
 CREATE OR REPLACE FUNCTION search_products_fuzzy(search_query TEXT, result_limit INT DEFAULT 50)
 RETURNS TABLE (
   id UUID,
@@ -37,8 +84,13 @@ RETURNS TABLE (
 DECLARE
   normalized_query TEXT;
 BEGIN
-  -- Normalize the search query (remove Vietnamese diacritics + lowercase)
+  -- Normalize the search query
   normalized_query := normalize_vietnamese(search_query);
+  
+  -- Return empty if query is too short
+  IF LENGTH(normalized_query) < 2 THEN
+    RETURN;
+  END IF;
   
   RETURN QUERY
   SELECT 
@@ -51,22 +103,20 @@ BEGIN
     c.id AS category_id,
     c.name AS category_name,
     c.slug AS category_slug,
-    -- Calculate best similarity score across name, description, article (cast to REAL)
+    -- Use pre-normalized columns for faster similarity calculation
     GREATEST(
-      similarity(normalize_vietnamese(p.name), normalized_query),
-      similarity(normalize_vietnamese(p.description), normalized_query) * 0.8,
-      similarity(normalize_vietnamese(p.article_html), normalized_query) * 0.6
+      similarity(p.name_normalized, normalized_query),
+      similarity(p.description_normalized, normalized_query) * 0.8
     )::REAL AS similarity_score
   FROM products p
   LEFT JOIN categories c ON p.category_id = c.id
   WHERE 
-    -- Fuzzy match using pg_trgm % operator (with lowered threshold)
-    normalize_vietnamese(p.name) % normalized_query
-    OR normalize_vietnamese(p.description) % normalized_query
-    OR normalize_vietnamese(p.article_html) % normalized_query
-    -- Also include ILIKE for exact substring matches
-    OR normalize_vietnamese(p.name) ILIKE '%' || normalized_query || '%'
-    OR normalize_vietnamese(p.description) ILIKE '%' || normalized_query || '%'
+    -- Use indexed normalized columns (MUCH faster)
+    p.name_normalized % normalized_query
+    OR p.description_normalized % normalized_query
+    OR p.name_normalized ILIKE '%' || normalized_query || '%'
+    OR p.description_normalized ILIKE '%' || normalized_query || '%'
+    -- Also search in article_html (not indexed, slower but complete)
     OR normalize_vietnamese(p.article_html) ILIKE '%' || normalized_query || '%'
   ORDER BY 
     similarity_score DESC
@@ -74,6 +124,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 5. Test the function with typos
--- SELECT * FROM search_products_fuzzy('cong tac deu khien', 10);
+-- ============================================
+-- STEP 7: TEST THE FUNCTION
+-- ============================================
 -- SELECT * FROM search_products_fuzzy('cong tac', 10);
+-- SELECT * FROM search_products_fuzzy('cong tac deu khien', 10);
