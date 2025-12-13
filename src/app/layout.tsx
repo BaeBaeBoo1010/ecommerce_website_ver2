@@ -81,6 +81,11 @@ export const metadata: Metadata = {
     // Thêm Google Search Console verification code nếu có
     // google: "verification-code-here",
   },
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default async function RootLayout({
@@ -97,7 +102,6 @@ export default async function RootLayout({
       }}
     >
       <head>
-        <link rel="icon" href="/favicon.png" />
         <link rel="preconnect" href="https://res.cloudinary.com" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>

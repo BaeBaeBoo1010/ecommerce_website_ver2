@@ -121,8 +121,6 @@ function QuantitySelector({
 import { useCart } from "@/context/cart-context";
 import { useRouter } from "next/navigation";
 
-// ... (existing imports)
-
 export default function ProductDetail({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();

@@ -97,77 +97,77 @@ export function CartItem({
   };
 
   return (
-    <div
-      className="group flex gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md hover:bg-gray-50 cursor-pointer items-start sm:items-center"
-      onClick={() => router.push(`/products/${product.slug}`)}
-    >
-      <div onClick={(e) => e.stopPropagation()} className="self-center">
-        <Checkbox
-          checked={isSelected}
-          onChange={() => onToggleSelect(product.id)}
-        />
-      </div>
-      {/* Image */}
-      <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-100 sm:h-24 sm:w-24">
-        <Image
-          src={product.imageUrls[0]}
-          alt={product.name}
-          fill
-          className="object-contain" // object-contain to avoid cropping product details
-        />
-      </div>
-
-      {/* Info & Controls Wrapper */}
-      <div className="flex flex-1 flex-col justify-between gap-2 min-h-[5rem] sm:min-h-[6rem] sm:flex-row sm:items-center sm:gap-4">
-        {/* Info */}
-        <div className="flex flex-col gap-1">
-          <Link
-            href={`/products/${product.slug}`}
-            className="text-base font-medium text-gray-900 line-clamp-2 hover:text-blue-600 hover:underline group-hover:text-blue-600 group-hover:underline sm:text-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {product.name}
-          </Link>
-          <div className="text-sm font-semibold text-[#EE4D2D] sm:text-base">
-            {product.price.toLocaleString("vi-VN")} ₫
-          </div>
+    <>
+      <div
+        className="group flex gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md hover:bg-gray-50 cursor-pointer items-start sm:items-center"
+        onClick={() => router.push(`/products/${product.slug}`)}
+      >
+        <div onClick={(e) => e.stopPropagation()} className="self-center">
+          <Checkbox
+            checked={isSelected}
+            onChange={() => onToggleSelect(product.id)}
+          />
+        </div>
+        {/* Image */}
+        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-100 sm:h-24 sm:w-24">
+          <Image
+            src={product.imageUrls[0]}
+            alt={product.name}
+            fill
+            className="object-contain" // object-contain to avoid cropping product details
+          />
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center justify-between gap-4 sm:justify-end">
-          {/* Quantity */}
-          <div
-            className="inline-flex items-center overflow-visible rounded-lg border shadow-sm"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={handleDecrease}
-              className="mr-[1px] flex h-7 w-7 cursor-pointer items-center justify-center rounded-l-lg bg-white font-semibold text-gray-700 transition select-none hover:bg-gray-100 active:bg-gray-200 sm:h-10 sm:w-10"
+        {/* Info & Controls Wrapper */}
+        <div className="flex flex-1 flex-col justify-between gap-2 min-h-[5rem] sm:min-h-[6rem] sm:flex-row sm:items-center sm:gap-4">
+          {/* Info */}
+          <div className="flex flex-col gap-1">
+            <Link
+              href={`/products/${product.slug}`}
+              className="text-base font-medium text-gray-900 line-clamp-2 hover:text-blue-600 hover:underline group-hover:text-blue-600 group-hover:underline sm:text-lg"
+              onClick={(e) => e.stopPropagation()}
             >
-              –
-            </button>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              min={1}
-              max={1000}
-              value={isNaN(localQuantity) ? "" : localQuantity}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className="h-7 w-12 border border-gray-300 text-center text-xs font-semibold outline-none focus:z-10 focus:ring-2 focus:ring-blue-500 sm:h-10 sm:w-16 sm:text-lg"
-            />
-            <button
-              onClick={handleIncrease}
-              className="ml-[1px] flex h-7 w-7 cursor-pointer items-center justify-center rounded-r-lg bg-white font-semibold text-gray-700 transition select-none hover:bg-gray-100 active:bg-gray-200 disabled:cursor-not-allowed sm:h-10 sm:w-10"
-              disabled={localQuantity >= 1000}
-            >
-              +
-            </button>
+              {product.name}
+            </Link>
+            <div className="text-sm font-semibold text-[#EE4D2D] sm:text-base">
+              {product.price.toLocaleString("vi-VN")} ₫
+            </div>
           </div>
 
-          {/* Remove */}
-          <Dialog>
+          {/* Controls */}
+          <div className="flex items-center justify-between gap-4 sm:justify-end">
+            {/* Quantity */}
+            <div
+              className="inline-flex items-center overflow-visible rounded-lg border shadow-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={handleDecrease}
+                className="mr-[1px] flex h-7 w-7 cursor-pointer items-center justify-center rounded-l-lg bg-white font-semibold text-gray-700 transition select-none hover:bg-gray-100 active:bg-gray-200 sm:h-10 sm:w-10"
+              >
+                –
+              </button>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                min={1}
+                max={1000}
+                value={isNaN(localQuantity) ? "" : localQuantity}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className="h-7 w-12 border border-gray-300 text-center text-xs font-semibold outline-none focus:z-10 focus:ring-2 focus:ring-blue-500 sm:h-10 sm:w-16 sm:text-lg"
+              />
+              <button
+                onClick={handleIncrease}
+                className="ml-[1px] flex h-7 w-7 cursor-pointer items-center justify-center rounded-r-lg bg-white font-semibold text-gray-700 transition select-none hover:bg-gray-100 active:bg-gray-200 disabled:cursor-not-allowed sm:h-10 sm:w-10"
+                disabled={localQuantity >= 1000}
+              >
+                +
+              </button>
+            </div>
+
+            {/* Remove */}
             <Button
               variant="ghost"
               size="icon"
@@ -180,40 +180,40 @@ export function CartItem({
             >
               <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <DialogContent showCloseButton={false} onClick={(e) => e.stopPropagation()}>
-                <DialogHeader>
-                  <DialogTitle>Xác nhận xóa</DialogTitle>
-                  <DialogDescription>
-                    Bạn chắc chắn muốn bỏ sản phẩm này?
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter className="gap-4 sm:gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeleteDialog(false);
-                    }}
-                  >
-                    Không
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemove(product.id);
-                      setShowDeleteDialog(false);
-                    }}
-                  >
-                    Đồng ý
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </Dialog>
+          </div>
         </div>
       </div>
-    </div>
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent showCloseButton={false} onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa</DialogTitle>
+            <DialogDescription>
+              Bạn chắc chắn muốn bỏ sản phẩm này?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-4 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteDialog(false);
+              }}
+            >
+              Không
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(product.id);
+                setShowDeleteDialog(false);
+              }}
+            >
+              Đồng ý
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
