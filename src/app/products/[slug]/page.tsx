@@ -48,16 +48,16 @@ async function fetchProduct(slug: string) {
     name: data.name,
     slug: data.slug,
     productCode: data.product_code,
-    price: data.price,
+    price: data.price ?? 0,
     description: data.description,
     imageUrls: data.image_urls || [],
     articleHtml: data.article_html,
     isArticleEnabled: data.is_article_enabled,
-    category: data.category ? {
-      id: (data.category as any).id,
-      name: (data.category as any).name,
-      slug: (data.category as any).slug,
-    } : { id: "", name: "", slug: "" },
+    category: data.category
+      ? Array.isArray(data.category)
+        ? data.category[0]
+        : data.category
+      : { id: "", name: "", slug: "" },
   };
 }
 
