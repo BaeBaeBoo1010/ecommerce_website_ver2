@@ -4,6 +4,9 @@
 import Image from "next/image";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Thumbs, EffectFade, Autoplay } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/thumbs";
+import "swiper/css/effect-fade";
 import { useState, useRef, useEffect } from "react";
 import { ShoppingCart, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -186,7 +189,7 @@ export default function Carousel({ products, isLoading }: Props) {
                         src={item.image || "/images/placeholder.svg"}
                         alt={`Image ${idx}`}
                         fill
-                        sizes="(min-width: 768px) 50vw, 100vw"
+                        sizes="(min-width: 1280px) 640px, (min-width: 768px) 50vw, 100vw"
                         className="object-contain"
                         priority={idx === 0}
                       />

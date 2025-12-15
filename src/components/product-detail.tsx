@@ -8,10 +8,9 @@ import "swiper/css/thumbs";
 import "swiper/css/navigation";
 import "swiper/css/free-mode";
 import "swiper/css/effect-fade";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import type { Product } from "@/types/product";
 import Image from "next/image";
-import { toast } from "sonner";
 import Link from "next/link";
 import {
   Sheet,
@@ -29,7 +28,13 @@ const TINY_SVG =
   "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMScgaGVpZ2h0PScxJyBmaWxsPSIjZWVlIiB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnLz4=";
 
 /* ---------- SafeHtml ---------- */
-function SafeHtml({ html, className }: { html: string; className?: string }) {
+const SafeHtml = memo(function SafeHtml({
+  html,
+  className,
+}: {
+  html: string;
+  className?: string;
+}) {
   const clean = useMemo(
     () =>
       DOMPurify.sanitize(html ?? "", {
@@ -41,7 +46,7 @@ function SafeHtml({ html, className }: { html: string; className?: string }) {
   return (
     <div className={className} dangerouslySetInnerHTML={{ __html: clean }} />
   );
-}
+});
 
 function QuantitySelector({
   quantity,

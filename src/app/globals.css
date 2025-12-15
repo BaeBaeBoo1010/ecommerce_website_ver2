@@ -2,9 +2,7 @@
 @import "tw-animate-css";
 @plugin "tailwindcss-animate";
 @plugin "@tailwindcss/typography";
-@import "swiper/css";
-@import "swiper/css/thumbs";
-@import "swiper/css/effect-fade";
+
 
 @custom-variant dark (&:is(.dark *));
 

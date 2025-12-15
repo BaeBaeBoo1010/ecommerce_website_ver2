@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Mail, MapPin, Phone, Facebook, MessageCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import LazyMap from "@/components/lazy-map";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -24,6 +25,7 @@ export default function Footer() {
                   src="/images/logo.webp"
                   alt="Logo Quang Minh"
                   fill
+                  sizes="48px"
                   className="object-contain"
                 />
               </div>
@@ -132,16 +134,10 @@ export default function Footer() {
               Vị trí cửa hàng
             </h4>
             <div className="overflow-hidden rounded-xl border border-gray-700 shadow-lg">
-              <iframe
+              <LazyMap
                 title="Google Map Quang Minh"
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1005.1507265371326!2d106.61393326955582!3d10.845162999331762!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752a31a9a7fc33%3A0x431a94d43afc4e72!2zMUIgxJDGsMahzIBuZyBRdWHMgW4gVHJlLCBUcnVuZyBN4bu5IFTDonksIFF14bqtbiAxMiwgSOG7kyBDaMOtIE1pbmgsIFZpZXRuYW0!5e1!3m2!1sen!2s!4v1752585967090!5m2!1sen!2s"
-                width="100%"
-                height="200"
-                className="h-[200px] w-full border-0 pointer-events-auto touch-auto"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                style={{ touchAction: 'auto' }}
+                className="h-[200px] w-full"
               />
             </div>
             <a

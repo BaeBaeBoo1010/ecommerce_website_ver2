@@ -105,7 +105,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://res.cloudinary.com" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
-      <body>
+      <body className="min-h-screen flex flex-col">
         <Script
           id="organization-schema"
           type="application/ld+json"
@@ -144,7 +144,9 @@ export default async function RootLayout({
         <Providers>
           <Header />
           <AppToaster />
-          {children}
+          <main className="flex-1">
+            {children}
+          </main>
           <Footer />
         </Providers>
       </body>
