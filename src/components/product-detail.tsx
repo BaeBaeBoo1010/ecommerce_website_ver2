@@ -168,12 +168,19 @@ export default function ProductDetail({ product }: { product: Product }) {
 
   const openLightbox = useCallback((src: string) => {
     setLightboxSrc(src);
-    document.body.style.overflow = "hidden";
+    document.body.classList.add("lightbox-open");
   }, []);
 
   const closeLightbox = useCallback(() => {
     setLightboxSrc(null);
-    document.body.style.overflow = "";
+    document.body.classList.remove("lightbox-open");
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove("lightbox-open");
+    };
   }, []);
 
   // Handle click on article images and Escape key
@@ -205,7 +212,7 @@ export default function ProductDetail({ product }: { product: Product }) {
 
   const handleAction = (type: "add" | "buy") => {
     addToCart(product, quantity);
-    
+
     if (type === "buy") {
       router.push("/cart");
     }
@@ -236,8 +243,10 @@ export default function ProductDetail({ product }: { product: Product }) {
                     {product.imageUrls.map((url, index) => (
                       <SwiperSlide key={index}>
                         <div
-                          className="product-image-container relative h-[250px] w-full cursor-pointer bg-white sm:h-[300px] md:h-[400px]"
-                          onClick={() => openLightbox(product.imageUrls[activeThumbIndex])}
+                          className="product-image-container relative h-[250px] w-full cursor-zoom-in bg-white sm:h-[300px] md:h-[400px]"
+                          onClick={() =>
+                            openLightbox(product.imageUrls[activeThumbIndex])
+                          }
                         >
                           <Image
                             src={url}
@@ -430,7 +439,10 @@ export default function ProductDetail({ product }: { product: Product }) {
                   .product-swiper .product-image {
                     transition: transform 0.3s ease;
                   }
-                  .product-swiper .swiper-slide-active .product-image-container:hover .product-image {
+                  .product-swiper
+                    .swiper-slide-active
+                    .product-image-container:hover
+                    .product-image {
                     transform: scale(1.05);
                   }
                   .rich-article iframe {
@@ -613,7 +625,12 @@ export default function ProductDetail({ product }: { product: Product }) {
                   .rich-article hr {
                     border: none;
                     height: 1px;
-                    background: linear-gradient(to right, transparent, #d1d5db, transparent);
+                    background: linear-gradient(
+                      to right,
+                      transparent,
+                      #d1d5db,
+                      transparent
+                    );
                     margin: 2rem 0;
                   }
                   /* Mark/highlight */
@@ -704,7 +721,9 @@ export default function ProductDetail({ product }: { product: Product }) {
                   /* Image hover effect for lightbox */
                   .rich-article img {
                     cursor: pointer;
-                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                    transition:
+                      transform 0.3s ease,
+                      box-shadow 0.3s ease;
                   }
                   .rich-article img:hover {
                     transform: scale(1.03);
@@ -802,12 +821,12 @@ export default function ProductDetail({ product }: { product: Product }) {
       {/* Lightbox Modal */}
       {lightboxSrc && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm duration-200"
           onClick={closeLightbox}
         >
           {/* Close button */}
           <button
-            className="absolute top-4 right-4 z-10 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+            className="absolute top-4 right-4 z-10 cursor-pointer rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
             onClick={closeLightbox}
             aria-label="Đóng"
           >
@@ -815,12 +834,12 @@ export default function ProductDetail({ product }: { product: Product }) {
           </button>
 
           {/* Image container */}
-          <div className="relative max-h-[90vh] max-w-[90vw] animate-in zoom-in-95 duration-300">
+          <div className="animate-in zoom-in-95 relative max-h-[90vh] max-w-[90vw] duration-300">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={lightboxSrc}
               alt="Phóng to ảnh"
-              className="max-h-[90vh] max-w-[90vw] cursor-pointer rounded-lg object-contain shadow-2xl"
+              className="max-h-[90vh] max-w-[90vw] cursor-zoom-out rounded-lg object-contain shadow-2xl"
             />
           </div>
 

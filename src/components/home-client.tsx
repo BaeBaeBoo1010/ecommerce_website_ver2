@@ -35,9 +35,14 @@ export default function HomeClient({ initialData }: HomeClientProps) {
     [initialData],
   );
 
-  // Lấy tất cả products để dùng cho carousel
+  // Lấy tất cả products để dùng cho carousel (gắn category vào mỗi product)
   const products = useMemo(() => {
-    return allCategories.flatMap((cat) => cat.products);
+    return allCategories.flatMap((cat) =>
+      cat.products.map((p) => ({
+        ...p,
+        category: { id: cat.id, name: cat.name, slug: cat.slug },
+      }))
+    );
   }, [allCategories]);
 
   // 🔹 Infinite scroll

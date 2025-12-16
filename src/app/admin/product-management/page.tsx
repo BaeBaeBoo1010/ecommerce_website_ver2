@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import useSWR, { mutate, useSWRConfig } from "swr";
 import { Settings, Loader2, Search, Trash2, Plus, Package } from "lucide-react";
 import type { Product, Category } from "@/types/product";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ const MSG: Record<string, string> = {
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function ProductManagementPage() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const { fallback } = useSWRConfig();
 
   /* swr */
@@ -78,17 +79,6 @@ export default function ProductManagementPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategory, search, sortField, sortOrder]);
-
-  useEffect(() => {
-    if (containerRef.current) {
-      const top =
-        containerRef.current.getBoundingClientRect().top + window.scrollY - 106; // offset 26px
-      window.scrollTo({
-        top,
-        behavior: "smooth",
-      });
-    }
-  }, [currentPage]);
 
   /* sort helper */
   const handleSort = (field: keyof Product) => {
@@ -231,7 +221,6 @@ export default function ProductManagementPage() {
 
           <CardContent className="space-y-6">
             <div
-              ref={containerRef}
               className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
             >
               <div className="flex flex-wrap items-center gap-3">
@@ -362,45 +351,54 @@ export default function ProductManagementPage() {
                       {paginatedProducts.map((p) => (
                         <TableRow
                           key={p.id}
-                          className="group hover:bg-muted/30 transition-colors"
+                          className="group transition-colors"
                         >
-                          <TableCell className="w-16">
-                            <div className="border-border/50 bg-muted/30 relative h-16 w-16 overflow-hidden rounded-lg border shadow-sm transition-all group-hover:shadow-md">
+                          {/* 5 cột đầu - clickable và hover đồng bộ */}
+                          <TableCell
+                            className="w-16 cursor-pointer"
+                            onClick={() => router.push(`/products/${p.slug}`)}
+                          >
+                            <div className="border-border/50 bg-muted/30 relative aspect-square h-14 w-14 overflow-hidden rounded-lg border shadow-sm transition-all group-hover:ring-2 group-hover:ring-blue-500">
                               <Image
                                 src={p.imageUrls[0] || "/images/placeholder.svg"}
                                 alt={p.name}
                                 fill
                                 unoptimized
-                                sizes="64px"
-                                className="object-cover transition-transform group-hover:scale-110"
+                                sizes="56px"
+                                className="object-cover"
                                 loading="lazy"
                               />
                             </div>
                           </TableCell>
 
-                          <TableCell className="w-80 break-words whitespace-normal">
+                          <TableCell
+                            className="w-80 cursor-pointer break-words whitespace-normal transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                            onClick={() => router.push(`/products/${p.slug}`)}
+                          >
                             {p.name}
                           </TableCell>
 
-                          <TableCell className="w-24">
-                            <Badge
-                              variant="outline"
-                              className="truncate font-mono text-xs"
-                            >
+                          <TableCell
+                            className="w-24 cursor-pointer transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                            onClick={() => router.push(`/products/${p.slug}`)}
+                          >
+                            <span className="truncate font-mono text-xs">
                               {p.productCode}
-                            </Badge>
-                          </TableCell>
-
-                          <TableCell className="w-32 break-words whitespace-normal">
-                            <div className="text-sm font-medium">
-                              {p.category?.name}
-                            </div>
-                          </TableCell>
-
-                          <TableCell className="w-24">
-                            <span className="text-primary font-semibold">
-                              {p.price.toLocaleString()} đ
                             </span>
+                          </TableCell>
+
+                          <TableCell
+                            className="w-32 cursor-pointer break-words whitespace-normal text-sm font-medium transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                            onClick={() => router.push(`/products/${p.slug}`)}
+                          >
+                            {p.category?.name}
+                          </TableCell>
+
+                          <TableCell
+                            className="w-24 cursor-pointer font-semibold transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                            onClick={() => router.push(`/products/${p.slug}`)}
+                          >
+                            {p.price.toLocaleString()} đ
                           </TableCell>
 
                           <TableCell>

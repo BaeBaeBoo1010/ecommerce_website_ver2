@@ -894,7 +894,7 @@ export default function EditProductPage() {
                 }
                 router.push("/admin/product-management");
               }}
-              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-400 hover:shadow-lg"
+              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-400 hover:shadow-lg cursor-pointer"
             >
               <ArrowLeft className="h-4 w-4" />
               Về trang quản lý

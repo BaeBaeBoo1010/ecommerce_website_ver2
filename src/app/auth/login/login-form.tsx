@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ function SubmitBtn({ pending }: { pending: boolean }) {
 export default function LoginPage() {
   const router = useRouter();
   const params = useSearchParams();
+  const { update } = useSession();
   const [pending, setPending] = useState(false);
   const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
@@ -51,6 +52,10 @@ export default function LoginPage() {
         toast.error("Sai email hoặc mật khẩu");
       } else if (res?.ok) {
         toast.success("Đăng nhập thành công!");
+        // Force refresh session trước khi redirect
+        await update();
+        // Đợi một chút để session được cập nhật hoàn toàn
+        await new Promise((resolve) => setTimeout(resolve, 100));
         router.push("/");
         router.refresh();
       } else {

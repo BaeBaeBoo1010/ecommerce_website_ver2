@@ -143,7 +143,7 @@ export function CartItem({
             >
               <button
                 onClick={handleDecrease}
-                className="mr-[1px] flex h-7 w-7 cursor-pointer items-center justify-center rounded-l-lg bg-white font-semibold text-gray-700 transition select-none hover:bg-gray-100 active:bg-gray-200 sm:h-10 sm:w-10"
+                className="mr-[1px] flex h-9 w-9 cursor-pointer items-center justify-center rounded-l-lg bg-white text-lg font-semibold text-gray-700 transition select-none hover:bg-gray-100 active:bg-gray-200 sm:h-10 sm:w-10"
               >
                 –
               </button>
@@ -156,11 +156,16 @@ export function CartItem({
                 value={isNaN(localQuantity) ? "" : localQuantity}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className="h-7 w-12 border border-gray-300 text-center text-xs font-semibold outline-none focus:z-10 focus:ring-2 focus:ring-blue-500 sm:h-10 sm:w-16 sm:text-lg"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur();
+                  }
+                }}
+                className="h-9 w-14 border border-gray-300 text-center text-base font-semibold outline-none focus:z-10 focus:ring-2 focus:ring-blue-500 sm:h-10 sm:w-16 sm:text-lg"
               />
               <button
                 onClick={handleIncrease}
-                className="ml-[1px] flex h-7 w-7 cursor-pointer items-center justify-center rounded-r-lg bg-white font-semibold text-gray-700 transition select-none hover:bg-gray-100 active:bg-gray-200 disabled:cursor-not-allowed sm:h-10 sm:w-10"
+                className="ml-[1px] flex h-9 w-9 cursor-pointer items-center justify-center rounded-r-lg bg-white text-lg font-semibold text-gray-700 transition select-none hover:bg-gray-100 active:bg-gray-200 disabled:cursor-not-allowed sm:h-10 sm:w-10"
                 disabled={localQuantity >= 1000}
               >
                 +

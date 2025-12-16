@@ -197,9 +197,15 @@ export default function Header() {
                 className="flex w-[40px] cursor-pointer flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-[80px] dark:text-gray-300 dark:hover:bg-neutral-800"
                 aria-label="Tài khoản"
               >
-                <User size={20} />
+                {status === "loading" ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <User size={20} />
+                )}
                 <span className="hidden w-full truncate text-center text-sm sm:block">
-                  {status === "authenticated"
+                  {status === "loading"
+                    ? "Đang tải..."
+                    : status === "authenticated"
                     ? session.user?.name?.split(" ").slice(-1).join(" ")
                     : "Tài khoản"}
                 </span>
@@ -207,6 +213,13 @@ export default function Header() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              {status === "loading" && (
+                <DropdownMenuItem disabled className="flex items-center gap-2">
+                  <Loader2 className="animate-spin" size={16} />
+                  Đang tải...
+                </DropdownMenuItem>
+              )}
+
               {status === "unauthenticated" && (
                 <>
                   <DropdownMenuLabel>Tài khoản</DropdownMenuLabel>

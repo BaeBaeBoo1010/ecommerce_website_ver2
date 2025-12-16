@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Inter } from "next/font/google";
 import Header from "@/components/header";
 import AppToaster from "@/components/app-toaster";
+import ScrollToTop from "@/components/scroll-to-top";
 import Providers from "./providers";
 import "./globals.css";
 import Script from "next/script";
@@ -144,6 +145,7 @@ export default async function RootLayout({
         <Providers>
           <Header />
           <AppToaster />
+          <ScrollToTop />
           <main className="flex-1">
             {children}
           </main>

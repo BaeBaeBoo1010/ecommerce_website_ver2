@@ -107,8 +107,8 @@ export default function Carousel({ products, isLoading }: Props) {
                 </h1>
 
                 {slides[activeIndex].category && (
-                  <p className="mb-4 flex justify-center text-sm text-gray-500 sm:inline-block">
-                    <span className="hidden sm:inline">Danh mục: </span>
+                  <p className="mb-4 text-center text-sm text-gray-500 md:text-left">
+                    Danh mục:{" "}
                     <Link
                       href={`/products?category=${slides[activeIndex].categorySlug}&page=1`}
                       className="cursor-pointer rounded-lg bg-gray-200 p-2 font-medium transition-all hover:text-blue-500"

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { unstable_cache } from "next/cache";
+
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "./product-detail-client";
@@ -62,11 +62,10 @@ async function fetchProduct(slug: string) {
 }
 
 // Cached version of getProduct - revalidates every 60 seconds
-const getProduct = unstable_cache(
-  async (slug: string) => fetchProduct(slug),
-  ["product-detail"],
-  { revalidate: 60, tags: ["products"] }
-);
+// Direct fetch - relying on page-level ISR (revalidate = 60) or revalidatePath
+async function getProduct(slug: string) {
+  return fetchProduct(slug);
+}
 
 // Pre-generate all product pages at build time
 export async function generateStaticParams() {
