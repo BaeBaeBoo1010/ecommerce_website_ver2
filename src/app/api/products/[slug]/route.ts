@@ -136,45 +136,58 @@ export async function PUT(
     // Build update object
     const updates: Record<string, any> = {};
 
+    // Parallelize duplicate checks
+    const checkPromises: Promise<{ type: string; field: string } | null>[] = [];
+
     if (name) {
       const newSlug = slugify(name);
-
-      // Check for duplicate slug if changed
       if (newSlug !== existing.slug) {
-        const { data: dupSlug } = await supabase
-          .from("products")
-          .select("id")
-          .eq("slug", newSlug)
-          .neq("id", existing.id)
-          .single();
-
-        if (dupSlug) {
-          return NextResponse.json(
-            { success: false, code: ERROR.DUP_SLUG, field: "name" },
-            { status: 409 }
-          );
-        }
+        checkPromises.push(
+          (async () => {
+             const { data } = await supabase
+              .from("products")
+              .select("id")
+              .eq("slug", newSlug)
+              .neq("id", existing.id)
+              .single();
+             return data ? { type: "slug", field: "name" } : null;
+          })()
+        );
+        updates.name = name;
+        updates.slug = newSlug;
       }
-
-      updates.name = name;
-      updates.slug = newSlug;
     }
 
     if (productCode && productCode !== existing.product_code) {
-      const { data: dupCode } = await supabase
-        .from("products")
-        .select("id")
-        .eq("product_code", productCode)
-        .neq("id", existing.id)
-        .single();
-
-      if (dupCode) {
-        return NextResponse.json(
-          { success: false, code: ERROR.DUP_CODE, field: "productCode" },
-          { status: 409 }
-        );
-      }
+      checkPromises.push(
+        (async () => {
+          const { data } = await supabase
+          .from("products")
+          .select("id")
+          .eq("product_code", productCode)
+          .neq("id", existing.id)
+          .single();
+          return data ? { type: "code", field: "productCode" } : null;
+        })()
+      );
       updates.product_code = productCode;
+    }
+
+    const checkResults = await Promise.all(checkPromises);
+    const slugError = checkResults.find((r) => r && r.type === "slug");
+    const codeError = checkResults.find((r) => r && r.type === "code");
+
+    if (slugError) {
+      return NextResponse.json(
+        { success: false, code: ERROR.DUP_SLUG, field: slugError.field },
+        { status: 409 }
+      );
+    }
+    if (codeError) {
+      return NextResponse.json(
+        { success: false, code: ERROR.DUP_CODE, field: codeError.field },
+        { status: 409 }
+      );
     }
 
     if (price) updates.price = Number(price);
@@ -183,23 +196,23 @@ export async function PUT(
     if (articleHtml !== undefined) updates.article_html = articleHtml || null;
     updates.is_article_enabled = isArticleEnabled;
 
-    // Handle images: kept + new uploads
+    // Handle images: kept + new uploads in parallel
     const finalImageUrls: string[] = [...keptImageUrls];
     const uploadProductCode = productCode || existing.product_code;
 
-    for (const image of newImages) {
-      if (image && image.size > 0) {
-        try {
-          const url = await uploadToCloudinary(image, uploadProductCode);
-          finalImageUrls.push(url);
-        } catch (err) {
-          console.error("❌ Image upload failed:", err);
-          return NextResponse.json(
-            { success: false, code: ERROR.UPLOAD_FAILED },
-            { status: 500 }
-          );
-        }
-      }
+    const uploadPromises = newImages
+      .filter((image) => image && image.size > 0)
+      .map((image) => uploadToCloudinary(image, uploadProductCode));
+
+    try {
+      const uploadedUrls = await Promise.all(uploadPromises);
+      finalImageUrls.push(...uploadedUrls);
+    } catch (err) {
+      console.error("❌ Image upload failed:", err);
+      return NextResponse.json(
+        { success: false, code: ERROR.UPLOAD_FAILED },
+        { status: 500 }
+      );
     }
 
     updates.image_urls = finalImageUrls;
@@ -261,6 +274,19 @@ export async function PUT(
 
     // Trigger production revalidation (when running on localhost)
     await revalidateProduction(updates.slug || slug);
+
+    // Warm up the new page by pre-fetching it (fire and forget)
+    // Only if slug changed
+    if (updates.slug && updates.slug !== slug) {
+      const newSlug = updates.slug;
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      fetch(`${baseUrl}/products/${newSlug}`, { cache: "no-store" })
+        .then(() => console.log(`✅ Warmed up page: /products/${newSlug}`))
+        .catch((err) =>
+          console.warn(`⚠️ Failed to warm up page: ${err.message}`)
+        );
+    }
 
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {
@@ -388,6 +414,19 @@ export async function PATCH(
 
     // Trigger production revalidation (when running on localhost)
     await revalidateProduction(updates.slug || slug);
+
+    // Warm up the new page by pre-fetching it (fire and forget)
+    // Only if slug changed
+    if (updates.slug && updates.slug !== slug) {
+      const newSlug = updates.slug;
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      fetch(`${baseUrl}/products/${newSlug}`, { cache: "no-store" })
+        .then(() => console.log(`✅ Warmed up page: /products/${newSlug}`))
+        .catch((err) =>
+          console.warn(`⚠️ Failed to warm up page: ${err.message}`)
+        );
+    }
 
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {

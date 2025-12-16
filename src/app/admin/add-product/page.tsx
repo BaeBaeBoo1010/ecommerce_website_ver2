@@ -577,19 +577,7 @@ export default function AddProductPage() {
       }
 
       toast.success("🎉 Đã thêm sản phẩm");
-      try {
-        const revalidateRes = await fetch("/api/revalidate", {
-          method: "POST",
-        });
-        const revalidateData = await revalidateRes.json();
-        if (revalidateData.success) {
-          console.log("✅ Revalidated toàn bộ cache ISR thành công!");
-        } else {
-          console.warn("⚠️ Revalidate thất bại:", revalidateData.error);
-        }
-      } catch (err) {
-        console.error("⚠️ Lỗi khi gọi API revalidate:", err);
-      }
+      // Revalidation is now handled by the server API logic
       resetForm();
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {

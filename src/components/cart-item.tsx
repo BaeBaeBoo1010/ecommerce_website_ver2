@@ -44,11 +44,11 @@ export function CartItem({
 
   const handleDecrease = () => {
     if (localQuantity > 1) {
-       const newVal = localQuantity - 1;
-       setLocalQuantity(newVal);
-       onUpdateQuantity(product.id, newVal);
+      const newVal = localQuantity - 1;
+      setLocalQuantity(newVal);
+      onUpdateQuantity(product.id, newVal);
     } else if (localQuantity === 1) {
-       setShowDeleteDialog(true);
+      setShowDeleteDialog(true);
     }
   };
 
@@ -71,35 +71,35 @@ export function CartItem({
 
     const parsed = parseInt(val, 10);
     if (!isNaN(parsed)) {
-       // Allow typing intermediate numbers, update parent if valid
-       if (parsed >= 1 && parsed <= 1000) {
-         setLocalQuantity(parsed);
-         onUpdateQuantity(product.id, parsed);
-       } else if (parsed < 1) {
-           // Don't update parent yet if invalid, just local? 
-           // ProductDetail logic clamps immediately on change: 
-           // "if (parsed >= min && parsed <= max) setQuantity(parsed); else if (< min) min; else > max"
-           // Let's copy THAT logic exactly.
-           setLocalQuantity(1);
-           onUpdateQuantity(product.id, 1);
-       } else if (parsed > 1000) {
-           setLocalQuantity(1000);
-           onUpdateQuantity(product.id, 1000);
-       }
+      // Allow typing intermediate numbers, update parent if valid
+      if (parsed >= 1 && parsed <= 1000) {
+        setLocalQuantity(parsed);
+        onUpdateQuantity(product.id, parsed);
+      } else if (parsed < 1) {
+        // Don't update parent yet if invalid, just local?
+        // ProductDetail logic clamps immediately on change:
+        // "if (parsed >= min && parsed <= max) setQuantity(parsed); else if (< min) min; else > max"
+        // Let's copy THAT logic exactly.
+        setLocalQuantity(1);
+        onUpdateQuantity(product.id, 1);
+      } else if (parsed > 1000) {
+        setLocalQuantity(1000);
+        onUpdateQuantity(product.id, 1000);
+      }
     }
   };
 
   const handleBlur = () => {
-      if (isNaN(localQuantity)) {
-          setLocalQuantity(1);
-          onUpdateQuantity(product.id, 1);
-      }
+    if (isNaN(localQuantity)) {
+      setLocalQuantity(1);
+      onUpdateQuantity(product.id, 1);
+    }
   };
 
   return (
     <>
       <div
-        className="group flex gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md hover:bg-gray-50 cursor-pointer items-start sm:items-center"
+        className="group flex cursor-pointer items-start gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:bg-gray-50 hover:shadow-md sm:items-center"
         onClick={() => router.push(`/products/${product.slug}`)}
       >
         <div onClick={(e) => e.stopPropagation()} className="self-center">
@@ -109,7 +109,7 @@ export function CartItem({
           />
         </div>
         {/* Image */}
-        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-100 sm:h-24 sm:w-24">
+        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-100 transition-all group-hover:ring-2 group-hover:ring-blue-500 sm:h-24 sm:w-24">
           <Image
             src={product.imageUrls[0]}
             alt={product.name}
@@ -119,12 +119,12 @@ export function CartItem({
         </div>
 
         {/* Info & Controls Wrapper */}
-        <div className="flex flex-1 flex-col justify-between gap-2 min-h-[5rem] sm:min-h-[6rem] sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex min-h-[5rem] flex-1 flex-col justify-between gap-2 sm:min-h-[6rem] sm:flex-row sm:items-center sm:gap-4">
           {/* Info */}
           <div className="flex flex-col gap-1">
             <Link
               href={`/products/${product.slug}`}
-              className="text-base font-medium text-gray-900 line-clamp-2 hover:text-blue-600 hover:underline group-hover:text-blue-600 group-hover:underline sm:text-lg"
+              className="line-clamp-2 text-base font-medium text-gray-900 transition-colors group-hover:text-blue-600 hover:text-blue-600 sm:text-lg"
               onClick={(e) => e.stopPropagation()}
             >
               {product.name}
@@ -189,7 +189,10 @@ export function CartItem({
         </div>
       </div>
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent showCloseButton={false} onClick={(e) => e.stopPropagation()}>
+        <DialogContent
+          showCloseButton={false}
+          onClick={(e) => e.stopPropagation()}
+        >
           <DialogHeader>
             <DialogTitle>Xác nhận xóa</DialogTitle>
             <DialogDescription>

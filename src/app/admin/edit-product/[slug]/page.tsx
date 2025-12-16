@@ -384,14 +384,16 @@ export default function EditProductPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { data: productsData = [] } = useSWR<Product[]>(
-    "/api/admin/products",
+  // Fetch specific product by slug
+  const { data: productResponse, isLoading: isLoadingProduct } = useSWR(
+    slug ? `/api/products/${slug}` : null,
     fetcher,
     {
-      revalidateOnMount: false,
+      revalidateOnMount: true,
       revalidateOnFocus: false,
     },
   );
+
   const { data: categories = [] } = useSWR<Category[]>(
     "/api/categories",
     fetcher,
@@ -413,18 +415,16 @@ export default function EditProductPage() {
   }, [activeImageId]);
 
   useEffect(() => {
-    if (!productsData || !slug) return;
+    if (isLoadingProduct || !productResponse) return;
 
-    // Find the product from cached list
-    const foundProduct = productsData.find((p: Product) => p.slug === slug);
-
-    if (!foundProduct) {
+    if (!productResponse.success || !productResponse.product) {
       toast.error("Sản phẩm không tồn tại");
       router.push("/admin/product-management");
       return;
     }
 
-    const pData = foundProduct;
+    const pData = productResponse.product;
+    setLoading(false); // Enable form
 
     setDescLength(pData.description?.length ?? 0);
 
@@ -483,7 +483,7 @@ export default function EditProductPage() {
       hasArticle: articleEnabled,
       articleContent: normalizeHtml(articleHtml),
     });
-  }, [productsData, slug, router]);
+  }, [productResponse, isLoadingProduct, router]);
 
   const normalizeHtml = (html: string): string => {
     if (!html) return "";
@@ -665,29 +665,11 @@ export default function EditProductPage() {
       return;
     }
 
-    // ✅ Kiểm tra trùng lặp tên sản phẩm và mã sản phẩm
-    const isDupName = productsData.some(
-      (p: Product) =>
-        p.slug !== product.slug &&
-        p.name.toLowerCase() === productData.name.toLowerCase(),
-    );
-    const isDupCode = productsData.some(
-      (p: Product) =>
-        p.slug !== product.slug &&
-        p.productCode?.toLowerCase() === productData.code.toLowerCase(),
-    );
+    // ✅ Server-side handles duplicate checks more reliably now.
+    // We removed the client-side check against the full list because we no longer
+    // fetch the full list (for performance reasons).
 
-    if (isDupName || isDupCode) {
-      const errors: Record<string, string> = {};
-      if (isDupName) errors.name = "Tên sản phẩm đã tồn tại";
-      if (isDupCode) errors.code = "Mã sản phẩm đã tồn tại";
-
-      setFieldError((prev) => ({ ...prev, ...errors }));
-      toast.error(
-        `${isDupName ? "Tên " : ""}${isDupName && isDupCode ? "và " : ""}${isDupCode ? "mã " : ""}sản phẩm đã tồn tại`,
-      );
-      return;
-    }
+    // (Optimization: Client-side duplicate check removed)
 
     const confirmUpdate = window.confirm(
       "Bạn có chắc chắn muốn cập nhật sản phẩm này không?",
@@ -747,19 +729,7 @@ export default function EditProductPage() {
       }
 
       toast.success("Sản phẩm đã được cập nhật");
-      try {
-        const revalidateRes = await fetch("/api/revalidate", {
-          method: "POST",
-        });
-        const revalidateData = await revalidateRes.json();
-        if (revalidateData.success) {
-          console.log("✅ Revalidated toàn bộ cache ISR thành công!");
-        } else {
-          console.warn("⚠️ Revalidate thất bại:", revalidateData.error);
-        }
-      } catch (err) {
-        console.error("⚠️ Lỗi khi gọi API revalidate:", err);
-      }
+      // Revalidation is now handled by the server API
       setHasChanges(false); // Reset to prevent browser "save" prompt
       router.push("/admin/product-management");
     } catch {
@@ -894,7 +864,7 @@ export default function EditProductPage() {
                 }
                 router.push("/admin/product-management");
               }}
-              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-400 hover:shadow-lg cursor-pointer"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-400 hover:shadow-lg"
             >
               <ArrowLeft className="h-4 w-4" />
               Về trang quản lý

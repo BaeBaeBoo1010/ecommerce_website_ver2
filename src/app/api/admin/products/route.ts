@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAllProductsAdmin } from "@/lib/product-service";
+import { getAllProductsAdminList } from "@/lib/product-service";
 import { requireAdmin } from "@/lib/auth-helpers";
 
 /**
@@ -13,7 +13,7 @@ export async function GET() {
   if (authError) return authError;
 
   try {
-    const products = await getAllProductsAdmin();
+    const products = await getAllProductsAdminList();
     return NextResponse.json(products);
   } catch (error) {
     console.error("Error fetching admin products:", error);

@@ -102,49 +102,65 @@ export async function POST(req: Request) {
 
     const slug = slugify(name);
 
-    // Check for duplicate slug
-    const { data: existingSlug } = await supabase
-      .from("products")
-      .select("id")
-      .eq("slug", slug)
-      .single();
+    // Parallelize duplicate checks
+    const checkPromises: Promise<{ type: string; field: string } | null>[] = [];
 
-    if (existingSlug) {
-      return NextResponse.json(
-        { success: false, code: ERROR.DUP_SLUG, field: "name" },
-        { status: 409 }
-      );
-    }
+    // Check for duplicate slug
+    checkPromises.push(
+      (async () => {
+         const { data } = await supabase
+          .from("products")
+          .select("id")
+          .eq("slug", slug)
+          .single();
+         return data ? { type: "slug", field: "name" } : null;
+      })()
+    );
 
     // Check for duplicate product code
-    const { data: existingCode } = await supabase
-      .from("products")
-      .select("id")
-      .eq("product_code", productCode)
-      .single();
+    checkPromises.push(
+      (async () => {
+         const { data } = await supabase
+          .from("products")
+          .select("id")
+          .eq("product_code", productCode)
+          .single();
+         return data ? { type: "code", field: "productCode" } : null;
+      })()
+    );
 
-    if (existingCode) {
+    const checkResults = await Promise.all(checkPromises);
+    const slugError = checkResults.find((r) => r && r.type === "slug");
+    const codeError = checkResults.find((r) => r && r.type === "code");
+
+    if (slugError) {
       return NextResponse.json(
-        { success: false, code: ERROR.DUP_CODE, field: "productCode" },
+        { success: false, code: ERROR.DUP_SLUG, field: slugError.field },
+        { status: 409 }
+      );
+    }
+    if (codeError) {
+      return NextResponse.json(
+        { success: false, code: ERROR.DUP_CODE, field: codeError.field },
         { status: 409 }
       );
     }
 
-    // Upload images to Cloudinary
+    // Upload images to Cloudinary in parallel
     const imageUrls: string[] = [];
-    for (const image of images) {
-      if (image && image.size > 0) {
-        try {
-          const url = await uploadToCloudinary(image, productCode);
-          imageUrls.push(url);
-        } catch (err) {
-          console.error("❌ Image upload failed:", err);
-          return NextResponse.json(
-            { success: false, code: ERROR.UPLOAD_FAILED },
-            { status: 500 }
-          );
-        }
-      }
+    const uploadPromises = images
+      .filter((image) => image && image.size > 0)
+      .map((image) => uploadToCloudinary(image, productCode));
+
+    try {
+      const uploadedUrls = await Promise.all(uploadPromises);
+      imageUrls.push(...uploadedUrls);
+    } catch (err) {
+      console.error("❌ Image upload failed:", err);
+      return NextResponse.json(
+        { success: false, code: ERROR.UPLOAD_FAILED },
+        { status: 500 }
+      );
     }
 
     // Insert product into Supabase
@@ -181,6 +197,13 @@ export async function POST(req: Request) {
 
     // Trigger production revalidation (when running on localhost)
     await revalidateProduction(slug);
+
+    // Warm up the new page by pre-fetching it (fire and forget)
+    // This ensures the new product page is generated before user access
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    fetch(`${baseUrl}/products/${slug}`, { cache: "no-store" })
+      .then(() => console.log(`✅ Warmed up new product page: /products/${slug}`))
+      .catch((err) => console.warn(`⚠️ Failed to warm up page: ${err.message}`));
 
     return NextResponse.json({ success: true, product: created }, { status: 201 });
   } catch (err) {
