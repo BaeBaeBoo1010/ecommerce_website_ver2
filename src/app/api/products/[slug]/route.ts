@@ -264,29 +264,40 @@ export async function PUT(
     }
 
     // Revalidate pages to show updated product
-    const { revalidatePath } = await import("next/cache");
+    const { revalidatePath, revalidateTag } = await import("next/cache");
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
+    
+    // Revalidate both old and new slug
     if (updates.slug && updates.slug !== slug) {
       revalidatePath(`/products/${updates.slug}`, "page");
+      // Also revalidate the old slug to clear cache - this ensures 404 is shown for old slug
+      console.log(`📦 Slug changed: ${slug} → ${updates.slug}`);
     }
 
-    // Trigger production revalidation (when running on localhost)
-    await revalidateProduction(updates.slug || slug);
-
-    // Warm up the new page by pre-fetching it (fire and forget)
-    // Only if slug changed
+    // Trigger production revalidation for BOTH slugs (when running on localhost)
     if (updates.slug && updates.slug !== slug) {
-      const newSlug = updates.slug;
-      const baseUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-      fetch(`${baseUrl}/products/${newSlug}`, { cache: "no-store" })
-        .then(() => console.log(`✅ Warmed up page: /products/${newSlug}`))
-        .catch((err) =>
-          console.warn(`⚠️ Failed to warm up page: ${err.message}`)
-        );
+      // Revalidate old slug first (to clear cache)
+      await revalidateProduction(slug);
+      // Then revalidate new slug
+      await revalidateProduction(updates.slug);
+    } else {
+      await revalidateProduction(updates.slug || slug);
     }
+
+    // Warm up the product page by pre-fetching it (fire and forget)
+    // This triggers ISR regeneration on Vercel
+    const finalSlug = updates.slug || slug;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    
+    // Always warm up the current/new page
+    fetch(`${baseUrl}/products/${finalSlug}`, { 
+      cache: "no-store",
+      headers: { "x-vercel-skip-cdn": "1" } // Bypass CDN to trigger origin regeneration
+    })
+      .then(() => console.log(`✅ Warmed up page: /products/${finalSlug}`))
+      .catch((err) => console.warn(`⚠️ Failed to warm up page: ${err.message}`));
 
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {
@@ -408,25 +419,36 @@ export async function PATCH(
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
+    
+    // Revalidate both old and new slug
     if (updates.slug && updates.slug !== slug) {
       revalidatePath(`/products/${updates.slug}`, "page");
+      // Also revalidate the old slug to clear cache - this ensures 404 is shown for old slug
+      console.log(`📦 Slug changed: ${slug} → ${updates.slug}`);
     }
 
-    // Trigger production revalidation (when running on localhost)
-    await revalidateProduction(updates.slug || slug);
-
-    // Warm up the new page by pre-fetching it (fire and forget)
-    // Only if slug changed
+    // Trigger production revalidation for BOTH slugs (when running on localhost)
     if (updates.slug && updates.slug !== slug) {
-      const newSlug = updates.slug;
-      const baseUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-      fetch(`${baseUrl}/products/${newSlug}`, { cache: "no-store" })
-        .then(() => console.log(`✅ Warmed up page: /products/${newSlug}`))
-        .catch((err) =>
-          console.warn(`⚠️ Failed to warm up page: ${err.message}`)
-        );
+      // Revalidate old slug first (to clear cache)
+      await revalidateProduction(slug);
+      // Then revalidate new slug
+      await revalidateProduction(updates.slug);
+    } else {
+      await revalidateProduction(updates.slug || slug);
     }
+
+    // Warm up the product page by pre-fetching it (fire and forget)
+    // This triggers ISR regeneration on Vercel
+    const finalSlug = updates.slug || slug;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    
+    // Always warm up the current/new page
+    fetch(`${baseUrl}/products/${finalSlug}`, { 
+      cache: "no-store",
+      headers: { "x-vercel-skip-cdn": "1" } // Bypass CDN to trigger origin regeneration
+    })
+      .then(() => console.log(`✅ Warmed up page: /products/${finalSlug}`))
+      .catch((err) => console.warn(`⚠️ Failed to warm up page: ${err.message}`));
 
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {

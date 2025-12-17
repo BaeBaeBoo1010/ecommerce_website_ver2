@@ -5,14 +5,13 @@ import { notFound } from "next/navigation";
 import ProductDetailClient from "./product-detail-client";
 import Script from "next/script";
 
-// ISR: Revalidate every 60 seconds
-export const revalidate = 60;
+// ISR: Revalidate every 30 seconds for faster cache updates
+export const revalidate = 30;
 
 // Allow dynamic page generation for new products not pre-generated at build time
 export const dynamicParams = true;
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -20,45 +19,55 @@ type Props = {
 
 // Fetch product data from database
 async function fetchProduct(slug: string) {
-  const { data, error } = await supabase
-    .from("products")
-    .select(`
-      id,
-      name,
-      slug,
-      product_code,
-      price,
-      description,
-      image_urls,
-      article_html,
-      is_article_enabled,
-      category:categories (
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select(
+        `
         id,
         name,
-        slug
+        slug,
+        product_code,
+        price,
+        description,
+        image_urls,
+        article_html,
+        is_article_enabled,
+        category:categories (
+          id,
+          name,
+          slug
+        )
+      `,
       )
-    `)
-    .eq("slug", slug)
-    .single();
+      .eq("slug", slug)
+      .single();
 
-  if (error || !data) return null;
+    if (error || !data) {
+      console.log(`Product not found for slug: ${slug}`);
+      return null;
+    }
 
-  return {
-    id: data.id,
-    name: data.name,
-    slug: data.slug,
-    productCode: data.product_code,
-    price: data.price ?? 0,
-    description: data.description,
-    imageUrls: data.image_urls || [],
-    articleHtml: data.article_html,
-    isArticleEnabled: data.is_article_enabled,
-    category: data.category
-      ? Array.isArray(data.category)
-        ? data.category[0]
-        : data.category
-      : { id: "", name: "", slug: "" },
-  };
+    return {
+      id: data.id,
+      name: data.name,
+      slug: data.slug,
+      productCode: data.product_code,
+      price: data.price ?? 0,
+      description: data.description,
+      imageUrls: data.image_urls || [],
+      articleHtml: data.article_html,
+      isArticleEnabled: data.is_article_enabled,
+      category: data.category
+        ? Array.isArray(data.category)
+          ? data.category[0]
+          : data.category
+        : { id: "", name: "", slug: "" },
+    };
+  } catch (err) {
+    console.error(`Error fetching product for slug ${slug}:`, err);
+    return null;
+  }
 }
 
 // Cached version of getProduct - revalidates every 60 seconds
@@ -69,15 +78,12 @@ async function getProduct(slug: string) {
 
 // Pre-generate all product pages at build time
 export async function generateStaticParams() {
-  const { data: products } = await supabase
-    .from("products")
-    .select("slug");
+  const { data: products } = await supabase.from("products").select("slug");
 
   return (products || []).map((product) => ({
     slug: product.slug,
   }));
 }
-
 
 // Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -147,7 +153,8 @@ export default async function ProductDetailPage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
-    description: product.description || `${product.name} - Thiết bị điện chất lượng cao`,
+    description:
+      product.description || `${product.name} - Thiết bị điện chất lượng cao`,
     sku: product.productCode,
     image: product.imageUrls?.[0],
     url: `${siteUrl}/products/${product.slug}`,
