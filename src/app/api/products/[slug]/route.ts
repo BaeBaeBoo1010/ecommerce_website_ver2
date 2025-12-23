@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase";
-import { slugify } from "@/lib/slugify";
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { revalidateProduction } from "@/lib/revalidate-production";
@@ -140,22 +140,7 @@ export async function PUT(
     const checkPromises: Promise<{ type: string; field: string } | null>[] = [];
 
     if (name) {
-      const newSlug = slugify(name);
-      if (newSlug !== existing.slug) {
-        checkPromises.push(
-          (async () => {
-             const { data } = await supabase
-              .from("products")
-              .select("id")
-              .eq("slug", newSlug)
-              .neq("id", existing.id)
-              .single();
-             return data ? { type: "slug", field: "name" } : null;
-          })()
-        );
-        updates.name = name;
-        updates.slug = newSlug;
-      }
+      updates.name = name;
     }
 
     if (productCode && productCode !== existing.product_code) {
@@ -174,15 +159,8 @@ export async function PUT(
     }
 
     const checkResults = await Promise.all(checkPromises);
-    const slugError = checkResults.find((r) => r && r.type === "slug");
     const codeError = checkResults.find((r) => r && r.type === "code");
 
-    if (slugError) {
-      return NextResponse.json(
-        { success: false, code: ERROR.DUP_SLUG, field: slugError.field },
-        { status: 409 }
-      );
-    }
     if (codeError) {
       return NextResponse.json(
         { success: false, code: ERROR.DUP_CODE, field: codeError.field },
@@ -263,32 +241,16 @@ export async function PUT(
       });
     }
 
-    // Revalidate pages to show updated product
-    const { revalidatePath, revalidateTag } = await import("next/cache");
+    // Revalidate BOTH slug and layout/list pages
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
     
-    // Revalidate both old and new slug
-    if (updates.slug && updates.slug !== slug) {
-      revalidatePath(`/products/${updates.slug}`, "page");
-      // Also revalidate the old slug to clear cache - this ensures 404 is shown for old slug
-      console.log(`📦 Slug changed: ${slug} → ${updates.slug}`);
-    }
+    // Trigger production revalidation
+    await revalidateProduction(slug);
 
-    // Trigger production revalidation for BOTH slugs (when running on localhost)
-    if (updates.slug && updates.slug !== slug) {
-      // Revalidate old slug first (to clear cache)
-      await revalidateProduction(slug);
-      // Then revalidate new slug
-      await revalidateProduction(updates.slug);
-    } else {
-      await revalidateProduction(updates.slug || slug);
-    }
-
-    // Warm up the product page by pre-fetching it (fire and forget)
-    // This triggers ISR regeneration on Vercel
-    const finalSlug = updates.slug || slug;
+    // Warm up the product page
+    const finalSlug = slug;
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     
     // Always warm up the current/new page
@@ -348,27 +310,7 @@ export async function PATCH(
     const updates: Record<string, any> = {};
 
     if (name !== undefined) {
-      const newSlug = slugify(name.trim());
-
-      // Check for duplicate slug if changed
-      if (newSlug !== existing.slug) {
-        const { data: dupSlug } = await supabase
-          .from("products")
-          .select("id")
-          .eq("slug", newSlug)
-          .neq("id", existing.id)
-          .single();
-
-        if (dupSlug) {
-          return NextResponse.json(
-            { success: false, code: ERROR.DUP_SLUG, field: "name" },
-            { status: 409 }
-          );
-        }
-      }
-
       updates.name = name.trim();
-      updates.slug = newSlug;
     }
 
     if (productCode !== undefined) {
@@ -415,31 +357,15 @@ export async function PATCH(
     }
 
     // Revalidate pages to show updated product
-    const { revalidatePath } = await import("next/cache");
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
     
-    // Revalidate both old and new slug
-    if (updates.slug && updates.slug !== slug) {
-      revalidatePath(`/products/${updates.slug}`, "page");
-      // Also revalidate the old slug to clear cache - this ensures 404 is shown for old slug
-      console.log(`📦 Slug changed: ${slug} → ${updates.slug}`);
-    }
+    // Trigger production revalidation
+    await revalidateProduction(slug);
 
-    // Trigger production revalidation for BOTH slugs (when running on localhost)
-    if (updates.slug && updates.slug !== slug) {
-      // Revalidate old slug first (to clear cache)
-      await revalidateProduction(slug);
-      // Then revalidate new slug
-      await revalidateProduction(updates.slug);
-    } else {
-      await revalidateProduction(updates.slug || slug);
-    }
-
-    // Warm up the product page by pre-fetching it (fire and forget)
-    // This triggers ISR regeneration on Vercel
-    const finalSlug = updates.slug || slug;
+    // Warm up the product page
+    const finalSlug = slug;
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     
     // Always warm up the current/new page
@@ -511,7 +437,6 @@ export async function DELETE(
     }
 
     // Revalidate pages after deletion
-    const { revalidatePath } = await import("next/cache");
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
