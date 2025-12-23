@@ -93,9 +93,10 @@ export async function PATCH(
       }
 
       // Revalidate pages after category update
-      const { revalidatePath } = await import("next/cache");
+      const { revalidatePath, revalidateTag } = await import("next/cache");
       revalidatePath("/", "layout");
       revalidatePath("/products", "page");
+      revalidateTag("categories", "max");
 
       return NextResponse.json({ success: true, category: updated });
     }
@@ -145,9 +146,10 @@ export async function DELETE(
     }
 
     // Revalidate pages after category deletion
-    const { revalidatePath } = await import("next/cache");
+    const { revalidatePath, revalidateTag } = await import("next/cache");
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
+    revalidateTag("categories", "max");
 
     return NextResponse.json({ success: true });
   } catch (err) {

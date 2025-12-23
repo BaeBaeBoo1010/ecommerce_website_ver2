@@ -98,9 +98,10 @@ export async function POST(req: Request) {
     }
 
     // Revalidate pages after category creation
-    const { revalidatePath } = await import("next/cache");
+    const { revalidatePath, revalidateTag } = await import("next/cache");
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
+    revalidateTag("categories", "max");
 
     return NextResponse.json(
       { success: true, category: created },

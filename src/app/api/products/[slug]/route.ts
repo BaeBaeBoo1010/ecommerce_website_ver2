@@ -245,6 +245,7 @@ export async function PUT(
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
+    revalidatePath(`/admin/edit-product/${slug}`, "page");
     
     // Invalidate Data Cache via Tags
     revalidateTag(`product:${slug}`, 'max');
@@ -365,6 +366,7 @@ export async function PATCH(
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
+    revalidatePath(`/admin/edit-product/${slug}`, "page");
 
     // Invalidate Data Cache via Tags
     revalidateTag(`product:${slug}`, 'max');
@@ -450,6 +452,7 @@ export async function DELETE(
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
+    revalidatePath(`/admin/edit-product/${slug}`, "page");
 
     // Invalidate Data Cache via Tags
     revalidateTag(`product:${slug}`, 'max');

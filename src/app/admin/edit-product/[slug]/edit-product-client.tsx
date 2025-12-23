@@ -701,9 +701,14 @@ export default function EditProductClient({
       }
 
       toast.success("Sản phẩm đã được cập nhật");
-      // Revalidation is now handled by the server API
-      setHasChanges(false); // Reset to prevent browser "save" prompt
-      router.push("/admin/product-management");
+      setHasChanges(false);
+
+      router.refresh(); // Refresh client cache
+
+      // Delay navigation slightly to let the user see the success message
+      setTimeout(() => {
+        router.push("/admin/product-management");
+      }, 500);
     } catch {
       toast.error("Lỗi hệ thống, vui lòng thử lại sau.");
     } finally {
