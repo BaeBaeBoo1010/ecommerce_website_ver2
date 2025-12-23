@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
 import { requireAdmin } from "@/lib/auth-helpers";
@@ -246,6 +246,10 @@ export async function PUT(
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
     
+    // Invalidate Data Cache via Tags
+    revalidateTag(`product:${slug}`, 'max');
+    revalidateTag('products', 'max');
+    
     // Trigger production revalidation
     await revalidateProduction(slug);
 
@@ -361,6 +365,10 @@ export async function PATCH(
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
+
+    // Invalidate Data Cache via Tags
+    revalidateTag(`product:${slug}`, 'max');
+    revalidateTag('products', 'max');
     
     // Trigger production revalidation
     await revalidateProduction(slug);
@@ -442,6 +450,10 @@ export async function DELETE(
     revalidatePath("/", "layout");
     revalidatePath("/products", "page");
     revalidatePath(`/products/${slug}`, "page");
+
+    // Invalidate Data Cache via Tags
+    revalidateTag(`product:${slug}`, 'max');
+    revalidateTag('products', 'max');
 
     // Trigger production revalidation (when running on localhost)
     await revalidateProduction();

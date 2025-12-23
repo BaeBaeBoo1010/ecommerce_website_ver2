@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "./product-detail-client";
 import Script from "next/script";
@@ -20,7 +21,27 @@ type Props = {
 // Fetch product data from database
 async function fetchProduct(slug: string) {
   try {
-    const { data, error } = await supabase
+    // Create a local client to force fresh data fetching
+    // This allows us to bypass the Next.js Data Cache for this specific request
+    // while keeping the Page Cache (ISR) active via `export const revalidate = 30`
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+    // Using a fresh client with specific fetch options
+    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        fetch: (url: any, options: any) => {
+          return fetch(url, {
+            ...options,
+            next: {
+              tags: [`product:${slug}`, "products"], // Tag for specific product and general products list
+            },
+          });
+        },
+      },
+    });
+
+    const { data, error } = await supabaseClient
       .from("products")
       .select(
         `

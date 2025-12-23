@@ -9,6 +9,7 @@ import AppToaster from "@/components/app-toaster";
 import ScrollToTop from "@/components/scroll-to-top";
 import Providers from "./providers";
 import "./globals.css";
+import NextTopLoader from "nextjs-toploader";
 import Script from "next/script";
 
 // Dynamic import Footer for better initial load
@@ -32,8 +33,15 @@ export const metadata: Metadata = {
     default: siteName,
     template: `%s | ${siteName}`,
   },
-  description: "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp. Sản phẩm chất lượng cao, giá tốt nhất thị trường.",
-  keywords: ["thiết bị điện", "thiết bị thông minh", "smart home", "điện dân dụng", "thiết bị công nghiệp"],
+  description:
+    "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp. Sản phẩm chất lượng cao, giá tốt nhất thị trường.",
+  keywords: [
+    "thiết bị điện",
+    "thiết bị thông minh",
+    "smart home",
+    "điện dân dụng",
+    "thiết bị công nghiệp",
+  ],
   authors: [{ name: siteName }],
   creator: siteName,
   publisher: siteName,
@@ -48,7 +56,8 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: siteName,
     title: siteName,
-    description: "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp. Sản phẩm chất lượng cao, giá tốt nhất thị trường.",
+    description:
+      "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp. Sản phẩm chất lượng cao, giá tốt nhất thị trường.",
     images: [
       {
         url: `${siteUrl}/images/logo.webp`,
@@ -61,7 +70,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: siteName,
-    description: "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp.",
+    description:
+      "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp.",
     images: [`${siteUrl}/images/logo.webp`],
   },
   robots: {
@@ -106,7 +116,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://res.cloudinary.com" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
-      <body className="min-h-screen flex flex-col">
+      <body className="flex min-h-screen flex-col">
         <Script
           id="organization-schema"
           type="application/ld+json"
@@ -117,7 +127,8 @@ export default async function RootLayout({
               name: siteName,
               url: siteUrl,
               logo: `${siteUrl}/images/logo.webp`,
-              description: "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp",
+              description:
+                "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp",
               sameAs: [],
             }),
           }}
@@ -143,12 +154,11 @@ export default async function RootLayout({
           }}
         />
         <Providers>
+          <NextTopLoader showSpinner={false} color="#2563EB" />
           <Header />
           <AppToaster />
           <ScrollToTop />
-          <main className="flex-1">
-            {children}
-          </main>
+          <main className="flex-1">{children}</main>
           <Footer />
         </Providers>
       </body>
