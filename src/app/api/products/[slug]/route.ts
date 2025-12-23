@@ -251,7 +251,8 @@ export async function PUT(
 
     // Warm up the product page
     const finalSlug = slug;
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    // Derive base URL from request origin to ensure we revalidate the correct server (local vs production)
+    const baseUrl = req.nextUrl.origin;
     
     // Always warm up the current/new page
     fetch(`${baseUrl}/products/${finalSlug}`, { 
@@ -366,7 +367,8 @@ export async function PATCH(
 
     // Warm up the product page
     const finalSlug = slug;
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    // Derive base URL from request origin to ensure we revalidate the correct server (local vs production)
+    const baseUrl = req.nextUrl.origin;
     
     // Always warm up the current/new page
     fetch(`${baseUrl}/products/${finalSlug}`, { 
