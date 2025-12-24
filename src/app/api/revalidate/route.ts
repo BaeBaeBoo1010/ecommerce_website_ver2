@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth-helpers";
 
 const REVALIDATION_SECRET = process.env.REVALIDATION_SECRET;
@@ -37,7 +37,12 @@ export async function POST(req: NextRequest) {
     // If specific product slug provided, revalidate that page
     if (slug) {
       revalidatePath(`/products/${slug}`, "page");
+      // Also invalidate Data Cache for this product
+      revalidateTag(`product:${slug}`, 'max');
     }
+    
+    // Always invalidate the general products list cache
+    revalidateTag("products", 'max');
 
     console.log("✅ Revalidated paths:", slug ? `including /products/${slug}` : "all main paths");
 
