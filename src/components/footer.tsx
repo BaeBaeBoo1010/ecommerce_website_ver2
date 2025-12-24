@@ -1,18 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { Mail, MapPin, Phone, Facebook, MessageCircle, ChevronRight } from "lucide-react";
+import {
+  Mail,
+  MapPin,
+  Phone,
+  Facebook,
+  MessageCircle,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LazyMap from "@/components/lazy-map";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const pathname = usePathname();
+
+  if (pathname === "/cart") return null;
 
   return (
-    <footer className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-300">
+    <footer className="relative hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-300 lg:block">
       {/* Decorative top wave */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+      <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
 
       <div className="mx-auto max-w-screen-xl px-4 pt-12 pb-8">
         {/* Main Grid */}
@@ -35,31 +46,31 @@ export default function Footer() {
               </div>
             </div>
             <p className="mb-4 text-sm leading-relaxed text-gray-400">
-              Chuyên cung cấp thiết bị điện thông minh, công tắc cảm ứng, hệ thống điều khiển từ xa cho ngôi nhà hiện đại.
+              Chuyên cung cấp thiết bị điện thông minh, công tắc cảm ứng, hệ
+              thống điều khiển từ xa cho ngôi nhà hiện đại.
             </p>
-            <p className="text-sm italic text-gray-500">
+            <p className="text-sm text-gray-500 italic">
               ✨ Automate your house
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
+            <h4 className="mb-4 text-sm font-semibold tracking-wider text-white uppercase">
               Điều hướng
             </h4>
             <ul className="space-y-2">
               {[
                 { href: "/", label: "Trang chủ" },
                 { href: "/products", label: "Sản phẩm" },
-                { href: "/introduction", label: "Giới thiệu" },
-                { href: "/contact", label: "Liên hệ" },
+                { href: "/store-info", label: "Cửa hàng" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
                     className="group flex items-center gap-1 text-sm text-gray-400 transition-colors hover:text-white"
                   >
-                    <ChevronRight className="h-3 w-3 opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-1" />
+                    <ChevronRight className="h-3 w-3 opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
                     {link.label}
                   </Link>
                 </li>
@@ -69,7 +80,7 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div>
-            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
+            <h4 className="mb-4 text-sm font-semibold tracking-wider text-white uppercase">
               Liên hệ với chúng tôi
             </h4>
             <ul className="space-y-3">
@@ -106,13 +117,15 @@ export default function Footer() {
 
             {/* Social Links */}
             <div className="mt-6">
-              <p className="mb-3 text-sm font-medium text-white">Theo dõi chúng tôi</p>
+              <p className="mb-3 text-sm font-medium text-white">
+                Theo dõi chúng tôi
+              </p>
               <div className="flex gap-2">
                 <a
                   href="https://facebook.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-700/50 text-gray-400 transition-all hover:bg-blue-600 hover:text-white hover:scale-110"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-700/50 text-gray-400 transition-all hover:scale-110 hover:bg-blue-600 hover:text-white"
                 >
                   <Facebook className="h-4 w-4" />
                 </a>
@@ -120,7 +133,7 @@ export default function Footer() {
                   href="https://zalo.me"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-700/50 text-gray-400 transition-all hover:bg-blue-500 hover:text-white hover:scale-110"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-700/50 text-gray-400 transition-all hover:scale-110 hover:bg-blue-500 hover:text-white"
                 >
                   <MessageCircle className="h-4 w-4" />
                 </a>
@@ -130,7 +143,7 @@ export default function Footer() {
 
           {/* Map */}
           <div className="sm:col-span-2 lg:col-span-2">
-            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
+            <h4 className="mb-4 text-sm font-semibold tracking-wider text-white uppercase">
               Vị trí cửa hàng
             </h4>
             <div className="overflow-hidden rounded-xl border border-gray-700 shadow-lg">
@@ -164,7 +177,8 @@ export default function Footer() {
         {/* Bottom Section */}
         <div className="flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
           <p className="text-xs text-gray-500">
-            © {currentYear} <span className="text-gray-400">Quang Minh</span>. All rights reserved.
+            © {currentYear} <span className="text-gray-400">Quang Minh</span>.
+            All rights reserved.
           </p>
           <div className="flex flex-wrap justify-center gap-4 text-xs text-gray-500">
             <Link href="/" className="transition-colors hover:text-white">

@@ -737,7 +737,7 @@ export default function ProductDetail({ product }: { product: Product }) {
       </div>
 
       {/* Nút hành động - mobile */}
-      <div className="fixed right-0 bottom-0 left-0 z-10 flex items-center justify-between gap-2 bg-white p-4 shadow-md md:hidden">
+      <div className="fixed right-0 bottom-0 left-0 z-50 box-content flex h-16 items-center justify-between gap-2 border-t border-gray-200/70 bg-white/80 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden dark:border-neutral-700/70 dark:bg-neutral-900/70">
         <button
           onClick={() => {
             setPendingAction("add");

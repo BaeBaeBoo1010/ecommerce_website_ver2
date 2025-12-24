@@ -8,9 +8,16 @@ import { useState, useMemo, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
 import { CartItem } from "@/components/cart-item";
+import { getFreshCartProducts } from "@/app/actions/cart";
 
 export default function CartPage() {
-  const { items, updateQuantity, removeFromCart } = useCart();
+  const {
+    items,
+    updateQuantity,
+    removeFromCart,
+    refreshCartData,
+    isLoaded: isCartLoaded,
+  } = useCart();
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
   const router = useRouter();
@@ -33,6 +40,23 @@ export default function CartPage() {
       setIsLoaded(true);
     }
   }, []);
+
+  // Validate and refresh cart data from server (Dynamic + Cached)
+  useEffect(() => {
+    const validateCart = async () => {
+      if (isCartLoaded && items.length > 0) {
+        const ids = items.map((i) => i.product.id);
+        // Server Action: Uses unstable_cache w/ tags ["products"]
+        try {
+          const freshProducts = await getFreshCartProducts(ids);
+          refreshCartData(freshProducts);
+        } catch (err) {
+          console.error("Failed to validate cart:", err);
+        }
+      }
+    };
+    validateCart();
+  }, [isCartLoaded, items.length, refreshCartData]);
 
   // Save selected items to localStorage whenever they change
   useEffect(() => {
@@ -99,7 +123,9 @@ export default function CartPage() {
   return (
     <>
       <div className="mx-auto max-w-7xl px-4 py-2 pb-24 sm:py-8 sm:pb-8">
-        <h1 className="mb-4 text-2xl font-bold sm:mb-8 sm:text-3xl">Giỏ hàng ({items.length})</h1>
+        <h1 className="mb-4 text-2xl font-bold sm:mb-8 sm:text-3xl">
+          Giỏ hàng ({items.length})
+        </h1>
 
         <div className="flex flex-col gap-8 lg:flex-row">
           {/* Cart Items List */}
@@ -107,7 +133,9 @@ export default function CartPage() {
             {/* Header row with Select All - hidden on mobile */}
             <div className="hidden items-center gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:flex">
               <Checkbox
-                checked={items.length > 0 && selectedItems.size === items.length}
+                checked={
+                  items.length > 0 && selectedItems.size === items.length
+                }
                 onClick={toggleSelectAll}
               />
               <span className="font-medium text-gray-700">
@@ -129,7 +157,9 @@ export default function CartPage() {
 
           {/* Summary - hidden on mobile */}
           <div className="hidden h-fit w-full rounded-lg border border-gray-200 bg-gray-50 p-4 sm:block sm:p-6 lg:w-96">
-            <h2 className="mb-4 text-lg font-bold sm:text-xl">Tổng quan đơn hàng</h2>
+            <h2 className="mb-4 text-lg font-bold sm:text-xl">
+              Tổng quan đơn hàng
+            </h2>
 
             <div className="mt-4 flex justify-between text-base font-bold sm:text-lg">
               <span>Tạm tính</span>
@@ -145,7 +175,7 @@ export default function CartPage() {
             >
               Mua hàng ({selectedItems.size}) <ArrowRight size={20} />
             </Button>
-            
+
             <p className="mt-4 text-center text-xs text-gray-500">
               Giá đã bao gồm VAT. Phí vận chuyển sẽ được tính khi mua hàng.
             </p>

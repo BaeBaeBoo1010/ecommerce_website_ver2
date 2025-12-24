@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Menu, ShoppingCart, User, Loader2 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { Category } from "@/types/product";
+import { cn } from "@/lib/utils";
 
 import SearchCommand from "./search-command";
 import MobileSidebar from "./sidebar";
@@ -28,6 +29,7 @@ import { slugify } from "@/lib/slugify";
 export default function Header() {
   const { data: session, status } = useSession();
   const isAdmin = session?.user?.role === "admin";
+  const pathname = usePathname();
   const router = useRouter();
 
   const { totalItems: cartCount } = useCart();
@@ -75,39 +77,61 @@ export default function Header() {
     };
   }, []);
 
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // Show header if scrolling up or at the top
+      if (currentScrollY < lastScrollY || currentScrollY < 50) {
+        setIsVisible(true);
+      } else if (currentScrollY > lastScrollY && currentScrollY > 50) {
+        // Hide header if scrolling down and not at the top
+        setIsVisible(false);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   return (
     <header
       id="header"
-      className="sticky top-0 z-50 border-b border-gray-200/70 bg-white/80 backdrop-blur-md transition-colors dark:border-neutral-700/70 dark:bg-neutral-900/70"
+      className={`fixed top-0 right-0 left-0 z-50 w-full border-b border-gray-200/70 bg-white/80 backdrop-blur-md transition-all duration-300 dark:border-neutral-700/70 dark:bg-neutral-900/70 ${
+        isVisible ? "translate-y-0" : "-translate-y-full lg:translate-y-0"
+      }`}
     >
-      <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-2 px-2 sm:h-20 sm:px-4 lg:h-24 lg:px-6">
-        {/* LEFT: Logo + Mobile Sidebar */}
+      <div className="mx-auto flex h-14 max-w-screen-2xl items-center justify-between gap-2 px-2 sm:h-16 sm:px-4 lg:h-20 lg:px-6">
+        {/* LEFT: Logo */}
         <div className="flex items-center gap-2 sm:gap-4">
-          <MobileSidebar />
+          {/* MobileSidebar removed */}
 
           <Link
             href="/"
             aria-label="Trang chủ"
-            className="flex shrink-0 items-center gap-2"
+            className="flex shrink-0 items-center gap-2 transition-transform duration-300 hover:scale-95"
           >
             <Image
               src="/images/logo.webp"
               alt="Logo"
-              width={64}
-              height={64}
+              width={62}
+              height={62}
               className="hidden text-transparent xl:inline"
               priority
             />
             <div className="flex flex-col leading-tight">
-              <span className="text-xs text-gray-500 sm:text-sm">
+              <span className="text-[10px] text-gray-500 sm:text-sm">
                 Thiết bị cảm ứng
               </span>
               <span className="text-lg font-bold whitespace-nowrap text-gray-700 sm:text-2xl dark:text-white">
                 Quang&nbsp;Minh
               </span>
-              <span className="text-[10px] text-gray-400 italic sm:text-xs">
+              <span className="text-[9px] text-gray-400 italic sm:text-xs">
                 Automate your house
               </span>
             </div>
@@ -117,7 +141,7 @@ export default function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="hidden cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200 active:bg-gray-300 lg:flex dark:border-neutral-600 dark:bg-neutral-800 dark:text-gray-100 dark:hover:bg-neutral-700"
+                className="hidden cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-[16px] font-medium text-gray-700 transition hover:bg-gray-200 active:bg-gray-300 lg:flex dark:border-neutral-600 dark:bg-neutral-800 dark:text-gray-100 dark:hover:bg-neutral-700"
                 aria-label="Danh mục sản phẩm"
               >
                 <Menu size={18} />
@@ -129,42 +153,63 @@ export default function Header() {
                 <DropdownMenuItem disabled className="flex items-center gap-2">
                   <Loader2 className="animate-spin" size={16} /> Đang tải…
                 </DropdownMenuItem>
-              ) : categories.filter((c: any) => c.productCount > 0).length === 0 ? (
+              ) : categories.filter((c: any) => c.productCount > 0).length ===
+                0 ? (
                 <DropdownMenuItem disabled>Không có danh mục</DropdownMenuItem>
               ) : (
                 categories
                   .filter((c: any) => c.productCount > 0)
                   .map((cat) => (
-                  <DropdownMenuItem key={slugify(cat.name)} asChild>
-                    <Link href={`/products?category=${slugify(cat.name)}&page=1`}>
-                      {cat.name}
-                    </Link>
-                  </DropdownMenuItem>
-                ))
+                    <DropdownMenuItem key={slugify(cat.name)} asChild>
+                      <Link
+                        href={`/products?category=${slugify(cat.name)}&page=1`}
+                      >
+                        {cat.name}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))
               )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
         {/* MIDDLE: Nav links & Search (hidden < lg for links) */}
-        <div className="flex flex-1 items-center gap-3 overflow-hidden">
+        <div className="flex h-full flex-1 items-center gap-3 overflow-hidden">
           {/* Nav links */}
-          <nav className="hidden shrink-0 items-center gap-2 lg:flex">
+          <nav className="hidden h-full shrink-0 items-center gap-1 lg:flex">
             {[
               { href: "/", label: "Trang chủ" },
               { href: "/products", label: "Sản phẩm" },
-              { href: "/introduction", label: "Giới thiệu" },
-              { href: "/contact", label: "Liên hệ" },
-            ].map((link) => (
-              <Button
-                key={link.href}
-                variant="ghost"
-                className="text-sm font-medium hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-neutral-800"
-                asChild
-              >
-                <Link href={link.href}>{link.label}</Link>
-              </Button>
-            ))}
+              { href: "/store-info", label: "Cửa hàng" },
+            ].map((link) => {
+              const isActive =
+                link.href === "/"
+                  ? pathname === "/"
+                  : pathname?.startsWith(link.href);
+
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "group relative flex h-full items-center px-4 text-[16px] font-medium transition-all hover:bg-gray-50 hover:text-blue-600 active:bg-gray-200 dark:hover:bg-neutral-800 dark:hover:text-blue-400",
+                    isActive
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-gray-600 dark:text-gray-300",
+                  )}
+                >
+                  {link.label}
+                  <span
+                    className={cn(
+                      "absolute inset-x-0 bottom-0 h-0.5 bg-blue-600 transition-transform",
+                      isActive
+                        ? "scale-x-100"
+                        : "scale-x-0 group-hover:scale-x-100",
+                    )}
+                  />
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Search */}
@@ -174,14 +219,14 @@ export default function Header() {
         </div>
 
         {/* RIGHT: Cart & User menu */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 lg:flex">
           <Link
             href="/cart"
-            className="relative flex w-[40px] flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-[80px] dark:text-gray-300 dark:hover:bg-neutral-800"
+            className="relative flex w-[40px] flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-auto sm:min-w-[80px] sm:px-3 dark:text-gray-300 dark:hover:bg-neutral-800"
             aria-label="Giỏ hàng"
           >
             <ShoppingCart size={20} />
-            <span className="hidden w-full truncate text-center text-sm sm:block">
+            <span className="hidden text-center text-[16px] sm:block">
               Giỏ hàng
             </span>
             {cartCount > 0 && (
@@ -194,7 +239,7 @@ export default function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex w-[40px] cursor-pointer flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-[80px] dark:text-gray-300 dark:hover:bg-neutral-800"
+                className="hidden w-[40px] cursor-pointer flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-auto sm:min-w-[80px] sm:px-3 lg:flex dark:text-gray-300 dark:hover:bg-neutral-800"
                 aria-label="Tài khoản"
               >
                 {status === "loading" ? (
@@ -202,12 +247,12 @@ export default function Header() {
                 ) : (
                   <User size={20} />
                 )}
-                <span className="hidden w-full truncate text-center text-sm sm:block">
+                <span className="hidden text-center text-[16px] sm:block">
                   {status === "loading"
                     ? "Đang tải..."
                     : status === "authenticated"
-                    ? session.user?.name?.split(" ").slice(-1).join(" ")
-                    : "Tài khoản"}
+                      ? session.user?.name?.split(" ").slice(-1).join(" ")
+                      : "Tài khoản"}
                 </span>
               </button>
             </DropdownMenuTrigger>

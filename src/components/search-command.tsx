@@ -83,7 +83,7 @@ export default function SearchCommand() {
       try {
         const response = await fetch(
           `/api/search?q=${encodeURIComponent(query.trim())}&limit=10`,
-          { signal: abortControllerRef.current.signal }
+          { signal: abortControllerRef.current.signal },
         );
 
         if (!response.ok) {
@@ -125,7 +125,11 @@ export default function SearchCommand() {
         // Save search results to sessionStorage before navigating
         sessionStorage.setItem(
           "search_cache",
-          JSON.stringify({ query: item.name.trim(), results, timestamp: Date.now() })
+          JSON.stringify({
+            query: item.name.trim(),
+            results,
+            timestamp: Date.now(),
+          }),
         );
         router.push(`/products?search=${encodeURIComponent(item.name.trim())}`);
       }
@@ -150,7 +154,11 @@ export default function SearchCommand() {
       // Save search results to sessionStorage before navigating
       sessionStorage.setItem(
         "search_cache",
-        JSON.stringify({ query: trimmed, results: searchResults, timestamp: Date.now() })
+        JSON.stringify({
+          query: trimmed,
+          results: searchResults,
+          timestamp: Date.now(),
+        }),
       );
 
       // Close dialog and navigate
@@ -165,11 +173,16 @@ export default function SearchCommand() {
       <Button
         variant="outline"
         aria-label="Tìm kiếm"
-        className="flex h-10 items-center gap-2 rounded-md bg-transparent px-3 py-2 hover:bg-gray-100 active:bg-gray-200"
+        className="text-muted-foreground flex h-10 w-full items-center justify-start gap-2 rounded-full bg-gray-100/50 px-4 py-2 hover:bg-gray-100 active:bg-gray-200 sm:w-auto sm:rounded-md sm:bg-transparent sm:px-3"
         onClick={() => setOpen(true)}
       >
-        <Search className="h-5 w-5" />
-        <span className="hidden text-sm font-medium sm:flex">Tìm kiếm</span>
+        <Search className="h-5 w-5 shrink-0" />
+        <span className="truncate text-[15px] font-medium sm:hidden">
+          Tìm kiếm
+        </span>
+        <span className="hidden truncate text-[15px] font-medium sm:inline">
+          Bạn muốn mua gì?
+        </span>
         <kbd
           className={`text-muted-foreground pointer-events-none ml-6 hidden sm:flex sm:items-center sm:gap-[2px] sm:rounded-sm sm:border sm:bg-gray-100 sm:px-1 sm:py-0 ${shortcutKey === "Ctrl" ? "text-sm" : "text-lg"}`}
         >
@@ -219,9 +232,15 @@ export default function SearchCommand() {
                   // Has results - save to cache and go to search page
                   sessionStorage.setItem(
                     "search_cache",
-                    JSON.stringify({ query: query.trim(), results, timestamp: Date.now() })
+                    JSON.stringify({
+                      query: query.trim(),
+                      results,
+                      timestamp: Date.now(),
+                    }),
                   );
-                  router.push(`/products?search=${encodeURIComponent(query.trim())}`);
+                  router.push(
+                    `/products?search=${encodeURIComponent(query.trim())}`,
+                  );
                 } else {
                   // No results - save empty to cache and navigate
                   handleSearchKeyword(query.trim(), results);

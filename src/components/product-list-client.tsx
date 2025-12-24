@@ -36,7 +36,9 @@ interface ProductListClientProps {
   initialProducts: Product[];
 }
 
-export default function ProductListClient({ initialProducts }: ProductListClientProps) {
+export default function ProductListClient({
+  initialProducts,
+}: ProductListClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -78,7 +80,7 @@ export default function ProductListClient({ initialProducts }: ProductListClient
       if (cached) {
         const { query, results, timestamp } = JSON.parse(cached);
         const isExpired = Date.now() - timestamp > 60000; // 1 minute expiry
-        
+
         if (query === searchQuery && !isExpired && Array.isArray(results)) {
           setSearchResults(results);
           setIsSearching(false);
@@ -122,7 +124,7 @@ export default function ProductListClient({ initialProducts }: ProductListClient
     // If searching, use server results
     if (searchQuery && searchResults !== null) {
       let list = searchResults;
-      
+
       // Apply category filter to search results
       if (categorySlug !== "all") {
         list = list.filter(
@@ -189,7 +191,7 @@ export default function ProductListClient({ initialProducts }: ProductListClient
   };
 
   return (
-    <div className="mx-auto mt-10 mb-20 max-w-7xl px-4">
+    <div className="mx-auto mt-2 sm:mt-4 mb-20 max-w-7xl px-4">
       {/* Header & Filter */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">

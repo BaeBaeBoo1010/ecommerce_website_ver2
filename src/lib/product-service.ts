@@ -188,3 +188,59 @@ export async function getAllProductsAdminList(): Promise<Product[]> {
   return products;
 }
 
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  if (!ids.length) return [];
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      `
+      id,
+      name,
+      slug,
+      product_code,
+      price,
+      image_urls,
+      category:categories (
+        id,
+        name,
+        slug
+      )
+    `
+    )
+    .in("id", ids);
+
+  if (error) {
+    console.error("❌ Supabase fetch error:", error);
+    return [];
+  }
+
+  const products: Product[] = data.map((item: any) => {
+    const camelItem = snakeToCamel(item);
+
+    let category: Category = { id: "", name: "", slug: "" };
+    if (camelItem.category) {
+      category = {
+        id: camelItem.category.id,
+        name: camelItem.category.name,
+        slug: camelItem.category.slug,
+      };
+    }
+
+    return {
+      id: camelItem.id,
+      name: camelItem.name,
+      slug: camelItem.slug,
+      productCode: camelItem.productCode || "",
+      price: camelItem.price,
+      description: "", 
+      imageUrls: Array.isArray(camelItem.imageUrls) ? camelItem.imageUrls : [],
+      articleHtml: "",
+      isArticleEnabled: false,
+      category,
+    };
+  });
+
+  return products;
+}
+

@@ -99,6 +99,8 @@ export const metadata: Metadata = {
   },
 };
 
+import MobileBottomNav from "@/components/mobile-bottom-nav";
+
 export default async function RootLayout({
   children,
 }: {
@@ -116,7 +118,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://res.cloudinary.com" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
-      <body className="flex min-h-screen flex-col">
+      <body className="flex min-h-screen flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
         <Script
           id="organization-schema"
           type="application/ld+json"
@@ -156,10 +158,12 @@ export default async function RootLayout({
         <Providers>
           <NextTopLoader showSpinner={false} color="#2563EB" />
           <Header />
+          <div className="h-14 sm:h-16 lg:h-20" />
           <AppToaster />
           <ScrollToTop />
           <main className="flex-1">{children}</main>
           <Footer />
+          <MobileBottomNav />
         </Providers>
       </body>
     </html>
