@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { supabase } from "@/lib/supabase";
-import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "./product-detail-client";
 import Script from "next/script";
@@ -18,77 +17,65 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
-// Fetch product data from database
+import { unstable_cache } from "next/cache";
+
+// Fetch product data from database with caching
 async function fetchProduct(slug: string) {
-  try {
-    // Create a local client to force fresh data fetching
-    // This allows us to bypass the Next.js Data Cache for this specific request
-    // while keeping the Page Cache (ISR) active via `export const revalidate = 30`
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-    // Using a fresh client with specific fetch options
-    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        fetch: (url: any, options: any) => {
-          return fetch(url, {
-            ...options,
-            next: {
-              tags: [`product:${slug}`, "products"], // Tag for specific product and general products list
-            },
-          });
-        },
-      },
-    });
-
-    const { data, error } = await supabaseClient
-      .from("products")
-      .select(
-        `
-        id,
-        name,
-        slug,
-        product_code,
-        price,
-        description,
-        image_urls,
-        article_html,
-        is_article_enabled,
-        category:categories (
+  const getCachedProduct = unstable_cache(
+    async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select(
+          `
           id,
           name,
-          slug
+          slug,
+          product_code,
+          price,
+          description,
+          image_urls,
+          article_html,
+          is_article_enabled,
+          category:categories (
+            id,
+            name,
+            slug
+          )
+        `,
         )
-      `,
-      )
-      .eq("slug", slug)
-      .single();
+        .eq("slug", slug)
+        .single();
 
-    if (error || !data) {
-      console.log(`Product not found for slug: ${slug}`);
-      return null;
-    }
+      if (error || !data) {
+        console.log(`Product not found for slug: ${slug}`);
+        return null;
+      }
 
-    return {
-      id: data.id,
-      name: data.name,
-      slug: data.slug,
-      productCode: data.product_code,
-      price: data.price ?? 0,
-      description: data.description,
-      imageUrls: data.image_urls || [],
-      articleHtml: data.article_html,
-      isArticleEnabled: data.is_article_enabled,
-      category: data.category
-        ? Array.isArray(data.category)
-          ? data.category[0]
-          : data.category
-        : { id: "", name: "", slug: "" },
-    };
-  } catch (err) {
-    console.error(`Error fetching product for slug ${slug}:`, err);
-    return null;
-  }
+      return {
+        id: data.id,
+        name: data.name,
+        slug: data.slug,
+        productCode: data.product_code,
+        price: data.price ?? 0,
+        description: data.description,
+        imageUrls: data.image_urls || [],
+        articleHtml: data.article_html,
+        isArticleEnabled: data.is_article_enabled,
+        category: data.category
+          ? Array.isArray(data.category)
+            ? data.category[0]
+            : data.category
+          : { id: "", name: "", slug: "" },
+      };
+    },
+    [`product-detail-${slug}`], // Cache Key
+    {
+      tags: [`product:${slug}`, "products"], // Cache Tags for invalidation
+      revalidate: 60, // Fallback revalidate
+    },
+  );
+
+  return getCachedProduct();
 }
 
 // Cached version of getProduct - revalidates every 60 seconds
