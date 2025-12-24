@@ -4,20 +4,16 @@ import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "./product-detail-client";
 import Script from "next/script";
+import { unstable_cache } from "next/cache";
 
-// ISR: Revalidate every 30 seconds for faster cache updates
-export const revalidate = 30;
-
-// Allow dynamic page generation for new products not pre-generated at build time
-export const dynamicParams = true;
+// Force dynamic rendering to ensure fresh data (cached via unstable_cache)
+export const dynamic = "force-dynamic";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
-
-import { unstable_cache } from "next/cache";
 
 // Fetch product data from database with caching
 async function fetchProduct(slug: string) {
@@ -84,14 +80,7 @@ async function getProduct(slug: string) {
   return fetchProduct(slug);
 }
 
-// Pre-generate all product pages at build time
-export async function generateStaticParams() {
-  const { data: products } = await supabase.from("products").select("slug");
-
-  return (products || []).map((product) => ({
-    slug: product.slug,
-  }));
-}
+// generateStaticParams removed to use Dynamic Rendering + Data Cache
 
 // Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
