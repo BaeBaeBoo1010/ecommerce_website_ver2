@@ -1,9 +1,12 @@
 import HomeClient from "@/components/home-client";
 import type { Metadata } from "next";
 import { getHomeCategories } from "@/lib/home-service";
+import { unstable_cache } from "next/cache";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
+// Force dynamic rendering to ensure fresh data (cached via unstable_cache)
+export const dynamic = "force-dynamic";
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -31,6 +34,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Page() {
-  const initialData = await getHomeCategories();
+  const getCachedHomeData = unstable_cache(
+    async () => getHomeCategories(),
+    ["home-categories-list"],
+    { tags: ["products", "categories"], revalidate: 60 },
+  );
+
+  const initialData = await getCachedHomeData();
   return <HomeClient initialData={initialData} />;
 }

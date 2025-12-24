@@ -27,7 +27,7 @@ export default async function EditProductPage(props: {
         .single();
     },
     [`edit-product-${slug}`],
-    { tags: [`product:${slug}`], revalidate: 3600 },
+    { tags: [`product:${slug}`], revalidate: 60 },
   );
 
   const getCachedCategories = unstable_cache(
@@ -35,7 +35,7 @@ export default async function EditProductPage(props: {
       return await supabase.from("categories").select("*").order("name");
     },
     ["categories-list"],
-    { tags: ["categories"], revalidate: 3600 },
+    { tags: ["categories"], revalidate: 60 },
   );
 
   // Parallel data fetching from cache

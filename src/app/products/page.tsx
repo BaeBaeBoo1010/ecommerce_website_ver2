@@ -3,16 +3,28 @@ import ProductListClient from "@/components/product-list-client";
 import Loading from "@/components/loading";
 import type { Metadata } from "next";
 import { getAllProducts } from "@/lib/product-service";
+import { unstable_cache } from "next/cache";
+
+// Force dynamic rendering to ensure fresh data (cached via unstable_cache)
+export const dynamic = "force-dynamic";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 
 export const metadata: Metadata = {
   title: "Sản phẩm",
-  description: "Khám phá bộ sưu tập thiết bị điện, thiết bị thông minh đa dạng với giá tốt nhất. Sản phẩm chất lượng cao, đảm bảo chính hãng.",
-  keywords: ["thiết bị điện", "sản phẩm", "thiết bị thông minh", "smart home", "điện dân dụng"],
+  description:
+    "Khám phá bộ sưu tập thiết bị điện, thiết bị thông minh đa dạng với giá tốt nhất. Sản phẩm chất lượng cao, đảm bảo chính hãng.",
+  keywords: [
+    "thiết bị điện",
+    "sản phẩm",
+    "thiết bị thông minh",
+    "smart home",
+    "điện dân dụng",
+  ],
   openGraph: {
     title: "Sản phẩm | Thiết bị điện Quang Minh",
-    description: "Khám phá bộ sưu tập thiết bị điện, thiết bị thông minh đa dạng với giá tốt nhất.",
+    description:
+      "Khám phá bộ sưu tập thiết bị điện, thiết bị thông minh đa dạng với giá tốt nhất.",
     url: `${siteUrl}/products`,
     type: "website",
     locale: "vi_VN",
@@ -28,7 +40,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Sản phẩm | Thiết bị điện Quang Minh",
-    description: "Khám phá bộ sưu tập thiết bị điện, thiết bị thông minh đa dạng với giá tốt nhất.",
+    description:
+      "Khám phá bộ sưu tập thiết bị điện, thiết bị thông minh đa dạng với giá tốt nhất.",
   },
   alternates: {
     canonical: `${siteUrl}/products`,
@@ -36,7 +49,13 @@ export const metadata: Metadata = {
 };
 
 export default async function ProductsPage() {
-  const products = await getAllProducts();
+  const getCachedProducts = unstable_cache(
+    async () => getAllProducts(),
+    ["public-products-list"],
+    { tags: ["products"], revalidate: 60 },
+  );
+
+  const products = await getCachedProducts();
 
   return (
     <Suspense fallback={<Loading />}>
@@ -44,4 +63,3 @@ export default async function ProductsPage() {
     </Suspense>
   );
 }
-

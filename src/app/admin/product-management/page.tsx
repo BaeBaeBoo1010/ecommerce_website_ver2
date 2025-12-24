@@ -17,7 +17,7 @@ export default async function ProductManagementPage() {
       return await getAllProductsAdminList();
     },
     ["admin-products-list"],
-    { tags: ["products"], revalidate: 3600 },
+    { tags: ["products"], revalidate: 60 },
   );
 
   // 2. Cached Categories Fetcher
@@ -52,7 +52,7 @@ export default async function ProductManagementPage() {
       }));
     },
     ["admin-categories-list"],
-    { tags: ["categories"], revalidate: 3600 },
+    { tags: ["categories"], revalidate: 60 },
   );
 
   const [products, categories] = await Promise.all([
