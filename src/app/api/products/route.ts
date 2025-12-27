@@ -61,6 +61,16 @@ export async function POST(req: Request) {
   const authError = await requireAdmin();
   if (authError) return authError;
 
+  // Use local variable to satisfy TypeScript
+  const adminDb = supabaseAdmin;
+  if (!adminDb) {
+    console.error("❌ MISSING SUPABASE_SERVICE_ROLE_KEY");
+    return NextResponse.json(
+      { success: false, code: ERROR.CREATE_FAILED, message: "Server configuration error" },
+      { status: 500 }
+    );
+  }
+
   try {
     const formData = await req.formData();
 
@@ -108,7 +118,7 @@ export async function POST(req: Request) {
     // Check for duplicate slug
     checkPromises.push(
       (async () => {
-         const { data } = await supabaseAdmin
+         const { data } = await adminDb
           .from("products")
           .select("id")
           .eq("slug", slug)
@@ -120,7 +130,7 @@ export async function POST(req: Request) {
     // Check for duplicate product code
     checkPromises.push(
       (async () => {
-         const { data } = await supabaseAdmin
+         const { data } = await adminDb
           .from("products")
           .select("id")
           .eq("product_code", productCode)
@@ -164,7 +174,7 @@ export async function POST(req: Request) {
     }
 
     // Insert product into Supabase using Admin client to bypass RLS
-    const { data: created, error: createError } = await supabaseAdmin
+    const { data: created, error: createError } = await adminDb
       .from("products")
       .insert([
         {
