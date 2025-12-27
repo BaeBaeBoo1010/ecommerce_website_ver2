@@ -136,7 +136,7 @@ export default function CartPage() {
                 checked={
                   items.length > 0 && selectedItems.size === items.length
                 }
-                onClick={toggleSelectAll}
+                onChange={toggleSelectAll}
               />
               <span className="font-medium text-gray-700">
                 Chọn tất cả ({items.length} sản phẩm)
@@ -189,7 +189,7 @@ export default function CartPage() {
         <div className="flex items-center gap-2">
           <Checkbox
             checked={items.length > 0 && selectedItems.size === items.length}
-            onClick={toggleSelectAll}
+            onChange={toggleSelectAll}
             className="h-5 w-5"
           />
           <span className="text-base font-medium text-gray-700">Tất cả</span>

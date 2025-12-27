@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { revalidateProduction } from "@/lib/revalidate-production";
@@ -107,10 +107,18 @@ export async function PUT(
   if (authError) return authError;
 
   try {
+    // Check if admin client is available
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, code: ERROR.UPDATE_FAILED, message: "Server configuration error" },
+        { status: 500 }
+      );
+    }
+
     const { slug } = await context.params;
 
     // Find existing product (include image_urls for cleanup)
-    const { data: existing, error: findError } = await supabase
+    const { data: existing, error: findError } = await supabaseAdmin
       .from("products")
       .select("id, slug, product_code, image_urls")
       .eq("slug", slug)
@@ -146,7 +154,7 @@ export async function PUT(
     if (productCode && productCode !== existing.product_code) {
       checkPromises.push(
         (async () => {
-          const { data } = await supabase
+          const { data } = await supabaseAdmin!
           .from("products")
           .select("id")
           .eq("product_code", productCode)
@@ -196,7 +204,7 @@ export async function PUT(
     updates.image_urls = finalImageUrls;
 
     // Update in Supabase
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabaseAdmin
       .from("products")
       .update(updates)
       .eq("id", existing.id)
@@ -287,10 +295,18 @@ export async function PATCH(
   if (authError) return authError;
 
   try {
+    // Check if admin client is available
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, code: ERROR.UPDATE_FAILED, message: "Server configuration error" },
+        { status: 500 }
+      );
+    }
+
     const { slug } = await context.params;
 
     // Find existing product
-    const { data: existing, error: findError } = await supabase
+    const { data: existing, error: findError } = await supabaseAdmin
       .from("products")
       .select("id, slug, product_code")
       .eq("slug", slug)
@@ -322,7 +338,7 @@ export async function PATCH(
     if (productCode !== undefined) {
       // Check for duplicate product code if changed
       if (productCode.trim() !== existing.product_code) {
-        const { data: dupCode } = await supabase
+        const { data: dupCode } = await supabaseAdmin
           .from("products")
           .select("id")
           .eq("product_code", productCode.trim())
@@ -347,7 +363,7 @@ export async function PATCH(
     if (isArticleEnabled !== undefined) updates.is_article_enabled = isArticleEnabled;
 
     // Update
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabaseAdmin
       .from("products")
       .update(updates)
       .eq("id", existing.id)
@@ -408,10 +424,18 @@ export async function DELETE(
   if (authError) return authError;
 
   try {
+    // Check if admin client is available
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, code: ERROR.DELETE_FAILED, message: "Server configuration error" },
+        { status: 500 }
+      );
+    }
+
     const { slug } = await context.params;
 
     // Find product to delete (need image_urls and product_code for Cloudinary cleanup)
-    const { data: product, error: findError } = await supabase
+    const { data: product, error: findError } = await supabaseAdmin
       .from("products")
       .select("id, image_urls, product_code")
       .eq("slug", slug)
@@ -422,7 +446,7 @@ export async function DELETE(
     }
 
     // Delete from Supabase first
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from("products")
       .delete()
       .eq("id", product.id);

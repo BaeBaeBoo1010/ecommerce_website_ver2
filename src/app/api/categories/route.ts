@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
 import { snakeToCamel } from "@/lib/case";
 import { requireAdmin } from "@/lib/auth-helpers";
@@ -13,7 +13,9 @@ const ERROR = {
 /* ───────── GET /api/categories ───────── */
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    // Use admin client to ensure we get all categories even if RLS on relations is strict
+    const client = supabaseAdmin || supabase;
+    const { data, error } = await client
       .from("categories")
       .select(`
         id,
@@ -57,7 +59,8 @@ export async function POST(req: Request) {
     }
 
     // Duplicate check – case-insensitive
-    const { data: allCats, error: dupError } = await supabase
+    const client = supabaseAdmin || supabase;
+    const { data: allCats, error: dupError } = await client
       .from("categories")
       .select("id, name");
 
@@ -83,7 +86,7 @@ export async function POST(req: Request) {
     // Create
     const slug = slugify(cleaned);
 
-    const { data: created, error: createError } = await supabase
+    const { data: created, error: createError } = await client
       .from("categories")
       .insert([{ name: cleaned, slug }])
       .select()

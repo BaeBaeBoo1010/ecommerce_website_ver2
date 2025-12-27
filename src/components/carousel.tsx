@@ -9,6 +9,7 @@ import "swiper/css/thumbs";
 import "swiper/css/effect-fade";
 import { useState, useRef, useEffect } from "react";
 import { ShoppingCart, Info } from "lucide-react";
+import { useCart } from "@/context/cart-context";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Swiper as SwiperType } from "swiper";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function Carousel({ products, isLoading }: Props) {
+  const { addToCart } = useCart();
   const [thumbsSwiper, setThumbsSwiper] = useState<SwiperType | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const swiperRef = useRef<SwiperType | null>(null);
@@ -30,7 +32,9 @@ export default function Carousel({ products, isLoading }: Props) {
   // Cache 5 phút trong localStorage
   useEffect(() => {
     if (!products || products.length === 0) return;
-    setRandomProducts([...products].sort(() => Math.random() - 0.5).slice(0, 5));
+    setRandomProducts(
+      [...products].sort(() => Math.random() - 0.5).slice(0, 5),
+    );
   }, [products]);
 
   const slides = [
@@ -41,6 +45,7 @@ export default function Carousel({ products, isLoading }: Props) {
       description:
         "Kawasan là thương hiệu hàng đầu chuyên cung cấp các giải pháp thiết bị điện thông minh, an toàn và tiện lợi cho mọi gia đình và doanh nghiệp. Với phương châm “Tự động – An toàn – An ninh – Tiết kiệm”, Kawasan không ngừng đổi mới công nghệ để mang đến những sản phẩm chất lượng cao như công tắc cảm ứng, cảm biến chuyển động, chuông cửa không dây, đèn năng lượng mặt trời và hệ thống nhà thông minh.",
       image: "/images/intro.png",
+      product: null,
     },
     ...randomProducts.map((p) => ({
       type: "product" as const,
@@ -51,6 +56,7 @@ export default function Carousel({ products, isLoading }: Props) {
       productSlug: p.slug,
       description: p.description,
       image: p.imageUrls?.[0],
+      product: p,
     })),
   ];
 
@@ -132,9 +138,15 @@ export default function Carousel({ products, isLoading }: Props) {
                   <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:gap-4">
                     <button
                       className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition duration-80 hover:scale-103 hover:bg-blue-500 active:scale-100 active:bg-blue-700 sm:text-base"
-                      onClick={() =>
-                        toast.success("Đã thêm 1 sản phẩm vào giỏ hàng")
-                      }
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const product = (slides[activeIndex] as any).product;
+                        if (product) {
+                          addToCart(product, 1);
+                        }
+                      }}
                     >
                       <ShoppingCart size={18} /> Thêm vào giỏ
                     </button>
@@ -187,7 +199,7 @@ export default function Carousel({ products, isLoading }: Props) {
                     <div className="relative h-[250px] sm:h-[300px] md:h-[400px]">
                       <Image
                         src={item.image || "/images/placeholder.svg"}
-                        alt={`Image ${idx}`}
+                        alt={item.title}
                         fill
                         sizes="(min-width: 1280px) 640px, (min-width: 768px) 50vw, 100vw"
                         className="object-contain"
@@ -216,7 +228,7 @@ export default function Carousel({ products, isLoading }: Props) {
                       <div className="relative h-[30px] w-[30px] cursor-pointer overflow-hidden rounded-xl border-2 border-gray-300 opacity-50 transition-all duration-300 ease-in-out group-[.swiper-slide-thumb-active]:scale-110 group-[.swiper-slide-thumb-active]:border-gray-600 group-[.swiper-slide-thumb-active]:opacity-100 hover:opacity-100 lg:h-[70px] lg:w-[70px]">
                         <Image
                           src={item.image || "/images/placeholder.svg"}
-                          alt={`Thumb ${idx}`}
+                          alt={`${item.title} thumbnail`}
                           fill
                           sizes="(min-width: 768px) 50vw, 100vw"
                           className="object-contain"

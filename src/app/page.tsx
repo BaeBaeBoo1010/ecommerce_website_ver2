@@ -10,20 +10,20 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Trang chủ",
+    title: "Quang Minh - Thiết bị cảm ứng thông minh",
     description:
-      "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp.",
+      "Chuyên cung cấp thiết bị cảm ứng, thiết bị thông minh cho gia đình và công nghiệp.",
     openGraph: {
-      title: "Thiết bị điện Quang Minh - Trang chủ",
+      title: "Quang Minh - Thiết bị cảm ứng thông minh",
       description:
-        "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp.",
+        "Chuyên cung cấp thiết bị cảm ứng, thiết bị thông minh cho gia đình và công nghiệp.",
       url: siteUrl,
       images: [
         {
           url: `${siteUrl}/images/logo.webp`,
           width: 1200,
           height: 630,
-          alt: "Thiết bị điện Quang Minh",
+          alt: "Quang Minh - Thiết bị cảm ứng thông minh",
         },
       ],
     },

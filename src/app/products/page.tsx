@@ -13,7 +13,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 export const metadata: Metadata = {
   title: "Sản phẩm",
   description:
-    "Khám phá bộ sưu tập thiết bị điện, thiết bị thông minh đa dạng với giá tốt nhất. Sản phẩm chất lượng cao, đảm bảo chính hãng.",
+    "Khám phá bộ sưu tập thiết bị cảm ứng, thiết bị thông minh đa dạng với giá tốt nhất. Sản phẩm chất lượng cao, đảm bảo chính hãng.",
   keywords: [
     "thiết bị điện",
     "sản phẩm",
@@ -22,9 +22,9 @@ export const metadata: Metadata = {
     "điện dân dụng",
   ],
   openGraph: {
-    title: "Sản phẩm | Thiết bị điện Quang Minh",
+    title: "Sản phẩm | Thiết bị cảm ứng Quang Minh",
     description:
-      "Khám phá bộ sưu tập thiết bị điện, thiết bị thông minh đa dạng với giá tốt nhất.",
+      "Khám phá bộ sưu tập thiết bị cảm ứng, thiết bị thông minh đa dạng với giá tốt nhất.",
     url: `${siteUrl}/products`,
     type: "website",
     locale: "vi_VN",
@@ -33,15 +33,15 @@ export const metadata: Metadata = {
         url: `${siteUrl}/images/logo.webp`,
         width: 1200,
         height: 630,
-        alt: "Sản phẩm thiết bị điện",
+        alt: "Sản phẩm thiết bị cảm ứng",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sản phẩm | Thiết bị điện Quang Minh",
+    title: "Sản phẩm | Thiết bị cảm ứng Quang Minh",
     description:
-      "Khám phá bộ sưu tập thiết bị điện, thiết bị thông minh đa dạng với giá tốt nhất.",
+      "Khám phá bộ sưu tập thiết bị cảm ứng, thiết bị thông minh đa dạng với giá tốt nhất.",
   },
   alternates: {
     canonical: `${siteUrl}/products`,

@@ -228,21 +228,8 @@ export default function SearchCommand() {
 
                 if (results.length === 1) {
                   handleSelect(results[0]);
-                } else if (results.length > 0) {
-                  // Has results - save to cache and go to search page
-                  sessionStorage.setItem(
-                    "search_cache",
-                    JSON.stringify({
-                      query: query.trim(),
-                      results,
-                      timestamp: Date.now(),
-                    }),
-                  );
-                  router.push(
-                    `/products?search=${encodeURIComponent(query.trim())}`,
-                  );
                 } else {
-                  // No results - save empty to cache and navigate
+                  // Has results OR No results - save keyword to cache and navigate
                   handleSearchKeyword(query.trim(), results);
                 }
               }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllProducts } from "@/lib/product-service";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
 import { requireAdmin } from "@/lib/auth-helpers";
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     // Check for duplicate slug
     checkPromises.push(
       (async () => {
-         const { data } = await supabase
+         const { data } = await supabaseAdmin
           .from("products")
           .select("id")
           .eq("slug", slug)
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     // Check for duplicate product code
     checkPromises.push(
       (async () => {
-         const { data } = await supabase
+         const { data } = await supabaseAdmin
           .from("products")
           .select("id")
           .eq("product_code", productCode)
@@ -163,8 +163,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Insert product into Supabase
-    const { data: created, error: createError } = await supabase
+    // Insert product into Supabase using Admin client to bypass RLS
+    const { data: created, error: createError } = await supabaseAdmin
       .from("products")
       .insert([
         {

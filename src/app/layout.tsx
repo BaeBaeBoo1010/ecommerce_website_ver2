@@ -25,7 +25,7 @@ const inter = Inter({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
-const siteName = "Thiết bị điện Quang Minh";
+const siteName = "Quang Minh - Thiết bị cảm ứng thông minh";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -34,13 +34,17 @@ export const metadata: Metadata = {
     template: `%s | ${siteName}`,
   },
   description:
-    "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp. Sản phẩm chất lượng cao, giá tốt nhất thị trường.",
+    "Chuyên cung cấp thiết bị cảm ứng, thiết bị thông minh cho gia đình và công nghiệp. Sản phẩm chất lượng cao, giá tốt nhất thị trường.",
   keywords: [
     "thiết bị điện",
+    "thiết bị cảm ứng",
+    "thiết bị điện thông minh",
     "thiết bị thông minh",
+    "thiết bị cảm ứng thông minh",
     "smart home",
     "điện dân dụng",
     "thiết bị công nghiệp",
+    "Quang Minh",
   ],
   authors: [{ name: siteName }],
   creator: siteName,
@@ -57,7 +61,7 @@ export const metadata: Metadata = {
     siteName: siteName,
     title: siteName,
     description:
-      "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp. Sản phẩm chất lượng cao, giá tốt nhất thị trường.",
+      "Chuyên cung cấp thiết bị cảm ứng, thiết bị thông minh cho gia đình và công nghiệp. Sản phẩm chất lượng cao, giá tốt nhất thị trường.",
     images: [
       {
         url: `${siteUrl}/images/logo.webp`,
@@ -71,7 +75,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteName,
     description:
-      "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp.",
+      "Chuyên cung cấp thiết bị cảm ứng, thiết bị thông minh cho gia đình và công nghiệp.",
     images: [`${siteUrl}/images/logo.webp`],
   },
   robots: {
@@ -93,9 +97,9 @@ export const metadata: Metadata = {
     // google: "verification-code-here",
   },
   icons: {
-    icon: "/favicon.png",
-    shortcut: "/favicon.png",
-    apple: "/favicon.png",
+    icon: `${siteUrl}/favicon.png`,
+    shortcut: `${siteUrl}/favicon.png`,
+    apple: `${siteUrl}/favicon.png`,
   },
 };
 
@@ -130,7 +134,7 @@ export default async function RootLayout({
               url: siteUrl,
               logo: `${siteUrl}/images/logo.webp`,
               description:
-                "Chuyên cung cấp thiết bị điện, thiết bị thông minh cho gia đình và công nghiệp",
+                "Chuyên cung cấp thiết bị cảm ứng, thiết bị thông minh cho gia đình và công nghiệp",
               sameAs: [],
             }),
           }}

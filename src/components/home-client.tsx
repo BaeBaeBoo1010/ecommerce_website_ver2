@@ -41,7 +41,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       cat.products.map((p) => ({
         ...p,
         category: { id: cat.id, name: cat.name, slug: cat.slug },
-      }))
+      })),
     );
   }, [allCategories]);
 
@@ -84,7 +84,10 @@ export default function HomeClient({ initialData }: HomeClientProps) {
   }
 
   return (
-    <main className="mx-auto mb-5 max-w-7xl space-y-10 px-4 sm:mb-20 sm:space-y-4">
+    <main className="mx-auto mb-5 max-w-7xl space-y-4 px-4 sm:mb-20">
+      <h1 className="sr-only">
+        Thiết bị cảm ứng Quang Minh - Thiết bị thông minh & Điện dân dụng
+      </h1>
       <Carousel products={products} isLoading={!products} />
 
       <div className="flex flex-col gap-4 sm:gap-12">

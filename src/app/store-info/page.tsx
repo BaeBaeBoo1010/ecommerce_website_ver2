@@ -22,7 +22,7 @@ import Link from "next/link";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
 
 const contactInfo = {
-  name: "Thiết bị điện Quang Minh",
+  name: "Thiết bị cảm ứng Quang Minh",
   phone: "0123 456 789",
   email: "contact@quangminh.vn",
   address: "1B Đường Quán Tre, Trung Mỹ Tây, Quận 12, Hồ Chí Minh, Việt Nam",
@@ -36,11 +36,11 @@ const contactInfo = {
 export const metadata: Metadata = {
   title: "Cửa hàng",
   description:
-    "Thông tin liên hệ và giới thiệu về Thiết bị điện Quang Minh. Địa chỉ: Quận 12, TP.HCM. Chuyên cung cấp thiết bị điện, smart home chất lượng cao.",
+    "Thông tin liên hệ và giới thiệu về Thiết bị cảm ứng Quang Minh. Địa chỉ: Quận 12, TP.HCM. Chuyên cung cấp thiết bị cảm ứng chất lượng cao.",
   openGraph: {
-    title: "Cửa hàng | Thiết bị điện Quang Minh",
+    title: "Cửa hàng | Thiết bị cảm ứng Quang Minh",
     description:
-      "Thông tin liên hệ và giới thiệu về Thiết bị điện Quang Minh. Địa chỉ: Quận 12, TP.HCM.",
+      "Thông tin liên hệ và giới thiệu về Thiết bị cảm ứng Quang Minh. Địa chỉ: Quận 12, TP.HCM.",
     url: `${siteUrl}/store-info`,
     type: "website",
     locale: "vi_VN",
@@ -92,10 +92,56 @@ export default function StoreInfoPage() {
             Thông tin Cửa hàng
           </h1>
           <p className="text-blue-100">
-            Liên hệ & Giới thiệu về Thiết bị điện Quang Minh
+            Liên hệ & Giới thiệu về Thiết bị cảm ứng Quang Minh
           </p>
         </div>
       </section>
+
+      <Script
+        id="local-business-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "LocalBusiness",
+            name: "Thiết bị cảm ứng Quang Minh",
+            image: `${siteUrl}/images/logo.webp`,
+            "@id": siteUrl,
+            url: siteUrl,
+            telephone: contactInfo.phone,
+            email: contactInfo.email,
+            address: {
+              "@type": "PostalAddress",
+              streetAddress: "1B Đường Quán Tre, Trung Mỹ Tây",
+              addressLocality: "Quận 12",
+              addressRegion: "Hồ Chí Minh",
+              postalCode: "700000",
+              addressCountry: "VN",
+            },
+            geo: {
+              "@type": "GeoCoordinates",
+              latitude: 10.845163,
+              longitude: 106.613933,
+            },
+            openingHoursSpecification: [
+              {
+                "@type": "OpeningHoursSpecification",
+                dayOfWeek: [
+                  "Monday",
+                  "Tuesday",
+                  "Wednesday",
+                  "Thursday",
+                  "Friday",
+                  "Saturday",
+                ],
+                opens: "08:00",
+                closes: "18:00",
+              },
+            ],
+            sameAs: [],
+          }),
+        }}
+      />
 
       {/* --- PART 1: CONTACT INFO & MAP (Priority) --- */}
       <section className="container mx-auto -mt-8 px-4">
@@ -237,9 +283,9 @@ export default function StoreInfoPage() {
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="mb-4 text-2xl font-bold">Về Quang Minh</h2>
             <p className="mb-6 text-gray-600 dark:text-gray-300">
-              <strong>Thiết bị điện Quang Minh</strong> được thành lập với sứ
-              mệnh mang đến các sản phẩm thiết bị điện và thiết bị thông minh
-              chất lượng cao cho người tiêu dùng Việt Nam. Với hơn{" "}
+              <strong>Thiết bị cảm ứng Quang Minh</strong> được thành lập với sứ
+              mệnh mang đến các sản phẩm thiết bị cảm ứng chất lượng cao cho
+              người tiêu dùng Việt Nam. Với hơn{" "}
               <strong>5 năm kinh nghiệm</strong>, chúng tôi tự hào là đối tác
               tin cậy của hàng ngàn gia đình. Slogan của chúng tôi:{" "}
               <span className="font-bold text-blue-600">

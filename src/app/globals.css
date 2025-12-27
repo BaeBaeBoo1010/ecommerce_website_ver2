@@ -264,9 +264,7 @@
   word-break: break-word;
 }
 
-/* Cho phép chọn chữ, nhưng không chọn được hình ảnh hoặc icon */
+/* Allow text selection */
 * {
-  user-select: none;
-  -webkit-user-drag: none;
   pointer-events: auto;
 }

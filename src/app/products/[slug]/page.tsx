@@ -94,10 +94,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const title = `${product.name}${product.category?.name ? ` - ${product.category.name}` : ""} | Thiết bị điện Quang Minh`;
+  const title = `${product.name}${product.category?.name ? ` - ${product.category.name}` : ""} | Thiết bị cảm ứng Quang Minh`;
+
+  // Helper to strip HTML tags
+  const stripHtml = (html: string) => {
+    return html.replace(/<[^>]*>?/gm, "") || "";
+  };
+
+  const rawDescription = product.description || "";
+  const cleanDescription = stripHtml(rawDescription).trim();
+
   const description =
-    product.description?.slice(0, 160) ||
-    `Mua ${product.name} với giá tốt nhất tại cửa hàng thiết bị điện Quang Minh. Hàng chính hãng, bảo hành dài hạn.`;
+    cleanDescription.slice(0, 160) ||
+    `Mua ${product.name} với giá tốt nhất tại cửa hàng thiết bị cảm ứng Quang Minh. Hàng chính hãng, chất lượng cao.`;
+
   const imageUrl = product.imageUrls?.[0] || `${siteUrl}/images/logo.webp`;
 
   return {
@@ -151,7 +161,7 @@ export default async function ProductDetailPage({ params }: Props) {
     "@type": "Product",
     name: product.name,
     description:
-      product.description || `${product.name} - Thiết bị điện chất lượng cao`,
+      product.description || `${product.name} - Thiết bị cảm ứng chất lượng cao`,
     sku: product.productCode,
     image: product.imageUrls?.[0],
     url: `${siteUrl}/products/${product.slug}`,
@@ -159,7 +169,7 @@ export default async function ProductDetailPage({ params }: Props) {
       "@type": "Brand",
       name: "Quang Minh",
     },
-    category: product.category?.name || "Thiết bị điện",
+    category: product.category?.name || "Thiết bị cảm ứng",
     offers: {
       "@type": "Offer",
       url: `${siteUrl}/products/${product.slug}`,
@@ -168,7 +178,7 @@ export default async function ProductDetailPage({ params }: Props) {
       availability: "https://schema.org/InStock",
       seller: {
         "@type": "Organization",
-        name: "Thiết bị điện Quang Minh",
+        name: "Thiết bị cảm ứng Quang Minh",
       },
     },
   };
