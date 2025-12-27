@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
 import { requireAdmin } from "@/lib/auth-helpers";
 
@@ -42,6 +42,14 @@ export async function PATCH(
   const authError = await requireAdmin();
   if (authError) return authError;
 
+  // Use admin client for write operations to bypass RLS
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { success: false, code: "CONFIG_ERROR", message: "Server configuration error" },
+      { status: 500 }
+    );
+  }
+
   try {
     const { id } = await context.params;
 
@@ -76,8 +84,8 @@ export async function PATCH(
         );
       }
 
-      // Update
-      const { data: updated, error: updateError } = await supabase
+      // Update using admin client
+      const { data: updated, error: updateError } = await supabaseAdmin
         .from("categories")
         .update({ name: name.trim(), slug: slugify(name.trim()) })
         .eq("id", id)
@@ -117,6 +125,14 @@ export async function DELETE(
   const authError = await requireAdmin();
   if (authError) return authError;
 
+  // Use admin client for write operations to bypass RLS
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { success: false, code: "CONFIG_ERROR", message: "Server configuration error" },
+      { status: 500 }
+    );
+  }
+
   try {
     const { id } = await context.params;
 
@@ -131,8 +147,8 @@ export async function DELETE(
       return NextResponse.json({ success: false, code: ERROR.IN_USE }, { status: 409 });
     }
 
-    // Delete category
-    const { error: deleteError } = await supabase
+    // Delete category using admin client
+    const { error: deleteError } = await supabaseAdmin
       .from("categories")
       .delete()
       .eq("id", id);

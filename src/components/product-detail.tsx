@@ -3,6 +3,7 @@
 
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Thumbs, EffectFade } from "swiper/modules";
+import ProductSwiper from "@/components/product-swiper";
 import "swiper/css";
 import "swiper/css/thumbs";
 import "swiper/css/navigation";
@@ -126,7 +127,13 @@ function QuantitySelector({
 import { useCart } from "@/context/cart-context";
 import { useRouter } from "next/navigation";
 
-export default function ProductDetail({ product }: { product: Product }) {
+export default function ProductDetail({
+  product,
+  relatedProducts,
+}: {
+  product: Product;
+  relatedProducts?: Product[];
+}) {
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
   const router = useRouter();
@@ -162,6 +169,7 @@ export default function ProductDetail({ product }: { product: Product }) {
     null,
   );
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [showFullArticle, setShowFullArticle] = useState(false);
 
   // Lightbox state
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -222,7 +230,7 @@ export default function ProductDetail({ product }: { product: Product }) {
     <>
       <div className="min-h-screen bg-gray-100">
         <main className="mx-auto w-full max-w-7xl px-0 py-0 md:px-4 md:py-4">
-          <div className="rounded-lg bg-white">
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="flex flex-col lg:flex-row">
               {/* Ảnh sản phẩm */}
               <div className="flex items-center justify-center md:max-w-[600px] md:flex-1">
@@ -394,345 +402,416 @@ export default function ProductDetail({ product }: { product: Product }) {
                 </div>
               </section>
             </div>
-
-            {/* Bài viết chi tiết */}
-            {product.isArticleEnabled && product.articleHtml && (
-              <section
-                ref={articleRef}
-                className="mt-2 min-h-[200px] rounded-lg bg-white p-6 shadow-sm"
-              >
-                {articleInView ? (
-                  <SafeHtml
-                    html={product.articleHtml}
-                    className="rich-article prose dark:prose-invert prose-headings:font-semibold prose-headings:text-gray-900 prose-a:text-blue-600 hover:prose-a:underline prose-strong:text-gray-800 prose-img:mx-auto prose-img:rounded-lg prose-img:shadow-md prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-table:overflow-hidden prose-table:rounded-sm prose-table:border prose-table:border-gray-200 prose-th:bg-gray-100 prose-th:text-gray-800 prose-td:border-gray-200 animate-fadeIn max-w-none [&_iframe]:mx-auto [&_iframe]:block [&_iframe]:rounded-lg [&_iframe]:shadow-md max-sm:[&_iframe]:max-h-70 max-sm:[&_iframe]:max-w-full sm:[&_iframe]:h-auto sm:[&_iframe]:max-w-full"
-                  />
-                ) : (
-                  <div className="flex h-40 items-center justify-center text-gray-400">
-                    <Loader2 className="text-primary h-10 w-10 animate-spin" />
-                  </div>
-                )}
-
-                {/* Responsive media styles */}
-                <style jsx global>{`
-                  @keyframes fadeIn {
-                    from {
-                      opacity: 0;
-                      transform: translateY(10px);
-                    }
-                    to {
-                      opacity: 1;
-                      transform: translateY(0);
-                    }
-                  }
-                  .animate-fadeIn {
-                    animation: fadeIn 0.5s ease-in-out;
-                  }
-                  /* Product image hover effect - only active slide */
-                  .product-swiper .swiper-slide {
-                    pointer-events: none;
-                    z-index: 1;
-                  }
-                  .product-swiper .swiper-slide-active {
-                    pointer-events: auto;
-                    z-index: 10;
-                  }
-                  .product-swiper .product-image {
-                    transition: transform 0.3s ease;
-                  }
-                  .product-swiper
-                    .swiper-slide-active
-                    .product-image-container:hover
-                    .product-image {
-                    transform: scale(1.05);
-                  }
-                  .rich-article iframe {
-                    width: 100%;
-                    height: 400px;
-                    border-radius: 12px;
-                    margin: 1.5rem 0;
-                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                  }
-                  .rich-article table {
-                    margin: 0.5rem 0 !important;
-                    width: 100%;
-                    border-collapse: collapse;
-                    border-radius: 4px; /* rounded-sm */
-                    overflow: hidden;
-                  }
-                  .rich-article th,
-                  .rich-article td {
-                    padding: 0.5rem 0.75rem;
-                    border: 1px solid #e5e7eb;
-                  }
-                  .rich-article th {
-                    background-color: #f9fafb;
-                    font-weight: 600;
-                  }
-                  .rich-article tr:hover td {
-                    background-color: #f9fafb;
-                  }
-                  @media (max-width: 768px) {
-                    .rich-article iframe {
-                      height: 240px;
-                    }
-                  }
-                  .rich-article img {
-                    display: block;
-                    margin: 1.25rem auto;
-                    max-width: 100%;
-                    height: auto;
-                    border-radius: 12px;
-                    object-fit: contain;
-                  }
-                  .rich-article figure {
-                    margin: 1.5rem 0;
-                    text-align: center;
-                  }
-                  .rich-article figcaption {
-                    font-size: 0.9rem;
-                    color: #6b7280;
-                    margin-top: 0.5rem;
-                  }
-                  /* Fix layout for lists */
-                  .rich-article ul,
-                  .rich-article ol {
-                    margin: 0.75rem 0;
-                    padding-left: 1.5rem;
-                    list-style-position: outside;
-                  }
-                  .rich-article ul {
-                    list-style-type: disc;
-                  }
-                  .rich-article ol {
-                    list-style-type: decimal;
-                  }
-                  .rich-article li {
-                    margin: 0.25rem 0;
-                    padding-left: 0.25rem;
-                  }
-                  .rich-article li > p {
-                    margin: 0;
-                    display: inline;
-                  }
-                  .rich-article li::marker {
-                    color: #4b5563;
-                  }
-                  /* Fix spacing between ul and following images */
-                  .rich-article ul + p,
-                  .rich-article ol + p {
-                    margin-top: 0.75rem;
-                  }
-                  .rich-article p + ul,
-                  .rich-article p + ol {
-                    margin-top: 0.75rem;
-                  }
-                  /* Tighter paragraphs */
-                  .rich-article p {
-                    margin: 0.75rem 0;
-                    line-height: 1.75;
-                    color: #374151;
-                  }
-                  /* Headings styling */
-                  .rich-article h1 {
-                    font-size: 1.875rem;
-                    font-weight: 700;
-                    color: #111827;
-                    margin-top: 2rem;
-                    margin-bottom: 1rem;
-                    border-bottom: 2px solid #e5e7eb;
-                    padding-bottom: 0.5rem;
-                  }
-                  .rich-article h2 {
-                    font-size: 1.5rem;
-                    font-weight: 700;
-                    color: #1f2937;
-                    margin-top: 1.75rem;
-                    margin-bottom: 0.75rem;
-                    padding-left: 0.75rem;
-                    border-left: 4px solid #3b82f6;
-                  }
-                  .rich-article h3 {
-                    font-size: 1.25rem;
-                    font-weight: 600;
-                    color: #374151;
-                    margin-top: 1.5rem;
-                    margin-bottom: 0.5rem;
-                  }
-                  .rich-article h4 {
-                    font-size: 1.125rem;
-                    font-weight: 600;
-                    color: #4b5563;
-                    margin-top: 1.25rem;
-                    margin-bottom: 0.5rem;
-                  }
-                  /* Strong & emphasis */
-                  .rich-article strong {
-                    font-weight: 600;
-                    color: #1f2937;
-                  }
-                  .rich-article em {
-                    font-style: italic;
-                    color: #4b5563;
-                  }
-                  /* Links */
-                  .rich-article a {
-                    color: #2563eb;
-                    text-decoration: none;
-                    border-bottom: 1px solid transparent;
-                    transition: all 0.2s ease;
-                  }
-                  .rich-article a:hover {
-                    color: #1d4ed8;
-                    border-bottom-color: #1d4ed8;
-                  }
-                  /* Code inline */
-                  .rich-article code {
-                    background-color: #f3f4f6;
-                    color: #dc2626;
-                    padding: 0.125rem 0.375rem;
-                    border-radius: 0.25rem;
-                    font-size: 0.875em;
-                    font-family: ui-monospace, monospace;
-                  }
-                  /* Code block */
-                  .rich-article pre {
-                    background-color: #1f2937;
-                    color: #f9fafb;
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                    overflow-x: auto;
-                    margin: 1rem 0;
-                  }
-                  .rich-article pre code {
-                    background: none;
-                    color: inherit;
-                    padding: 0;
-                  }
-                  /* Blockquote */
-                  .rich-article blockquote {
-                    border-left: 4px solid #3b82f6;
-                    background: linear-gradient(to right, #eff6ff, transparent);
-                    padding: 1rem 1.25rem;
-                    margin: 1rem 0;
-                    border-radius: 0 0.5rem 0.5rem 0;
-                    font-style: italic;
-                    color: #4b5563;
-                  }
-                  .rich-article blockquote p {
-                    margin: 0;
-                  }
-                  /* Horizontal rule */
-                  .rich-article hr {
-                    border: none;
-                    height: 1px;
-                    background: linear-gradient(
-                      to right,
-                      transparent,
-                      #d1d5db,
-                      transparent
-                    );
-                    margin: 2rem 0;
-                  }
-                  /* Mark/highlight */
-                  .rich-article mark {
-                    background-color: #fef08a;
-                    padding: 0.125rem 0.25rem;
-                    border-radius: 0.125rem;
-                  }
-                  /* Subscript & superscript */
-                  .rich-article sub,
-                  .rich-article sup {
-                    font-size: 0.75em;
-                  }
-                  /* Nested div containers */
-                  .rich-article div {
-                    margin: 0;
-                  }
-                  /* Better figure styling */
-                  .rich-article figure.image {
-                    margin: 1.5rem auto;
-                    text-align: center;
-                    max-width: 100%;
-                  }
-                  .rich-article figure.image img {
-                    margin: 0 auto;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                  }
-                  .rich-article figure figcaption,
-                  .rich-article figcaption {
-                    font-size: 0.875rem;
-                    color: #6b7280;
-                    margin-top: 0.75rem;
-                    font-style: italic;
-                    text-align: center;
-                  }
-                  /* Nested figcaption inside figcaption - remove extra styling */
-                  .rich-article figcaption figure,
-                  .rich-article figcaption figcaption {
-                    margin: 0;
-                    font-size: inherit;
-                  }
-                  /* List with better bullets */
-                  .rich-article ul li::marker {
-                    color: #3b82f6;
-                    font-size: 1.2em;
-                  }
-                  .rich-article ol li::marker {
-                    color: #3b82f6;
-                    font-weight: 600;
-                  }
-                  /* Better spacing for list items with strong */
-                  .rich-article li strong {
-                    color: #1e40af;
-                  }
-                  /* Video iframe container */
-                  .rich-article p:has(iframe) {
-                    text-align: center;
-                    margin: 1.5rem 0;
-                  }
-                  /* WordPress caption classes */
-                  .rich-article .wp-caption {
-                    max-width: 100%;
-                    margin: 0;
-                  }
-                  .rich-article .wp-caption-text {
-                    font-size: 0.875rem;
-                    color: #6b7280;
-                    font-style: italic;
-                    margin-top: 0.5rem;
-                  }
-                  /* Override Tailwind flex classes that may reverse order */
-                  .rich-article .flex-col-reverse {
-                    flex-direction: column !important;
-                  }
-                  .rich-article .flex-row-reverse {
-                    flex-direction: row !important;
-                  }
-                  .rich-article [class*="flex"] {
-                    display: block !important;
-                  }
-                  /* Reset any problematic Tailwind classes */
-                  .rich-article .w-fit {
-                    width: 100% !important;
-                  }
-                  .rich-article .group {
-                    display: block !important;
-                  }
-                  /* Image hover effect for lightbox */
-                  .rich-article img {
-                    cursor: pointer;
-                    transition:
-                      transform 0.3s ease,
-                      box-shadow 0.3s ease;
-                  }
-                  .rich-article img:hover {
-                    transform: scale(1.03);
-                    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-                  }
-                `}</style>
-              </section>
-            )}
           </div>
+
+          {/* Bài viết chi tiết */}
+          {product.isArticleEnabled && product.articleHtml && (
+            <section
+              ref={articleRef}
+              className="mt-4 min-h-[200px] rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
+            >
+              {articleInView ? (
+                <div className="relative">
+                  <div
+                    className={`relative transition-all duration-500 ease-in-out ${
+                      !showFullArticle
+                        ? "max-h-[600px] overflow-hidden"
+                        : "h-auto"
+                    }`}
+                  >
+                    <SafeHtml
+                      html={product.articleHtml}
+                      className="rich-article prose dark:prose-invert prose-headings:font-semibold prose-headings:text-gray-900 prose-a:text-blue-600 hover:prose-a:underline prose-strong:text-gray-800 prose-img:mx-auto prose-img:rounded-lg prose-img:shadow-md prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-table:overflow-hidden prose-table:rounded-sm prose-table:border prose-table:border-gray-200 prose-th:bg-gray-100 prose-th:text-gray-800 prose-td:border-gray-200 animate-fadeIn max-w-none [&_iframe]:mx-auto [&_iframe]:block [&_iframe]:rounded-lg [&_iframe]:shadow-md max-sm:[&_iframe]:max-h-70 max-sm:[&_iframe]:max-w-full sm:[&_iframe]:h-auto sm:[&_iframe]:max-w-full"
+                    />
+
+                    {/* Gradient overlay when collapsed */}
+                    {!showFullArticle && (
+                      <div className="absolute bottom-0 left-0 h-40 w-full bg-gradient-to-t from-white via-white/80 to-transparent" />
+                    )}
+                  </div>
+
+                  {/* Toggle Button */}
+                  <div className="mt-6 flex justify-center">
+                    <button
+                      onClick={() => setShowFullArticle(!showFullArticle)}
+                      className="group flex items-center gap-2 rounded-full border border-blue-600 px-8 py-2.5 text-base font-semibold text-blue-600 transition-all hover:bg-blue-50 hover:shadow-md active:scale-95"
+                    >
+                      {showFullArticle ? (
+                        <>
+                          Thu gọn bài viết
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="transition-transform group-hover:-translate-y-1"
+                          >
+                            <path d="m18 15-6-6-6 6" />
+                          </svg>
+                        </>
+                      ) : (
+                        <>
+                          Xem thêm nội dung
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="transition-transform group-hover:translate-y-1"
+                          >
+                            <path d="m6 9 6 6 6-6" />
+                          </svg>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex h-40 items-center justify-center text-gray-400">
+                  <Loader2 className="text-primary h-10 w-10 animate-spin" />
+                </div>
+              )}
+
+              {/* Responsive media styles */}
+              <style jsx global>{`
+                @keyframes fadeIn {
+                  from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(0);
+                  }
+                }
+                .animate-fadeIn {
+                  animation: fadeIn 0.5s ease-in-out;
+                }
+                /* Product image hover effect - only active slide */
+                .product-swiper .swiper-slide {
+                  pointer-events: none;
+                  z-index: 1;
+                }
+                .product-swiper .swiper-slide-active {
+                  pointer-events: auto;
+                  z-index: 10;
+                }
+                .product-swiper .product-image {
+                  transition: transform 0.3s ease;
+                }
+                .product-swiper
+                  .swiper-slide-active
+                  .product-image-container:hover
+                  .product-image {
+                  transform: scale(1.05);
+                }
+                .rich-article iframe {
+                  width: 100%;
+                  height: 400px;
+                  border-radius: 12px;
+                  margin: 1.5rem 0;
+                  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                }
+                .rich-article table {
+                  margin: 0.5rem 0 !important;
+                  width: 100%;
+                  border-collapse: collapse;
+                  border-radius: 4px; /* rounded-sm */
+                  overflow: hidden;
+                }
+                .rich-article th,
+                .rich-article td {
+                  padding: 0.5rem 0.75rem;
+                  border: 1px solid #e5e7eb;
+                }
+                .rich-article th {
+                  background-color: #f9fafb;
+                  font-weight: 600;
+                }
+                .rich-article tr:hover td {
+                  background-color: #f9fafb;
+                }
+                @media (max-width: 768px) {
+                  .rich-article iframe {
+                    height: 240px;
+                  }
+                }
+                .rich-article img {
+                  display: block;
+                  margin: 1.25rem auto;
+                  max-width: 100%;
+                  height: auto;
+                  border-radius: 12px;
+                  object-fit: contain;
+                }
+                .rich-article figure {
+                  margin: 1.5rem 0;
+                  text-align: center;
+                }
+                .rich-article figcaption {
+                  font-size: 0.9rem;
+                  color: #6b7280;
+                  margin-top: 0.5rem;
+                }
+                /* Fix layout for lists */
+                .rich-article ul,
+                .rich-article ol {
+                  margin: 0.75rem 0;
+                  padding-left: 1.5rem;
+                  list-style-position: outside;
+                }
+                .rich-article ul {
+                  list-style-type: disc;
+                }
+                .rich-article ol {
+                  list-style-type: decimal;
+                }
+                .rich-article li {
+                  margin: 0.25rem 0;
+                  padding-left: 0.25rem;
+                }
+                .rich-article li > p {
+                  margin: 0;
+                  display: inline;
+                }
+                .rich-article li::marker {
+                  color: #4b5563;
+                }
+                /* Fix spacing between ul and following images */
+                .rich-article ul + p,
+                .rich-article ol + p {
+                  margin-top: 0.75rem;
+                }
+                .rich-article p + ul,
+                .rich-article p + ol {
+                  margin-top: 0.75rem;
+                }
+                /* Tighter paragraphs */
+                .rich-article p {
+                  margin: 0.75rem 0;
+                  line-height: 1.75;
+                  color: #374151;
+                }
+                /* Headings styling */
+                .rich-article h1 {
+                  font-size: 1.875rem;
+                  font-weight: 700;
+                  color: #111827;
+                  margin-top: 2rem;
+                  margin-bottom: 1rem;
+                  border-bottom: 2px solid #e5e7eb;
+                  padding-bottom: 0.5rem;
+                }
+                .rich-article h2 {
+                  font-size: 1.5rem;
+                  font-weight: 700;
+                  color: #1f2937;
+                  margin-top: 1.75rem;
+                  margin-bottom: 0.75rem;
+                  padding-left: 0.75rem;
+                  border-left: 4px solid #3b82f6;
+                }
+                .rich-article h3 {
+                  font-size: 1.25rem;
+                  font-weight: 600;
+                  color: #374151;
+                  margin-top: 1.5rem;
+                  margin-bottom: 0.5rem;
+                }
+                .rich-article h4 {
+                  font-size: 1.125rem;
+                  font-weight: 600;
+                  color: #4b5563;
+                  margin-top: 1.25rem;
+                  margin-bottom: 0.5rem;
+                }
+                /* Strong & emphasis */
+                .rich-article strong {
+                  font-weight: 600;
+                  color: #1f2937;
+                }
+                .rich-article em {
+                  font-style: italic;
+                  color: #4b5563;
+                }
+                /* Links */
+                .rich-article a {
+                  color: #2563eb;
+                  text-decoration: none;
+                  border-bottom: 1px solid transparent;
+                  transition: all 0.2s ease;
+                }
+                .rich-article a:hover {
+                  color: #1d4ed8;
+                  border-bottom-color: #1d4ed8;
+                }
+                /* Code inline */
+                .rich-article code {
+                  background-color: #f3f4f6;
+                  color: #dc2626;
+                  padding: 0.125rem 0.375rem;
+                  border-radius: 0.25rem;
+                  font-size: 0.875em;
+                  font-family: ui-monospace, monospace;
+                }
+                /* Code block */
+                .rich-article pre {
+                  background-color: #1f2937;
+                  color: #f9fafb;
+                  padding: 1rem;
+                  border-radius: 0.5rem;
+                  overflow-x: auto;
+                  margin: 1rem 0;
+                }
+                .rich-article pre code {
+                  background: none;
+                  color: inherit;
+                  padding: 0;
+                }
+                /* Blockquote */
+                .rich-article blockquote {
+                  border-left: 4px solid #3b82f6;
+                  background: linear-gradient(to right, #eff6ff, transparent);
+                  padding: 1rem 1.25rem;
+                  margin: 1rem 0;
+                  border-radius: 0 0.5rem 0.5rem 0;
+                  font-style: italic;
+                  color: #4b5563;
+                }
+                .rich-article blockquote p {
+                  margin: 0;
+                }
+                /* Horizontal rule */
+                .rich-article hr {
+                  border: none;
+                  height: 1px;
+                  background: linear-gradient(
+                    to right,
+                    transparent,
+                    #d1d5db,
+                    transparent
+                  );
+                  margin: 2rem 0;
+                }
+                /* Mark/highlight */
+                .rich-article mark {
+                  background-color: #fef08a;
+                  padding: 0.125rem 0.25rem;
+                  border-radius: 0.125rem;
+                }
+                /* Subscript & superscript */
+                .rich-article sub,
+                .rich-article sup {
+                  font-size: 0.75em;
+                }
+                /* Nested div containers */
+                .rich-article div {
+                  margin: 0;
+                }
+                /* Better figure styling */
+                .rich-article figure.image {
+                  margin: 1.5rem auto;
+                  text-align: center;
+                  max-width: 100%;
+                }
+                .rich-article figure.image img {
+                  margin: 0 auto;
+                  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                }
+                .rich-article figure figcaption,
+                .rich-article figcaption {
+                  font-size: 0.875rem;
+                  color: #6b7280;
+                  margin-top: 0.75rem;
+                  font-style: italic;
+                  text-align: center;
+                }
+                /* Nested figcaption inside figcaption - remove extra styling */
+                .rich-article figcaption figure,
+                .rich-article figcaption figcaption {
+                  margin: 0;
+                  font-size: inherit;
+                }
+                /* List with better bullets */
+                .rich-article ul li::marker {
+                  color: #3b82f6;
+                  font-size: 1.2em;
+                }
+                .rich-article ol li::marker {
+                  color: #3b82f6;
+                  font-weight: 600;
+                }
+                /* Better spacing for list items with strong */
+                .rich-article li strong {
+                  color: #1e40af;
+                }
+                /* Video iframe container */
+                .rich-article p:has(iframe) {
+                  text-align: center;
+                  margin: 1.5rem 0;
+                }
+                /* WordPress caption classes */
+                .rich-article .wp-caption {
+                  max-width: 100%;
+                  margin: 0;
+                }
+                .rich-article .wp-caption-text {
+                  font-size: 0.875rem;
+                  color: #6b7280;
+                  font-style: italic;
+                  margin-top: 0.5rem;
+                }
+                /* Override Tailwind flex classes that may reverse order */
+                .rich-article .flex-col-reverse {
+                  flex-direction: column !important;
+                }
+                .rich-article .flex-row-reverse {
+                  flex-direction: row !important;
+                }
+                .rich-article [class*="flex"] {
+                  display: block !important;
+                }
+                /* Reset any problematic Tailwind classes */
+                .rich-article .w-fit {
+                  width: 100% !important;
+                }
+                .rich-article .group {
+                  display: block !important;
+                }
+                /* Image hover effect for lightbox */
+                .rich-article img {
+                  cursor: pointer;
+                  transition:
+                    transform 0.3s ease,
+                    box-shadow 0.3s ease;
+                }
+                .rich-article img:hover {
+                  transform: scale(1.03);
+                  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+                }
+              `}</style>
+            </section>
+          )}
+          {/* Related Products Section */}
+          {relatedProducts && relatedProducts.length > 0 && (
+            <div className="mt-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <ProductSwiper
+                title="Có thể bạn cũng thích"
+                slug={product.category?.slug || ""}
+                products={relatedProducts}
+              />
+            </div>
+          )}
         </main>
       </div>
 

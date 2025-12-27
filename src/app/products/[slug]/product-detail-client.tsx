@@ -6,13 +6,17 @@ import type { Product } from "@/types/product";
 
 interface ProductDetailClientProps {
   product: Product;
+  relatedProducts: Product[];
 }
 
-export default function ProductDetailClient({ product }: ProductDetailClientProps) {
+export default function ProductDetailClient({
+  product,
+  relatedProducts,
+}: ProductDetailClientProps) {
   // Scroll to top when page loads
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [product.slug]);
 
-  return <ProductDetail product={product} />;
+  return <ProductDetail product={product} relatedProducts={relatedProducts} />;
 }

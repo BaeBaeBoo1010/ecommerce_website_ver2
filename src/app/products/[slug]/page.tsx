@@ -121,10 +121,74 @@ async function fetchProductMetadata(slug: string) {
   return getCachedMetadata();
 }
 
-// Cached version of getProduct - revalidates every 60 seconds
-// Direct fetch - relying on page-level ISR (revalidate = 60) or revalidatePath
 async function getProduct(slug: string) {
   return fetchProduct(slug);
+}
+
+// Fetch related products (Same category + Random others)
+async function fetchRelatedProducts(
+  categoryId: string,
+  currentProductId: string,
+) {
+  const getCachedRelated = unstable_cache(
+    async () => {
+      // 1. Fetch products in same category
+      const { data: sameCatData } = await supabase
+        .from("products")
+        .select(
+          `
+          id, name, slug, product_code, price, description, image_urls,
+          category:categories (id, name, slug)
+        `,
+        )
+        .eq("category_id", categoryId)
+        .neq("id", currentProductId)
+        .limit(8);
+
+      // 2. Fetch some other products ("random" by just taking latest not in cat)
+      const { data: otherData } = await supabase
+        .from("products")
+        .select(
+          `
+          id, name, slug, product_code, price, description, image_urls,
+          category:categories (id, name, slug)
+        `,
+        )
+        .neq("category_id", categoryId)
+        .limit(8);
+
+      // Combine
+      let combined = [...(sameCatData || []), ...(otherData || [])];
+
+      // Shuffle logic (basic)
+      combined = combined.sort(() => Math.random() - 0.5);
+
+      // Map to Product type
+      return combined.map((data: any) => ({
+        id: data.id,
+        name: data.name,
+        slug: data.slug,
+        productCode: data.product_code,
+        price: data.price ?? 0,
+        description: data.description,
+        imageUrls: data.image_urls || [],
+        articleHtml: "", // Not needed for list
+        isArticleEnabled: false,
+        category: data.category
+          ? Array.isArray(data.category)
+            ? data.category[0]
+            : data.category
+          : { id: "", name: "", slug: "" },
+      }));
+    },
+    [`related-${currentProductId}`],
+    {
+      tags: ["products"],
+      revalidate: 60,
+    },
+  );
+
+  return getCachedRelated();
 }
 
 // generateStaticParams removed to use Dynamic Rendering + Data Cache
@@ -201,6 +265,12 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!product) {
     notFound();
   }
+
+  // Fetch related products
+  const relatedProducts = await fetchRelatedProducts(
+    product.category?.id || "",
+    product.id,
+  );
 
   // Product Schema for rich results
   const productSchema = {
@@ -286,7 +356,10 @@ export default async function ProductDetailPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <ProductDetailClient product={product} />
+      <ProductDetailClient
+        product={product}
+        relatedProducts={relatedProducts}
+      />
     </>
   );
 }
