@@ -206,14 +206,18 @@ export async function POST(req: Request) {
     revalidatePath("/products", "page");
 
     // Trigger production revalidation (when running on localhost)
-    await revalidateProduction(slug);
+    revalidateProduction(slug).catch(err => console.warn("Background revalidateProduction failed", err));
 
     // Warm up the new page by pre-fetching it (fire and forget)
     // This ensures the new product page is generated before user access
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    fetch(`${baseUrl}/products/${slug}`, { cache: "no-store" })
-      .then(() => console.log(`✅ Warmed up new product page: /products/${slug}`))
-      .catch((err) => console.warn(`⚠️ Failed to warm up page: ${err.message}`));
+    
+    // Delay warm-up slightly to prioritizing API response
+    setTimeout(() => {
+      fetch(`${baseUrl}/products/${slug}`, { cache: "no-store" })
+        .then(() => console.log(`✅ Warmed up new product page: /products/${slug}`))
+        .catch((err) => console.warn(`⚠️ Failed to warm up page: ${err.message}`));
+    }, 500);
 
     return NextResponse.json({ success: true, product: created }, { status: 201 });
   } catch (err) {

@@ -74,6 +74,53 @@ async function fetchProduct(slug: string) {
   return getCachedProduct();
 }
 
+// Lighter fetch for metadata (excludes article_html)
+async function fetchProductMetadata(slug: string) {
+  const getCachedMetadata = unstable_cache(
+    async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select(
+          `
+          id,
+          name,
+          slug,
+          product_code,
+          description,
+          image_urls,
+          category:categories (
+            name
+          )
+        `,
+        )
+        .eq("slug", slug)
+        .single();
+
+      if (error || !data) return null;
+
+      return {
+        name: data.name,
+        slug: data.slug,
+        productCode: data.product_code,
+        description: data.description,
+        imageUrls: data.image_urls || [],
+        category: data.category
+          ? Array.isArray(data.category)
+            ? data.category[0]
+            : data.category
+          : { name: "" },
+      };
+    },
+    [`product-metadata-${slug}`],
+    {
+      tags: [`product:${slug}`, "products"],
+      revalidate: 60,
+    },
+  );
+
+  return getCachedMetadata();
+}
+
 // Cached version of getProduct - revalidates every 60 seconds
 // Direct fetch - relying on page-level ISR (revalidate = 60) or revalidatePath
 async function getProduct(slug: string) {
@@ -85,7 +132,7 @@ async function getProduct(slug: string) {
 // Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const product = await fetchProductMetadata(slug);
 
   if (!product) {
     return {
@@ -161,7 +208,8 @@ export default async function ProductDetailPage({ params }: Props) {
     "@type": "Product",
     name: product.name,
     description:
-      product.description || `${product.name} - Thiết bị cảm ứng chất lượng cao`,
+      product.description ||
+      `${product.name} - Thiết bị cảm ứng chất lượng cao`,
     sku: product.productCode,
     image: product.imageUrls?.[0],
     url: `${siteUrl}/products/${product.slug}`,

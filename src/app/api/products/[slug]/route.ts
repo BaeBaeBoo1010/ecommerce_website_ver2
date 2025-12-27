@@ -260,20 +260,22 @@ export async function PUT(
     revalidateTag('products', 'max');
     
     // Trigger production revalidation
-    await revalidateProduction(slug);
+    revalidateProduction(slug).catch(err => console.warn("Background revalidateProduction failed", err));
 
     // Warm up the product page
     const finalSlug = slug;
     // Derive base URL from request origin to ensure we revalidate the correct server (local vs production)
     const baseUrl = req.nextUrl.origin;
     
-    // Always warm up the current/new page
-    fetch(`${baseUrl}/products/${finalSlug}`, { 
-      cache: "no-store",
-      headers: { "x-vercel-skip-cdn": "1" } // Bypass CDN to trigger origin regeneration
-    })
-      .then(() => console.log(`✅ Warmed up page: /products/${finalSlug}`))
-      .catch((err) => console.warn(`⚠️ Failed to warm up page: ${err.message}`));
+    // Always warm up the current/new page with a slight delay
+    setTimeout(() => {
+      fetch(`${baseUrl}/products/${finalSlug}`, { 
+        cache: "no-store",
+        headers: { "x-vercel-skip-cdn": "1" } // Bypass CDN to trigger origin regeneration
+      })
+        .then(() => console.log(`✅ Warmed up page: /products/${finalSlug}`))
+        .catch((err) => console.warn(`⚠️ Failed to warm up page: ${err.message}`));
+    }, 500);
 
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {
@@ -483,7 +485,8 @@ export async function DELETE(
     revalidateTag('products', 'max');
 
     // Trigger production revalidation (when running on localhost)
-    await revalidateProduction();
+    // Trigger production revalidation (when running on localhost)
+    revalidateProduction().catch(err => console.warn("Background revalidateProduction failed", err));
 
     return NextResponse.json({ success: true });
   } catch (err) {
