@@ -13,6 +13,7 @@ export async function getAllProducts(): Promise<Product[]> {
       name,
       slug,
       price,
+      original_price,
       image_urls,
       category:categories (
         id,
@@ -25,7 +26,7 @@ export async function getAllProducts(): Promise<Product[]> {
 
   if (error) {
     console.error("❌ Supabase fetch error:", error);
-    return [];
+    throw new Error(`Supabase fetch error: ${error.message}`);
   }
 
   // Transform snake_case to camelCase and format for frontend
@@ -52,6 +53,7 @@ export async function getAllProducts(): Promise<Product[]> {
       slug: camelItem.slug,
       productCode: camelItem.productCode || "",
       price: camelItem.price,
+      originalPrice: camelItem.originalPrice || null,
       description: camelItem.description,
       imageUrls: Array.isArray(camelItem.imageUrls) ? camelItem.imageUrls : [],
       articleHtml: "", // Not fetched for list view
@@ -77,6 +79,7 @@ export async function getAllProductsAdmin(): Promise<Product[]> {
       slug,
       product_code,
       price,
+      original_price,
       description,
       image_urls,
       article_html,
@@ -92,7 +95,7 @@ export async function getAllProductsAdmin(): Promise<Product[]> {
 
   if (error) {
     console.error("❌ Supabase fetch error:", error);
-    return [];
+    throw new Error(`Supabase fetch error: ${error.message}`);
   }
 
   // Transform snake_case to camelCase and format for frontend
@@ -119,6 +122,7 @@ export async function getAllProductsAdmin(): Promise<Product[]> {
       slug: camelItem.slug,
       productCode: camelItem.productCode || "",
       price: camelItem.price,
+      originalPrice: camelItem.originalPrice || null,
       description: camelItem.description || "",
       imageUrls: Array.isArray(camelItem.imageUrls) ? camelItem.imageUrls : [],
       articleHtml: camelItem.articleHtml || "",
@@ -144,6 +148,7 @@ export async function getAllProductsAdminList(): Promise<Product[]> {
       slug,
       product_code,
       price,
+      original_price,
       image_urls,
       category:categories (
         id,
@@ -156,7 +161,7 @@ export async function getAllProductsAdminList(): Promise<Product[]> {
 
   if (error) {
     console.error("❌ Supabase fetch error:", error);
-    return [];
+    throw new Error(`Supabase fetch error: ${error.message}`);
   }
 
   const products: Product[] = data.map((item: any) => {
@@ -177,6 +182,7 @@ export async function getAllProductsAdminList(): Promise<Product[]> {
       slug: camelItem.slug,
       productCode: camelItem.productCode || "",
       price: camelItem.price,
+      originalPrice: camelItem.originalPrice || null,
       description: "", // Excluded
       imageUrls: Array.isArray(camelItem.imageUrls) ? camelItem.imageUrls : [],
       articleHtml: "", // Excluded
@@ -200,6 +206,7 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
       slug,
       product_code,
       price,
+      original_price,
       image_urls,
       category:categories (
         id,
@@ -212,8 +219,9 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
 
   if (error) {
     console.error("❌ Supabase fetch error:", error);
-    return [];
+    throw new Error(`Supabase fetch error: ${error.message}`);
   }
+
 
   const products: Product[] = data.map((item: any) => {
     const camelItem = snakeToCamel(item);
@@ -233,6 +241,7 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
       slug: camelItem.slug,
       productCode: camelItem.productCode || "",
       price: camelItem.price,
+      originalPrice: camelItem.originalPrice || null,
       description: "", 
       imageUrls: Array.isArray(camelItem.imageUrls) ? camelItem.imageUrls : [],
       articleHtml: "",

@@ -214,6 +214,7 @@ export default function EditProductClient({
     code: initialProduct.productCode || "",
     desc: initialProduct.description || "",
     price: initialProduct.price?.toString() || "",
+    originalPrice: initialProduct.originalPrice?.toString() || "",
   });
 
   const [hasArticle, setHasArticle] = useState(
@@ -241,6 +242,7 @@ export default function EditProductClient({
     code: productData.code,
     desc: productData.desc,
     price: productData.price,
+    originalPrice: productData.originalPrice,
     category: selectedCategory,
     images: initialImages.map((img) => ({
       id: img.id,
@@ -262,6 +264,7 @@ export default function EditProductClient({
     code: "",
     desc: "",
     price: "",
+    originalPrice: "",
     category: "",
     images: "",
   });
@@ -282,6 +285,11 @@ export default function EditProductClient({
       case "price":
         if (!value.trim()) error = "Vui lòng nhập giá sản phẩm";
         else if (Number(value) <= 0) error = "Giá phải lớn hơn 0";
+        break;
+      case "originalPrice":
+        if (value && Number(value) <= Number(productData.price)) {
+          error = "Giá trước giảm phải lớn hơn giá bán";
+        }
         break;
       case "category":
         if (!value.trim()) error = "Vui lòng chọn loại sản phẩm";
@@ -527,7 +535,9 @@ export default function EditProductClient({
       productData.name !== initialState.name ||
       productData.code !== initialState.code ||
       productData.desc !== initialState.desc ||
+      productData.desc !== initialState.desc ||
       productData.price !== initialState.price ||
+      productData.originalPrice !== initialState.originalPrice ||
       selectedCategory !== initialState.category ||
       articleChanged ||
       imagesChanged;
@@ -606,6 +616,10 @@ export default function EditProductClient({
     const isCodeValid = validateField("code", productData.code);
     const isDescValid = validateField("desc", productData.desc);
     const isPriceValid = validateField("price", productData.price);
+    const isOriginalPriceValid = validateField(
+      "originalPrice",
+      productData.originalPrice,
+    );
     const isCategoryValid = validateField("category", selectedCategory);
 
     if (
@@ -613,6 +627,7 @@ export default function EditProductClient({
       !isCodeValid ||
       !isDescValid ||
       !isPriceValid ||
+      !isOriginalPriceValid ||
       !isCategoryValid
     ) {
       toast.error("Vui lòng nhập đầy đủ thông tin sản phẩm");
@@ -765,6 +780,7 @@ export default function EditProductClient({
       code: initialState.code,
       desc: initialState.desc,
       price: initialState.price,
+      originalPrice: initialState.originalPrice,
     });
 
     // Restore images from initial state
@@ -788,6 +804,7 @@ export default function EditProductClient({
       code: "",
       desc: "",
       price: "",
+      originalPrice: "",
       category: "",
       images: "",
     });
@@ -918,26 +935,73 @@ export default function EditProductClient({
             </div>
 
             {/* Price */}
-            <div className="grid gap-2">
-              <Label htmlFor="price">Giá (VNĐ)</Label>
-              <Input
-                id="price"
-                name="price"
-                type="number"
-                step="1000"
-                min="0"
-                value={productData.price}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setProductData((p) => ({ ...p, price: value }));
-                  validateField("price", value);
-                }}
-                onBlur={(e) => validateField("price", e.target.value)}
-                className={`max-w-40 ${fieldError.price ? "border-red-500" : ""}`}
-              />
-              {fieldError.price && (
-                <p className="text-sm text-red-500">{fieldError.price}</p>
-              )}
+            <div className="mb-6 grid grid-cols-2 gap-4">
+              <div className="relative grid gap-2">
+                <Label htmlFor="price">Giá (VNĐ)</Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="number"
+                  step="1000"
+                  min="0"
+                  value={productData.price}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setProductData((p) => ({ ...p, price: value }));
+                    validateField("price", value);
+                  }}
+                  onBlur={(e) => validateField("price", e.target.value)}
+                  className={`max-w-full ${fieldError.price ? "border-red-500" : ""}`}
+                />
+                {fieldError.price && (
+                  <p className="absolute top-full left-0 text-sm text-red-500">
+                    {fieldError.price}
+                  </p>
+                )}
+              </div>
+              <div className="relative grid gap-2">
+                <Label htmlFor="originalPrice">
+                  Giá trước giảm (VNĐ){" "}
+                  <span className="text-muted-foreground text-xs font-normal">
+                    (Tuỳ chọn)
+                  </span>
+                </Label>
+                <Input
+                  id="originalPrice"
+                  name="originalPrice"
+                  type="number"
+                  step="1000"
+                  min="0"
+                  value={productData.originalPrice}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setProductData((p) => ({ ...p, originalPrice: value }));
+                    if (fieldError.originalPrice) {
+                      setFieldError((prev) => ({ ...prev, originalPrice: "" }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Re-validate against current price
+                    if (
+                      e.target.value &&
+                      Number(e.target.value) <= Number(productData.price)
+                    ) {
+                      setFieldError((prev) => ({
+                        ...prev,
+                        originalPrice: "Giá trước giảm phải lớn hơn giá bán",
+                      }));
+                    } else {
+                      validateField("originalPrice", e.target.value);
+                    }
+                  }}
+                  className={fieldError.originalPrice ? "border-red-500" : ""}
+                />
+                {fieldError.originalPrice && (
+                  <p className="absolute top-full left-0 text-sm text-red-500">
+                    {fieldError.originalPrice}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Category */}

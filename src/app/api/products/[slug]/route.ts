@@ -59,6 +59,7 @@ export async function GET(
       slug,
       product_code,
       price,
+      original_price,
       description,
       image_urls,
       article_html,
@@ -83,6 +84,7 @@ export async function GET(
     slug: data.slug,
     productCode: data.product_code,
     price: data.price,
+    originalPrice: data.original_price,
     description: data.description,
     imageUrls: data.image_urls || [],
     articleHtml: data.article_html,
@@ -138,6 +140,7 @@ export async function PUT(
     const description = (formData.get("description") as string)?.trim();
     const articleHtml = formData.get("articleHtml") as string;
     const isArticleEnabled = formData.get("isArticleEnabled") === "true";
+    const originalPrice = formData.get("originalPrice") as string;
     const keptImageUrls = formData.getAll("keptImageUrls") as string[];
     const newImages = formData.getAll("images") as File[];
 
@@ -177,6 +180,8 @@ export async function PUT(
     }
 
     if (price) updates.price = Number(price);
+    if (originalPrice !== null)
+      updates.original_price = originalPrice ? Number(originalPrice) : null;
     if (categoryId) updates.category_id = categoryId;
     if (description !== undefined) updates.description = description || null;
     if (articleHtml !== undefined) updates.article_html = articleHtml || null;
@@ -323,6 +328,7 @@ export async function PATCH(
       name,
       productCode,
       price,
+      originalPrice,
       categoryId,
       description,
       imageUrls,
@@ -358,6 +364,8 @@ export async function PATCH(
     }
 
     if (price !== undefined) updates.price = Number(price);
+    if (originalPrice !== undefined)
+      updates.original_price = originalPrice ? Number(originalPrice) : null;
     if (categoryId !== undefined) updates.category_id = categoryId;
     if (description !== undefined) updates.description = description?.trim() || null;
     if (imageUrls !== undefined) updates.image_urls = imageUrls;

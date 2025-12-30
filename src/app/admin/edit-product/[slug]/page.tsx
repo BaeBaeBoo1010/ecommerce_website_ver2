@@ -54,6 +54,7 @@ export default async function EditProductPage(props: {
   const product = {
     ...productRes.data,
     productCode: productRes.data.product_code, // Map snake_case to camelCase
+    originalPrice: productRes.data.original_price,
     imageUrls: productRes.data.image_urls,
     articleHtml: productRes.data.article_html,
     isArticleEnabled: productRes.data.is_article_enabled,

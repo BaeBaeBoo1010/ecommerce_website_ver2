@@ -334,9 +334,17 @@ export default function ProductDetail({
                     </p>
                   )}
 
-                  <p className="mb-6 text-4xl font-bold text-[#EE4D2D]">
-                    {product.price.toLocaleString("vi-VN")} ₫
-                  </p>
+                  <div className="mb-6 flex items-baseline gap-3">
+                    <p className="text-4xl font-bold text-[#EE4D2D]">
+                      {product.price.toLocaleString("vi-VN")}đ
+                    </p>
+                    {product.originalPrice &&
+                      product.originalPrice > product.price && (
+                        <p className="text-xl text-gray-300 line-through">
+                          {product.originalPrice.toLocaleString("vi-VN")}đ
+                        </p>
+                      )}
+                  </div>
 
                   <div className="prose mb-8 max-w-none text-gray-700">
                     {product.description ? (

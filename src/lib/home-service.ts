@@ -14,6 +14,7 @@ export async function getHomeCategories(): Promise<CategoryWithProducts[]> {
         name,
         slug,
         price,
+        original_price,
         description,
         image_urls
       )

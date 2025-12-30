@@ -28,6 +28,7 @@ async function fetchProduct(slug: string) {
           slug,
           product_code,
           price,
+          original_price,
           description,
           image_urls,
           article_html,
@@ -53,6 +54,7 @@ async function fetchProduct(slug: string) {
         slug: data.slug,
         productCode: data.product_code,
         price: data.price ?? 0,
+        originalPrice: data.original_price || null,
         description: data.description,
         imageUrls: data.image_urls || [],
         articleHtml: data.article_html,
@@ -170,6 +172,7 @@ async function fetchRelatedProducts(
         slug: data.slug,
         productCode: data.product_code,
         price: data.price ?? 0,
+        originalPrice: data.original_price || null,
         description: data.description,
         imageUrls: data.image_urls || [],
         articleHtml: "", // Not needed for list

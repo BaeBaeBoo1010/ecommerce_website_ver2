@@ -78,6 +78,7 @@ export async function POST(req: Request) {
     const name = (formData.get("name") as string)?.trim();
     const productCode = (formData.get("productCode") as string)?.trim();
     const price = formData.get("price") as string;
+    const originalPrice = formData.get("originalPrice") as string;
     const categoryId = formData.get("category") as string;
     const description = (formData.get("description") as string)?.trim();
     const articleHtml = formData.get("articleHtml") as string;
@@ -182,6 +183,7 @@ export async function POST(req: Request) {
           slug,
           product_code: productCode,
           price: Number(price),
+          original_price: originalPrice ? Number(originalPrice) : null,
           category_id: categoryId,
           description: description || null,
           image_urls: imageUrls,

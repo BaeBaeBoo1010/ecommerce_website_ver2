@@ -92,8 +92,20 @@ export default function ProductSwiper({
               <SwiperSlide key={p.slug}>
                 <Link
                   href={`/products/${p.slug}`}
-                  className="group flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 sm:h-90"
+                  className="group relative flex h-64 flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 sm:h-90"
                 >
+                  {p.originalPrice && p.originalPrice > p.price && (
+                    <div className="absolute top-0 left-0 z-10 rounded-tl-2xl rounded-br-xl bg-[#ee4d2d] px-2 py-1 text-xs font-bold text-white shadow-sm">
+                    Giảm{" "}
+                    <span className="text-[15px]">
+                      {Math.round(
+                        ((p.originalPrice - p.price) / p.originalPrice) * 100,
+                      )}
+                      %
+                    </span>
+                    </div>
+                  )}
+
                   <div
                     className="relative w-full rounded"
                     style={{ height: 208 }}
@@ -112,10 +124,17 @@ export default function ProductSwiper({
                     <h3 className="line-clamp-3 text-sm font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:text-lg">
                       {p.name}
                     </h3>
-                    <p className="mt-auto text-base font-bold text-[#ee4d2d] sm:text-lg">
-                      {p.price.toLocaleString("vi-VN")}
-                      <span className="text-xs">đ</span>
-                    </p>
+                    <div className="mt-auto flex items-baseline gap-2">
+                      <p className="text-base font-bold text-[#ee4d2d] sm:text-lg">
+                        {p.price.toLocaleString("vi-VN")}
+                        <span className="text-xs">đ</span>
+                      </p>
+                      {p.originalPrice && p.originalPrice > p.price && (
+                        <p className="text-xs text-gray-300 line-through">
+                          {p.originalPrice.toLocaleString("vi-VN")}đ
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </Link>
               </SwiperSlide>

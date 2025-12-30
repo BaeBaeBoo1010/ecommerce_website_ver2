@@ -143,6 +143,7 @@ export default function AddProductClient({ initialCategories }: Props) {
     code: "",
     desc: "",
     price: "",
+    originalPrice: "",
     category: "",
   });
 
@@ -151,6 +152,7 @@ export default function AddProductClient({ initialCategories }: Props) {
     code: "",
     desc: "",
     price: "",
+    originalPrice: "",
     category: "",
     images: "",
   });
@@ -418,6 +420,7 @@ export default function AddProductClient({ initialCategories }: Props) {
       code: "",
       desc: "",
       price: "",
+      originalPrice: "",
       category: "",
     });
     setFieldError({
@@ -425,6 +428,7 @@ export default function AddProductClient({ initialCategories }: Props) {
       code: "",
       desc: "",
       price: "",
+      originalPrice: "",
       category: "",
       images: "",
     });
@@ -496,6 +500,10 @@ export default function AddProductClient({ initialCategories }: Props) {
     const isCodeValid = validateField("code", productData.code);
     const isDescValid = validateField("desc", productData.desc);
     const isPriceValid = validateField("price", productData.price);
+    const isOriginalPriceValid = validateField(
+      "originalPrice",
+      productData.originalPrice,
+    );
     const isCategoryValid = validateField("category", selectedCategory);
 
     if (
@@ -503,6 +511,7 @@ export default function AddProductClient({ initialCategories }: Props) {
       !isCodeValid ||
       !isDescValid ||
       !isPriceValid ||
+      !isOriginalPriceValid ||
       !isCategoryValid
     ) {
       toast.error("Vui lòng nhập đầy đủ thông tin sản phẩm");
@@ -741,26 +750,72 @@ export default function AddProductClient({ initialCategories }: Props) {
                 {descLength}/{DESC_LIMIT} ký tự
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="price">Giá (VNĐ)</Label>
-              <Input
-                id="price"
-                name="price"
-                type="number"
-                step="1000"
-                min="0"
-                value={productData.price}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setProductData((p) => ({ ...p, price: value }));
-                  validateField("price", value);
-                }}
-                onBlur={(e) => validateField("price", e.target.value)}
-                className={`max-w-40 ${fieldError.price ? "border-red-500" : ""}`}
-              />
-              {fieldError.price && (
-                <p className="text-sm text-red-500">{fieldError.price}</p>
-              )}
+            <div className="mb-6 grid grid-cols-2 gap-4">
+              <div className="relative grid gap-2">
+                <Label htmlFor="price">Giá (VNĐ)</Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="number"
+                  step="1000"
+                  min="0"
+                  value={productData.price}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setProductData((p) => ({ ...p, price: value }));
+                    validateField("price", value);
+                  }}
+                  onBlur={(e) => validateField("price", e.target.value)}
+                  className={`max-w-full ${fieldError.price ? "border-red-500" : ""}`}
+                />
+                {fieldError.price && (
+                  <p className="absolute top-full left-0 text-sm text-red-500">
+                    {fieldError.price}
+                  </p>
+                )}
+              </div>
+              <div className="relative grid gap-2">
+                <Label htmlFor="originalPrice">
+                  Giá trước giảm (VNĐ){" "}
+                  <span className="text-muted-foreground text-xs font-normal">
+                    (Tuỳ chọn)
+                  </span>
+                </Label>
+                <Input
+                  id="originalPrice"
+                  name="originalPrice"
+                  type="number"
+                  step="1000"
+                  value={productData.originalPrice}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setProductData((p) => ({ ...p, originalPrice: value }));
+                    if (fieldError.originalPrice) {
+                      setFieldError((prev) => ({ ...prev, originalPrice: "" }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Re-validate against current price
+                    if (
+                      e.target.value &&
+                      Number(e.target.value) <= Number(productData.price)
+                    ) {
+                      setFieldError((prev) => ({
+                        ...prev,
+                        originalPrice: "Giá trước giảm phải lớn hơn giá bán",
+                      }));
+                    } else {
+                      validateField("originalPrice", e.target.value);
+                    }
+                  }}
+                  className={fieldError.originalPrice ? "border-red-500" : ""}
+                />
+                {fieldError.originalPrice && (
+                  <p className="absolute top-full left-0 text-sm text-red-500">
+                    {fieldError.originalPrice}
+                  </p>
+                )}
+              </div>
             </div>
             {/* Category */}
             <div className="grid gap-2">
