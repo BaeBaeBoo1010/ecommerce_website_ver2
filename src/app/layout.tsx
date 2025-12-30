@@ -132,7 +132,7 @@ export default async function RootLayout({
               "@type": "Organization",
               name: siteName,
               url: siteUrl,
-              logo: `${siteUrl}/images/logo.webp`,
+              logo: `${siteUrl}/favicon.png`,
               description:
                 "Chuyên cung cấp thiết bị cảm ứng, thiết bị thông minh cho gia đình và công nghiệp",
               sameAs: [],
