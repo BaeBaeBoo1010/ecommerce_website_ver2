@@ -25,7 +25,7 @@ const inter = Inter({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
-const siteName = "Quang Minh - Thiết bị cảm ứng thông minh";
+const siteName = "Quang Minh - Thiết bị cảm ứng thông minh chính hãng";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -95,11 +95,6 @@ export const metadata: Metadata = {
   verification: {
     // Thêm Google Search Console verification code nếu có
     // google: "verification-code-here",
-  },
-  icons: {
-    icon: `${siteUrl}/favicon.png`,
-    shortcut: `${siteUrl}/favicon.png`,
-    apple: `${siteUrl}/favicon.png`,
   },
 };
 
