@@ -20,9 +20,9 @@ export async function generateMetadata(): Promise<Metadata> {
       url: siteUrl,
       images: [
         {
-          url: `${siteUrl}/images/logo.webp`,
-          width: 1200,
-          height: 630,
+          url: `${siteUrl}/icon.png`,
+          width: 512,
+          height: 512,
           alt: "Quang Minh - Thiết bị cảm ứng thông minh",
         },
       ],

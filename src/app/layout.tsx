@@ -64,15 +64,15 @@ export const metadata: Metadata = {
       "Chuyên cung cấp thiết bị cảm ứng, thiết bị thông minh cho gia đình và công nghiệp. Sản phẩm chất lượng cao, giá tốt nhất thị trường.",
     images: [
       {
-        url: `${siteUrl}/images/logo.webp`,
-        width: 1200,
-        height: 630,
+        url: `${siteUrl}/icon.png`,
+        width: 512,
+        height: 512,
         alt: siteName,
       },
     ],
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: siteName,
     description:
       "Chuyên cung cấp thiết bị cảm ứng, thiết bị thông minh cho gia đình và công nghiệp.",
@@ -127,7 +127,7 @@ export default async function RootLayout({
               "@type": "Organization",
               name: siteName,
               url: siteUrl,
-              logo: `${siteUrl}/favicon.png`,
+              logo: `${siteUrl}/icon.png`,
               description:
                 "Chuyên cung cấp thiết bị cảm ứng, thiết bị thông minh cho gia đình và công nghiệp",
               sameAs: [],
