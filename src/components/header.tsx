@@ -6,25 +6,15 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Menu, ShoppingCart, User, Loader2 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
-
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { Category } from "@/types/product";
 import { cn } from "@/lib/utils";
 
 import SearchCommand from "./search-command";
-import MobileSidebar from "./sidebar";
 import { useCart } from "@/context/cart-context";
 import { slugify } from "@/lib/slugify";
+import { CartDropdown } from "./cart-dropdown";
 
 export default function Header() {
   const { data: session, status } = useSession();
@@ -79,6 +69,16 @@ export default function Header() {
 
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+
+  // State to control dropdown close on click
+  const [catDropdownHidden, setCatDropdownHidden] = useState(false);
+  const [accDropdownHidden, setAccDropdownHidden] = useState(false);
+  const [cartDropdownHidden, setCartDropdownHidden] = useState(false);
+
+  // Reset dropdown state when mouse leaves
+  const handleCatMouseLeave = () => setCatDropdownHidden(false);
+  const handleAccMouseLeave = () => setAccDropdownHidden(false);
+  const handleCartMouseLeave = () => setCartDropdownHidden(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -137,40 +137,53 @@ export default function Header() {
             </div>
           </Link>
 
-          {/* Category dropdown (hidden < lg) */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="hidden cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-[16px] font-medium text-gray-700 transition hover:bg-gray-200 active:bg-gray-300 lg:flex dark:border-neutral-600 dark:bg-neutral-800 dark:text-gray-100 dark:hover:bg-neutral-700"
-                aria-label="Danh mục sản phẩm"
-              >
-                <Menu size={18} />
-                <span className="hidden xl:inline">Danh mục</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="z-[60] mt-2 w-64">
-              {isLoading ? (
-                <DropdownMenuItem disabled className="flex items-center gap-2">
-                  <Loader2 className="animate-spin" size={16} /> Đang tải…
-                </DropdownMenuItem>
-              ) : categories.filter((c: any) => c.productCount > 0).length ===
-                0 ? (
-                <DropdownMenuItem disabled>Không có danh mục</DropdownMenuItem>
-              ) : (
-                categories
-                  .filter((c: any) => c.productCount > 0)
-                  .map((cat) => (
-                    <DropdownMenuItem key={slugify(cat.name)} asChild>
+          {/* Category dropdown (hidden < lg) - hover based */}
+          <div
+            className="group/cat relative hidden lg:block"
+            onMouseLeave={handleCatMouseLeave}
+          >
+            <button
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-[16px] font-medium text-gray-700 transition hover:bg-gray-200 active:bg-gray-300 dark:border-neutral-600 dark:bg-neutral-800 dark:text-gray-100 dark:hover:bg-neutral-700"
+              aria-label="Danh mục sản phẩm"
+            >
+              <Menu size={18} />
+              <span className="hidden xl:inline">Danh mục</span>
+            </button>
+            {/* Hover Dropdown */}
+            <div
+              className={`absolute top-[calc(100%+10px)] left-0 z-[60] w-64 origin-top-left rounded-lg border border-gray-200 bg-white shadow-[0_1px_10px_rgba(0,0,0,0.1)] transition-all duration-200 dark:border-neutral-700 dark:bg-neutral-900 ${catDropdownHidden ? "invisible opacity-0" : "invisible opacity-0 group-hover/cat:visible group-hover/cat:opacity-100"}`}
+            >
+              {/* Triangle Arrow */}
+              <div className="absolute -top-2 left-6 h-4 w-4 rotate-45 border-t border-l border-gray-200 bg-white dark:border-neutral-700 dark:bg-neutral-900" />
+              {/* Bridge to prevent gap */}
+              <div className="absolute -top-3 left-0 h-4 w-full bg-transparent" />
+              <div className="p-2">
+                {isLoading ? (
+                  <div className="flex items-center gap-2 px-3 py-2 text-base text-gray-500">
+                    <Loader2 className="animate-spin" size={16} /> Đang tải…
+                  </div>
+                ) : categories.filter((c: any) => c.productCount > 0).length ===
+                  0 ? (
+                  <div className="px-3 py-2 text-base text-gray-500">
+                    Không có danh mục
+                  </div>
+                ) : (
+                  categories
+                    .filter((c: any) => c.productCount > 0)
+                    .map((cat) => (
                       <Link
+                        key={slugify(cat.name)}
                         href={`/products?category=${slugify(cat.name)}&page=1`}
+                        onClick={() => setCatDropdownHidden(true)}
+                        className="block rounded-md px-3 py-2 text-base text-gray-700 transition-all hover:bg-gray-50 hover:text-blue-600 dark:text-gray-200 dark:hover:bg-neutral-800 dark:hover:text-blue-400"
                       >
                         {cat.name}
                       </Link>
-                    </DropdownMenuItem>
-                  ))
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    ))
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* MIDDLE: Nav links & Search (hidden < lg for links) */}
@@ -220,9 +233,37 @@ export default function Header() {
 
         {/* RIGHT: Cart & User menu */}
         <div className="flex items-center gap-2 sm:gap-4 lg:flex">
+          <div
+            className="group relative hidden lg:block"
+            onMouseLeave={handleCartMouseLeave}
+          >
+            <Link
+              href="/cart"
+              onClick={() => setCartDropdownHidden(true)}
+              className="relative flex w-[40px] flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-auto sm:min-w-[80px] sm:px-3 dark:text-gray-300 dark:hover:bg-neutral-800"
+              aria-label="Giỏ hàng"
+            >
+              <ShoppingCart size={20} />
+              <span className="hidden text-center text-[16px] sm:block">
+                Giỏ hàng
+              </span>
+              {cartCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 px-1 py-0 text-[10px] font-semibold text-white">
+                  {cartCount > 999 ? "999+" : cartCount}
+                </Badge>
+              )}
+            </Link>
+            {pathname !== "/cart" && (
+              <CartDropdown
+                isHidden={cartDropdownHidden}
+                onItemClick={() => setCartDropdownHidden(true)}
+              />
+            )}
+          </div>
+
           <Link
             href="/cart"
-            className="relative flex w-[40px] flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-auto sm:min-w-[80px] sm:px-3 dark:text-gray-300 dark:hover:bg-neutral-800"
+            className="relative flex w-[40px] flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-auto sm:min-w-[80px] sm:px-3 lg:hidden dark:text-gray-300 dark:hover:bg-neutral-800"
             aria-label="Giỏ hàng"
           >
             <ShoppingCart size={20} />
@@ -230,84 +271,111 @@ export default function Header() {
               Giỏ hàng
             </span>
             {cartCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 py-0 text-[10px] font-semibold">
+              <Badge className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 px-1 py-0 text-[10px] font-semibold text-white">
                 {cartCount > 999 ? "999+" : cartCount}
               </Badge>
             )}
           </Link>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="hidden w-[40px] cursor-pointer flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-auto sm:min-w-[80px] sm:px-3 lg:flex dark:text-gray-300 dark:hover:bg-neutral-800"
-                aria-label="Tài khoản"
-              >
-                {status === "loading" ? (
-                  <Loader2 size={20} className="animate-spin" />
-                ) : (
-                  <User size={20} />
+          {/* Account dropdown - hover based */}
+          <div
+            className="group/acc relative hidden lg:block"
+            onMouseLeave={handleAccMouseLeave}
+          >
+            <button
+              className="flex w-[40px] cursor-pointer flex-col items-center gap-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100 active:bg-gray-200 sm:w-auto sm:min-w-[80px] sm:px-3 dark:text-gray-300 dark:hover:bg-neutral-800"
+              aria-label="Tài khoản"
+            >
+              {status === "loading" ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <User size={20} />
+              )}
+              <span className="hidden text-center text-[16px] sm:block">
+                {status === "loading"
+                  ? "Đang tải..."
+                  : status === "authenticated"
+                    ? session.user?.name?.split(" ").slice(-1).join(" ")
+                    : "Tài khoản"}
+              </span>
+            </button>
+            {/* Hover Dropdown */}
+            <div
+              className={`absolute top-[calc(100%+10px)] right-0 z-[60] w-52 origin-top-right rounded-lg border border-gray-200 bg-white shadow-[0_1px_10px_rgba(0,0,0,0.1)] transition-all duration-200 dark:border-neutral-700 dark:bg-neutral-900 ${accDropdownHidden ? "invisible opacity-0" : "invisible opacity-0 group-hover/acc:visible group-hover/acc:opacity-100"}`}
+            >
+              {/* Triangle Arrow */}
+              <div className="absolute -top-2 right-6 h-4 w-4 rotate-45 border-t border-l border-gray-200 bg-white dark:border-neutral-700 dark:bg-neutral-900" />
+              {/* Bridge to prevent gap */}
+              <div className="absolute -top-3 right-0 h-4 w-full bg-transparent" />
+              <div className="p-2">
+                {status === "loading" && (
+                  <div className="flex items-center gap-2 px-3 py-2 text-base text-gray-500">
+                    <Loader2 className="animate-spin" size={16} />
+                    Đang tải...
+                  </div>
                 )}
-                <span className="hidden text-center text-[16px] sm:block">
-                  {status === "loading"
-                    ? "Đang tải..."
-                    : status === "authenticated"
-                      ? session.user?.name?.split(" ").slice(-1).join(" ")
-                      : "Tài khoản"}
-                </span>
-              </button>
-            </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              {status === "loading" && (
-                <DropdownMenuItem disabled className="flex items-center gap-2">
-                  <Loader2 className="animate-spin" size={16} />
-                  Đang tải...
-                </DropdownMenuItem>
-              )}
+                {status === "unauthenticated" && (
+                  <>
+                    <div className="mb-2 border-b border-gray-100 px-3 pb-2 text-base font-semibold text-gray-900 dark:border-neutral-700 dark:text-white">
+                      Tài khoản
+                    </div>
+                    <Link
+                      href="/auth/login"
+                      onClick={() => setAccDropdownHidden(true)}
+                      className="block rounded-md px-3 py-2 text-base text-gray-700 transition-all hover:bg-gray-50 hover:text-blue-600 dark:text-gray-200 dark:hover:bg-neutral-800 dark:hover:text-blue-400"
+                    >
+                      Đăng nhập
+                    </Link>
+                    <Link
+                      href="/auth/register"
+                      onClick={() => setAccDropdownHidden(true)}
+                      className="block rounded-md px-3 py-2 text-base text-gray-700 transition-all hover:bg-gray-50 hover:text-blue-600 dark:text-gray-200 dark:hover:bg-neutral-800 dark:hover:text-blue-400"
+                    >
+                      Tạo tài khoản
+                    </Link>
+                  </>
+                )}
 
-              {status === "unauthenticated" && (
-                <>
-                  <DropdownMenuLabel>Tài khoản</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/auth/login">Đăng nhập</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/auth/register">Tạo tài khoản</Link>
-                  </DropdownMenuItem>
-                </>
-              )}
+                {status === "authenticated" && (
+                  <>
+                    <div className="mb-2 border-b border-gray-100 px-3 pb-2 text-base font-semibold text-gray-900 dark:border-neutral-700 dark:text-white">
+                      {session.user?.name}
+                    </div>
 
-              {status === "authenticated" && (
-                <>
-                  <DropdownMenuLabel>{session.user?.name}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-
-                  {isAdmin ? (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin/product-management">
+                    {isAdmin ? (
+                      <Link
+                        href="/admin/product-management"
+                        onClick={() => setAccDropdownHidden(true)}
+                        className="block rounded-md px-3 py-2 text-base text-gray-700 transition-all hover:bg-gray-50 hover:text-blue-600 dark:text-gray-200 dark:hover:bg-neutral-800 dark:hover:text-blue-400"
+                      >
                         Quản lý sản phẩm
                       </Link>
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile">Hồ sơ của tôi</Link>
-                    </DropdownMenuItem>
-                  )}
+                    ) : (
+                      <Link
+                        href="/profile"
+                        onClick={() => setAccDropdownHidden(true)}
+                        className="block rounded-md px-3 py-2 text-base text-gray-700 transition-all hover:bg-gray-50 hover:text-blue-600 dark:text-gray-200 dark:hover:bg-neutral-800 dark:hover:text-blue-400"
+                      >
+                        Hồ sơ của tôi
+                      </Link>
+                    )}
 
-                  <DropdownMenuItem
-                    onClick={() => {
-                      signOut({ callbackUrl: "/" });
-                      toast.success("Đăng xuất thành công");
-                    }}
-                    className="text-red-600"
-                  >
-                    Đăng xuất
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    <button
+                      onClick={() => {
+                        setAccDropdownHidden(true);
+                        signOut({ callbackUrl: "/" });
+                        toast.success("Đăng xuất thành công");
+                      }}
+                      className="block w-full rounded-md px-3 py-2 text-left text-base text-red-600 transition-all hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      Đăng xuất
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </header>

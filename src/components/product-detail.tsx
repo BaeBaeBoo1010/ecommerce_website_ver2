@@ -402,7 +402,7 @@ export default function ProductDetail({
                     Thêm vào giỏ hàng
                   </button>
                   <button
-                    className="flex-1 cursor-pointer rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 p-4 text-lg font-semibold text-white shadow-md transition-transform duration-300 hover:scale-[1.07] hover:from-blue-700 hover:to-indigo-600 focus:ring-4 focus:ring-indigo-300 focus:outline-none"
+                    className="btn-shine relative flex-1 cursor-pointer overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 p-4 text-lg font-semibold text-white shadow-md transition-transform duration-300 hover:scale-[1.03] hover:from-blue-700 hover:to-indigo-600 focus:ring-4 focus:ring-indigo-300 focus:outline-none"
                     onClick={() => handleAction("buy")}
                   >
                     Mua ngay
@@ -812,7 +812,7 @@ export default function ProductDetail({
           )}
           {/* Related Products Section */}
           {relatedProducts && relatedProducts.length > 0 && (
-            <div className="mt-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <ProductSwiper
                 title="Có thể bạn cũng thích"
                 slug={product.category?.slug || ""}
@@ -840,7 +840,7 @@ export default function ProductDetail({
             setPendingAction("buy");
             setOpenSheet(true);
           }}
-          className="flex-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 py-3 text-base font-semibold text-white"
+          className="btn-shine relative flex-1 overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 py-3 text-base font-semibold text-white"
         >
           Mua ngay
         </button>

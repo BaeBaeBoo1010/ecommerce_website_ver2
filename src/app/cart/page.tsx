@@ -103,6 +103,16 @@ export default function CartPage() {
       .reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   }, [items, selectedItems]);
 
+  const totalSavings = useMemo(() => {
+    return items
+      .filter((item) => selectedItems.has(item.product.id))
+      .reduce((sum, item) => {
+        const originalPrice = item.product.originalPrice || item.product.price;
+        const savings = Math.max(0, originalPrice - item.product.price);
+        return sum + savings * item.quantity;
+      }, 0);
+  }, [items, selectedItems]);
+
   if (items.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
@@ -113,7 +123,10 @@ export default function CartPage() {
         <p className="text-gray-500">
           Hãy dạo quanh cửa hàng và thêm vài sản phẩm nhé!
         </p>
-        <Button asChild className="mt-4">
+        <Button
+          asChild
+          className="mt-4 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 px-6 py-3 text-lg font-semibold text-white shadow-md transition-transform duration-300 hover:from-blue-700 hover:to-indigo-600"
+        >
           <Link href="/products">Tiếp tục mua sắm</Link>
         </Button>
       </div>
@@ -161,15 +174,23 @@ export default function CartPage() {
               Tổng quan đơn hàng
             </h2>
 
-            <div className="mt-4 flex justify-between text-base font-bold sm:text-lg">
-              <span>Tạm tính</span>
-              <span className="text-[#EE4D2D]">
-                {selectedTotalPrice.toLocaleString("vi-VN")} ₫
-              </span>
+            <div className="mt-4 space-y-2">
+              <div className="flex justify-between text-base font-bold sm:text-lg">
+                <span>Thành tiền</span>
+                <span className="text-[#EE4D2D]">
+                  {selectedTotalPrice.toLocaleString("vi-VN")} ₫
+                </span>
+              </div>
+              {totalSavings > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Tiết kiệm</span>
+                  <span>{totalSavings.toLocaleString("vi-VN")} ₫</span>
+                </div>
+              )}
             </div>
 
             <Button
-              className="mt-4 w-full gap-2 py-6 text-base sm:mt-6 sm:text-lg"
+              className="mt-4 w-full gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 py-6 text-base font-semibold text-white shadow-md transition-transform duration-300 hover:from-blue-700 hover:to-indigo-600 disabled:opacity-50 sm:mt-6 sm:text-lg"
               size="lg"
               disabled={selectedItems.size === 0}
             >
@@ -177,7 +198,7 @@ export default function CartPage() {
             </Button>
 
             <p className="mt-4 text-center text-xs text-gray-500">
-              Giá đã bao gồm VAT. Phí vận chuyển sẽ được tính khi mua hàng.
+              Giá đã bao gồm VAT, chưa bao gồm phí vận chuyển.
             </p>
           </div>
         </div>
@@ -197,15 +218,20 @@ export default function CartPage() {
 
         {/* Subtotal */}
         <div className="flex flex-1 flex-col items-end">
-          <span className="text-sm text-gray-500">Tạm tính</span>
+          <span className="text-sm text-gray-500">Thành tiền</span>
           <span className="text-lg font-bold text-[#EE4D2D]">
             {selectedTotalPrice.toLocaleString("vi-VN")} ₫
           </span>
+          {totalSavings > 0 && (
+            <span className="text-xs text-green-600">
+              Tiết kiệm {totalSavings.toLocaleString("vi-VN")} ₫
+            </span>
+          )}
         </div>
 
         {/* Buy Button */}
         <Button
-          className="h-12 gap-1 px-5 text-base font-semibold"
+          className="h-12 gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 px-5 text-base font-semibold text-white shadow-md transition-transform duration-300 hover:from-blue-700 hover:to-indigo-600 disabled:opacity-50"
           disabled={selectedItems.size === 0}
         >
           Mua hàng ({selectedItems.size})

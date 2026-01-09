@@ -203,7 +203,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           if (
             fresh.price !== item.product.price ||
             fresh.name !== item.product.name ||
-            fresh.slug !== item.product.slug
+            fresh.slug !== item.product.slug ||
+            fresh.originalPrice !== item.product.originalPrice
           ) {
             hasChanges = true;
             return { ...item, product: fresh };

@@ -7,6 +7,7 @@ import { Inter } from "next/font/google";
 import Header from "@/components/header";
 import AppToaster from "@/components/app-toaster";
 import ScrollToTop from "@/components/scroll-to-top";
+import ScrollToTopOnNavigate from "@/components/scroll-to-top-on-navigate";
 import Providers from "./providers";
 import "./globals.css";
 import NextTopLoader from "nextjs-toploader";
@@ -160,6 +161,7 @@ export default async function RootLayout({
           <div className="h-14 sm:h-16 lg:h-20" />
           <AppToaster />
           <ScrollToTop />
+          <ScrollToTopOnNavigate />
           <main className="flex-1">{children}</main>
           <Footer />
           <MobileBottomNav />
