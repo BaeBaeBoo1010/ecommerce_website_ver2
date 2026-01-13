@@ -30,7 +30,8 @@ const ProductCard = ({
           Giảm{" "}
           <span className="text-[15px]">
             {Math.round(
-              ((product.originalPrice - product.price) / product.originalPrice) *
+              ((product.originalPrice - product.price) /
+                product.originalPrice) *
                 100,
             )}
             %
@@ -68,11 +69,11 @@ const ProductCard = ({
         <div className="mt-auto flex items-baseline gap-2">
           <p className="text-base font-bold text-[#ee4d2d] sm:text-lg">
             {product.price.toLocaleString("vi-VN")}
-            <span className="text-xs">đ</span>
+            <span className="text-xs">₫</span>
           </p>
           {product.originalPrice && product.originalPrice > product.price && (
             <p className="text-xs text-gray-300 line-through">
-              {product.originalPrice.toLocaleString("vi-VN")}đ
+              {product.originalPrice.toLocaleString("vi-VN")}₫
             </p>
           )}
         </div>

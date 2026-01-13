@@ -18,7 +18,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
 
-  if (pathname === "/cart") return null;
+  if (pathname === "/cart" || pathname === "/checkout") return null;
 
   return (
     <footer className="relative hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-300 lg:block">

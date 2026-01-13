@@ -96,13 +96,13 @@ export default function ProductSwiper({
                 >
                   {p.originalPrice && p.originalPrice > p.price && (
                     <div className="absolute top-0 left-0 z-10 rounded-tl-2xl rounded-br-xl bg-[#ee4d2d] px-2 py-1 text-xs font-bold text-white shadow-sm">
-                    Giảm{" "}
-                    <span className="text-[15px]">
-                      {Math.round(
-                        ((p.originalPrice - p.price) / p.originalPrice) * 100,
-                      )}
-                      %
-                    </span>
+                      Giảm{" "}
+                      <span className="text-[15px]">
+                        {Math.round(
+                          ((p.originalPrice - p.price) / p.originalPrice) * 100,
+                        )}
+                        %
+                      </span>
                     </div>
                   )}
 
@@ -127,11 +127,11 @@ export default function ProductSwiper({
                     <div className="mt-auto flex items-baseline gap-2">
                       <p className="text-base font-bold text-[#ee4d2d] sm:text-lg">
                         {p.price.toLocaleString("vi-VN")}
-                        <span className="text-xs">đ</span>
+                        <span className="text-xs">₫</span>
                       </p>
                       {p.originalPrice && p.originalPrice > p.price && (
                         <p className="text-xs text-gray-300 line-through">
-                          {p.originalPrice.toLocaleString("vi-VN")}đ
+                          {p.originalPrice.toLocaleString("vi-VN")}₫
                         </p>
                       )}
                     </div>

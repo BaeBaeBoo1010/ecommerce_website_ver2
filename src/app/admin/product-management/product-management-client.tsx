@@ -406,7 +406,7 @@ export default function ProductManagementClient({
                             className="w-24 cursor-pointer font-semibold transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400"
                             onClick={() => router.push(`/products/${p.slug}`)}
                           >
-                            {p.price.toLocaleString()} đ
+                            {p.price.toLocaleString()}₫
                           </TableCell>
 
                           <TableCell>

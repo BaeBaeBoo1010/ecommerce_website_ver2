@@ -129,8 +129,16 @@ export function CartItem({
             >
               {product.name}
             </Link>
-            <div className="text-sm font-semibold text-[#EE4D2D] sm:text-base">
-              {product.price.toLocaleString("vi-VN")} ₫
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2">
+              <div className="text-sm font-semibold text-[#EE4D2D] sm:text-base">
+                {product.price.toLocaleString("vi-VN")} ₫
+              </div>
+              {product.originalPrice &&
+                product.originalPrice > product.price && (
+                  <div className="text-xs text-gray-500 line-through sm:text-sm">
+                    {product.originalPrice.toLocaleString("vi-VN")} ₫
+                  </div>
+                )}
             </div>
           </div>
 

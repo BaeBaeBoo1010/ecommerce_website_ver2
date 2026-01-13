@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/context/cart-context";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface CartDropdownProps {
   isHidden?: boolean;
@@ -15,7 +15,7 @@ export function CartDropdown({
   isHidden = false,
   onItemClick,
 }: CartDropdownProps) {
-  const { items, totalItems } = useCart();
+  const { items, totalItems, isLoaded } = useCart();
 
   // Get up to 5 most recent items (assuming newly added are at the end, so reverse)
   const recentItems = [...items].reverse().slice(0, 5);
@@ -23,6 +23,21 @@ export function CartDropdown({
   const handleClick = () => {
     onItemClick?.();
   };
+
+  if (!isLoaded) {
+    return (
+      <div
+        className={`absolute top-[calc(100%+12px)] right-0 z-50 w-[400px] origin-top-right rounded-sm border border-gray-200 bg-white shadow-[0_1px_10px_rgba(0,0,0,0.1)] transition-all duration-200 ${isHidden ? "invisible opacity-0" : "invisible opacity-0 group-hover:visible group-hover:opacity-100"}`}
+      >
+        <div className="absolute -top-3 right-0 h-4 w-full bg-transparent" />
+        <div className="absolute -top-2 right-[20px] h-4 w-4 rotate-45 border-t border-l border-gray-200 bg-white" />
+        <div className="flex flex-col items-center justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="mt-2 text-sm text-gray-500">Đang tải giỏ hàng...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -73,7 +88,7 @@ export function CartDropdown({
         </h3>
 
         <div className="flex flex-col">
-          {recentItems.map(({ product, quantity }) => (
+          {recentItems.map(({ product }) => (
             <Link
               key={product.id}
               href={`/products/${product.slug}`}
@@ -93,8 +108,16 @@ export function CartDropdown({
                   {product.name}
                 </p>
               </div>
-              <div className="text-sm font-medium text-[#EE4D2D]">
-                {product.price.toLocaleString("vi-VN")}đ
+              <div className="flex flex-col items-end gap-1">
+                <div className="text-sm font-medium text-[#EE4D2D]">
+                  {product.price.toLocaleString("vi-VN")}đ
+                </div>
+                {product.originalPrice &&
+                  product.originalPrice > product.price && (
+                    <div className="text-xs text-gray-400 line-through">
+                      {product.originalPrice.toLocaleString("vi-VN")}đ
+                    </div>
+                  )}
               </div>
             </Link>
           ))}

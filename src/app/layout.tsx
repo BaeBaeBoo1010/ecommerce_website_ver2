@@ -90,9 +90,6 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  alternates: {
-    canonical: siteUrl,
-  },
   verification: {
     // Thêm Google Search Console verification code nếu có
     // google: "verification-code-here",
