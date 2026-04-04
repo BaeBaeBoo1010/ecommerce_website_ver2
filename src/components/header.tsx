@@ -364,7 +364,7 @@ export default function Header() {
                     <button
                       onClick={() => {
                         setAccDropdownHidden(true);
-                        signOut({ callbackUrl: "/" });
+                        signOut({ callbackUrl: window.location.origin });
                         toast.success("Đăng xuất thành công");
                       }}
                       className="block w-full rounded-md px-3 py-2 text-left text-base text-red-600 transition-all hover:bg-red-50 dark:hover:bg-red-900/20"

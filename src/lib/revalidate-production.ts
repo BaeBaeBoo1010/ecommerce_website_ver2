@@ -7,7 +7,8 @@
  * On Vercel itself, local revalidation is sufficient, so this is a no-op.
  */
 
-const PRODUCTION_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
+import { getBaseUrl } from "@/lib/utils";
+const PRODUCTION_URL = getBaseUrl();
 const REVALIDATION_SECRET = process.env.REVALIDATION_SECRET;
 
 /**

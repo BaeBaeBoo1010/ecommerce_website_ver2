@@ -262,7 +262,7 @@ export default function MobileBottomNav() {
                   <button
                     onClick={() => {
                       setAccountOpen(false);
-                      signOut({ callbackUrl: "/" });
+                      signOut({ callbackUrl: window.location.origin });
                       toast.success("Đăng xuất thành công");
                     }}
                     className="transition-active mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 p-4 font-medium text-red-600 active:scale-95 dark:bg-red-900/10 dark:text-red-400"

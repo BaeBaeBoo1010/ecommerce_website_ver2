@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getBaseUrl } from "@/lib/utils";
 import { getAllProducts } from "@/lib/product-service";
 import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { slugify } from "@/lib/slugify";
@@ -212,7 +213,7 @@ export async function POST(req: Request) {
 
     // Warm up the new page by pre-fetching it (fire and forget)
     // This ensures the new product page is generated before user access
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const baseUrl = getBaseUrl();
     
     // Delay warm-up slightly to prioritizing API response
     setTimeout(() => {

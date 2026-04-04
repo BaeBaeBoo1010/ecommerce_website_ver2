@@ -52,12 +52,11 @@ export default function LoginPage() {
         toast.error("Sai email hoặc mật khẩu");
       } else if (res?.ok) {
         toast.success("Đăng nhập thành công!");
-        // Force refresh session trước khi redirect
+        // Force refresh session hoàn toàn bằng window.location
         await update();
-        // Đợi một chút để session được cập nhật hoàn toàn
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        router.push("/");
-        router.refresh();
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 100);
       } else {
         toast.error("Đăng nhập thất bại, vui lòng thử lại.");
       }

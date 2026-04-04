@@ -8,7 +8,8 @@ import { unstable_cache } from "next/cache";
 // Force dynamic rendering to ensure fresh data (cached via unstable_cache)
 export const dynamic = "force-dynamic";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
+import { getBaseUrl } from "@/lib/utils";
+const siteUrl = getBaseUrl();
 
 export async function generateMetadata({
   searchParams,

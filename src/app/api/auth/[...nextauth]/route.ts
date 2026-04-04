@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getBaseUrl } from "@/lib/utils";
 
 // ✅ Security: Validate NEXTAUTH_SECRET
 if (!process.env.NEXTAUTH_SECRET) {
@@ -13,29 +14,33 @@ if (process.env.NEXTAUTH_SECRET.length < 32) {
   throw new Error("NEXTAUTH_SECRET must be at least 32 characters long");
 }
 
-const nextAuth = NextAuth({
-  trustHost: true,
-  // Adapter removed in favor of manual Credentials handling for this migration step
-  // or until a Supabase adapter is properly set up if desired. 
-  // For now, we just authenticate against the 'users' table.
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // 24 hours
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-  pages: { signIn: "/auth/login" },
-  cookies: {
-    sessionToken: {
-      name: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}authjs.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
+  // ✅ Security: Set secure cookie only on HTTPS
+  const useSecureCookies = getBaseUrl().startsWith("https://") ?? false;
+  const cookiePrefix = useSecureCookies ? "__Secure-" : "";
+
+  const nextAuth = NextAuth({
+    trustHost: true,
+    // Adapter removed in favor of manual Credentials handling for this migration step
+    // or until a Supabase adapter is properly set up if desired. 
+    // For now, we just authenticate against the 'users' table.
+    session: {
+      strategy: "jwt",
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      updateAge: 24 * 60 * 60, // 24 hours
+    },
+    secret: process.env.NEXTAUTH_SECRET,
+    pages: { signIn: "/auth/login" },
+    cookies: {
+      sessionToken: {
+        name: `${cookiePrefix}authjs.session-token`,
+        options: {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          secure: useSecureCookies,
+        },
       },
     },
-  },
 
   providers: [
     Credentials({

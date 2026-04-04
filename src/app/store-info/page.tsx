@@ -18,7 +18,8 @@ import {
 import Script from "next/script";
 import Link from "next/link";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
+import { getBaseUrl } from "@/lib/utils";
+const siteUrl = getBaseUrl();
 
 const contactInfo = {
   name: "Thiết bị cảm ứng Quang Minh",

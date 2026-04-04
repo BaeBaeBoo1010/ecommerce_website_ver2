@@ -25,7 +25,9 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thietbicamung.me";
+import { getBaseUrl } from "@/lib/utils";
+
+const siteUrl = getBaseUrl();
 const siteName = "Quang Minh - Thiết bị cảm ứng thông minh chính hãng";
 
 export const metadata: Metadata = {
